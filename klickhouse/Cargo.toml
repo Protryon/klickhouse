@@ -18,6 +18,7 @@ chrono-tz = "0.5"
 futures = "0.3"
 serde = "1.0"
 tokio-stream = "0.1"
+klickhouse_derive = { version = "=0.1.0", optional = true, path = "../klickhouse_derive" }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
@@ -25,7 +26,8 @@ env_logger = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 klickhouse_derive = { version = "0.1", path = "../klickhouse_derive" }
 [features]
-default = ["uuid"]
+default = ["uuid", "derive"]
+derive = ["klickhouse_derive"]
 
 [build-dependencies]
 rustc_version = "0.3"

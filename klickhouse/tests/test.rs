@@ -4,7 +4,7 @@ use futures::StreamExt;
 use indexmap::IndexMap;
 use klickhouse::{Uuid, Client, ClientOptions, Date, DateTime, DateTime64, FixedPoint128, FixedPoint256, FixedPoint32, FixedPoint64, i256, u256};
 
-#[derive(klickhouse_derive::Row, Debug, Default)]
+#[derive(klickhouse::Row, Debug, Default)]
 pub struct TestType {
     d_i8: i8,
     d_i16: i16,
@@ -56,15 +56,15 @@ async fn test_client() {
         println!("name = {:?}", name);
     }
 
-    // println!("begin insert");
+    println!("begin insert");
 
-    // let mut block = TestType::default();
-    // block.d_low_card_array.push("te1ssdsdsdsdasdasdasdsadt".to_string());
-    // block.d_low_card_array.push("te2st".to_string());
+    let mut block = TestType::default();
+    block.d_low_card_array.push("te1ssdsdsdsdasdasdasdsadt".to_string());
+    block.d_low_card_array.push("te2st".to_string());
 
-    // client.insert_native_block("insert into test_types format native", vec![block]).await.unwrap();
+    client.insert_native_block("insert into test_types format native", vec![block]).await.unwrap();
 
-    // println!("done");
+    println!("done");
     loop {
         tokio::time::sleep(Duration::from_secs(1)).await;
     }

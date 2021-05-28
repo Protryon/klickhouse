@@ -21,6 +21,9 @@ pub mod uuid;
 #[cfg(not(feature = "uuid"))]
 pub use uuid::Uuid;
 
+#[cfg(feature = "derive")]
+pub use klickhouse_derive::Row;
+
 pub use client::*;
 pub use values::*;
 pub use convert::{FromSql, ToSql, Row};
