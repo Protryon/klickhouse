@@ -1,0 +1,31 @@
+[package]
+name = "klickhouse"
+version = "0.1.0"
+authors = ["Protryon <max.bruce12@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1", features = ["io-util", "net", "sync", "rt"] }
+async-trait = "0.1"
+anyhow = "1.0"
+log = "0.4"
+indexmap = { version = "1.6", features = ["serde"] }
+uuid = { version = "0.8", features = ["v4", "serde"], optional = true }
+chrono = "0.4"
+chrono-tz = "0.5"
+futures = "0.3"
+serde = "1.0"
+tokio-stream = "0.1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+env_logger = "0.6"
+serde = { version = "1.0", features = ["derive"] }
+klickhouse_derive = { version = "0.1", path = "../klickhouse_derive" }
+[features]
+default = ["uuid"]
+
+[build-dependencies]
+rustc_version = "0.3"
