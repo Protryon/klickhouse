@@ -10,7 +10,7 @@ mod low_cardinality;
 #[cfg(test)]
 mod tests;
 
-use crate::{Date, DateTime, i256, io::{ClickhouseRead, ClickhouseWrite}, u256, values::Value};
+use crate::{Date, DateTime, Ipv4, Ipv6, i256, io::{ClickhouseRead, ClickhouseWrite}, u256, values::Value};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Type {
@@ -44,6 +44,9 @@ pub enum Type {
     Date,
     DateTime(Tz),
     DateTime64(usize, Tz),
+
+    Ipv4,
+    Ipv6,
 
     Enum8(Vec<(String, u8)>),
     Enum16(Vec<(String, u16)>),
@@ -121,6 +124,8 @@ impl Type {
             Type::Date => Value::Date(Date(0)),
             Type::DateTime(tz) => Value::DateTime(DateTime(*tz, 0)),
             Type::DateTime64(precision, tz) => Value::DateTime64(*tz, *precision, 0),
+            Type::Ipv4 => Value::Ipv4(Ipv4::default()),
+            Type::Ipv6 => Value::Ipv6(Ipv6::default()),
             Type::Enum8(_) => Value::Enum8(0),
             Type::Enum16(_) => Value::Enum16(0),
             Type::LowCardinality(x) => x.default_value(),
@@ -129,6 +134,7 @@ impl Type {
             Type::Tuple(types) => Value::Tuple(types.iter().map(|x| x.default_value()).collect()),
             Type::Nullable(_) => Value::Null,
             Type::Map(_, _) => Value::Map(vec![], vec![]),
+
         }
     }
 
@@ -330,6 +336,8 @@ impl FromStr for Type {
             "UUID" => Type::Uuid,
             "Date" => Type::Date,
             "DateTime" => Type::DateTime(chrono_tz::UTC),
+            "IPv4" => Type::Ipv4,
+            "IPv6" => Type::Ipv6,
             _ => return Err(anyhow!("invalid type name: '{}'", ident)),
         })
     }
@@ -362,6 +370,8 @@ impl ToString for Type {
             Type::Date => "Date".to_string(),
             Type::DateTime(tz) => format!("DateTime('{}')", tz),
             Type::DateTime64(precision, tz) => format!("DateTime64({},'{}')", precision, tz),
+            Type::Ipv4 => "IPv4".to_string(),
+            Type::Ipv6 => "IPv6".to_string(),
             Type::Enum8(items) => format!("Enum8({})", items.iter().map(|(name, value)| format!("{}={}", name, value)).collect::<Vec<_>>().join(",")),
             Type::Enum16(items) => format!("Enum16({})", items.iter().map(|(name, value)| format!("{}={}", name, value)).collect::<Vec<_>>().join(",")),
             Type::LowCardinality(inner) => format!("LowCardinality({})", inner.to_string()),
@@ -400,6 +410,8 @@ impl Type {
             Type::Date |
             Type::DateTime(_) |
             Type::DateTime64(_, _) |
+            Type::Ipv4 |
+            Type::Ipv6 |
             Type::Enum8(_) |
             Type::Enum16(_) => {
                 sized::SizedDeserializer::read_prefix(self, reader, state).await?
@@ -454,6 +466,8 @@ impl Type {
             Type::Date |
             Type::DateTime(_) |
             Type::DateTime64(_, _) |
+            Type::Ipv4 |
+            Type::Ipv6 |
             Type::Enum8(_) |
             Type::Enum16(_) => {
                 sized::SizedDeserializer::read_n(self, reader, rows, state).await?
@@ -507,6 +521,8 @@ impl Type {
             Type::Date |
             Type::DateTime(_) |
             Type::DateTime64(_, _) |
+            Type::Ipv4 |
+            Type::Ipv6 |
             Type::Enum8(_) |
             Type::Enum16(_) => {
                 sized::SizedDeserializer::read(self, reader, state).await?
@@ -560,6 +576,8 @@ impl Type {
             Type::Date |
             Type::DateTime(_) |
             Type::DateTime64(_, _) |
+            Type::Ipv4 |
+            Type::Ipv6 |
             Type::Enum8(_) |
             Type::Enum16(_) => {
                 sized::SizedSerializer::write_n(self, values, writer, state).await?
@@ -614,6 +632,8 @@ impl Type {
             Type::Date |
             Type::DateTime(_) |
             Type::DateTime64(_, _) |
+            Type::Ipv4 |
+            Type::Ipv6 |
             Type::Enum8(_) |
             Type::Enum16(_) => {
                 sized::SizedSerializer::write(self, value, writer, state).await?
@@ -668,6 +688,8 @@ impl Type {
             Type::Date |
             Type::DateTime(_) |
             Type::DateTime64(_, _) |
+            Type::Ipv4 |
+            Type::Ipv6 |
             Type::Enum8(_) |
             Type::Enum16(_) => {
                 sized::SizedSerializer::write_prefix(self, writer, state).await?
@@ -725,6 +747,8 @@ impl Type {
                     Type::FixedString(_) |
                     Type::Date |
                     Type::DateTime(_) |
+                    Type::Ipv4 |
+                    Type::Ipv6 |        
                     Type::Int8 |
                     Type::Int16 |
                     Type::Int32 |
@@ -839,6 +863,8 @@ impl Type {
             (Type::Date, Value::Date(_)) => true,
             (Type::DateTime(tz1), Value::DateTime(date)) => tz1 == &date.0,
             (Type::DateTime64(precision1, tz1), Value::DateTime64(tz2, precision2, _)) => tz1 == tz2 && precision1 == precision2,
+            (Type::Ipv4, Value::Ipv4(_)) |
+            (Type::Ipv6, Value::Ipv6(_)) => true,
             (Type::Enum8(entries), Value::Enum8(index)) => entries.iter().any(|x| x.1 == *index),
             (Type::Enum16(entries), Value::Enum16(index)) => entries.iter().any(|x| x.1 == *index),
             (Type::LowCardinality(x), value) => x.inner_validate_value(value),

@@ -44,6 +44,8 @@ impl Serializer for SizedSerializer {
             Value::Date(x) => writer.write_u16_le(x.0).await?,
             Value::DateTime(x) => writer.write_u32_le(x.1).await?,
             Value::DateTime64(_, _, x) => writer.write_u64_le(*x).await?,
+            Value::Ipv4(x) => writer.write_u32_le(x.0.into()).await?,
+            Value::Ipv6(x) => writer.write_all(&x.octets()[..]).await?,
             Value::Enum8(x) => writer.write_u8(*x).await?,
             Value::Enum16(x) => writer.write_u16_le(*x).await?,
             _ => unimplemented!(),

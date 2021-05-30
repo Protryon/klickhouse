@@ -1,18 +1,20 @@
-use std::borrow::Cow;
+use std::{borrow::Cow};
 
 use chrono_tz::Tz;
 
-use crate::{convert::{FromSql, ToSql}, types::Type};
+use crate::{convert::{FromSql, ToSql, unexpected_type}, types::Type};
 use anyhow::*;
 
 mod fixed_point;
 mod int256;
 mod date;
 mod clickhouse_uuid;
+mod ip;
 
 pub use fixed_point::*;
 pub use int256::*;
 pub use date::*;
+pub use ip::*;
 
 #[cfg(test)]
 mod tests;
@@ -62,6 +64,9 @@ pub enum Value {
     Null,
 
     Map(Vec<Value>, Vec<Value>),
+
+    Ipv4(Ipv4),
+    Ipv6(Ipv6),
 }
 
 impl Value {

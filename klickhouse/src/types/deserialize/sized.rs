@@ -1,3 +1,5 @@
+use std::net::{Ipv4Addr, Ipv6Addr};
+
 use anyhow::*;
 // use chrono::{Duration, NaiveDateTime, TimeZone};
 use tokio::io::AsyncReadExt;
@@ -54,6 +56,14 @@ impl Deserializer for SizedDeserializer {
             }),
             Type::Date => Value::Date(Date(reader.read_u16_le().await?)),
             Type::DateTime(tz) => Value::DateTime(DateTime(*tz, reader.read_u32_le().await?)),
+            Type::Ipv4 => {
+                Value::Ipv4(Ipv4Addr::from(reader.read_u32_le().await?).into())
+            },
+            Type::Ipv6 => {
+                let mut octets = [0u8; 16];
+                reader.read_exact(&mut octets[..]).await?;
+                Value::Ipv6(Ipv6Addr::from(octets).into())
+            },
             Type::DateTime64(precision, tz) => {
                 let raw = reader.read_u64_le().await?;
                 Value::DateTime64(*tz, *precision, raw)

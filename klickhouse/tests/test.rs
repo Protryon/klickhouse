@@ -1,8 +1,8 @@
-use std::time::Duration;
+use std::net::{Ipv4Addr, Ipv6Addr};
 
 use futures::StreamExt;
 use indexmap::IndexMap;
-use klickhouse::{Uuid, Client, ClientOptions, Date, DateTime, DateTime64, FixedPoint128, FixedPoint256, FixedPoint32, FixedPoint64, i256, u256};
+use klickhouse::{Client, ClientOptions, Date, DateTime, DateTime64, FixedPoint128, FixedPoint256, FixedPoint32, FixedPoint64, Ipv4, Ipv6, Uuid, i256, u256};
 
 #[derive(klickhouse::Row, Debug, Default)]
 pub struct TestType {
@@ -44,6 +44,8 @@ pub struct TestType {
     d_low_card_array: Vec<String>,
     d_array_nulls: Vec<Option<String>>,
     d_low_card_array_nulls: Vec<Option<String>>,
+    d_ip4: Ipv4,
+    d_ip6: Ipv6,
 }
 
 #[tokio::test]
@@ -61,11 +63,10 @@ async fn test_client() {
     let mut block = TestType::default();
     block.d_low_card_array.push("te1ssdsdsdsdasdasdasdsadt".to_string());
     block.d_low_card_array.push("te2st".to_string());
+    block.d_ip4 = "5.6.7.8".parse::<Ipv4Addr>().unwrap().into();
+    block.d_ip6 = "ff26:0:0:0:0:0:0:c5".parse::<Ipv6Addr>().unwrap().into();
 
     client.insert_native_block("insert into test_types format native", vec![block]).await.unwrap();
 
     println!("done");
-    loop {
-        tokio::time::sleep(Duration::from_secs(1)).await;
-    }
 }

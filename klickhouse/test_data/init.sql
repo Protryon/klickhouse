@@ -33,5 +33,7 @@ create table test_types (
     d_low_card_string LowCardinality(String) default 't',
     d_low_card_array Array(LowCardinality(String)) default array('test1', 'test2'),
     d_array_nulls Array(Nullable(String)),
-    d_low_card_array_nulls Array(LowCardinality(Nullable(String)))
+    d_low_card_array_nulls Array(LowCardinality(Nullable(String))),
+    d_ip4 IPv4,
+    d_ip6 IPv6
 ) Engine=Memory;
