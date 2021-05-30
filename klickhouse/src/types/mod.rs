@@ -18,6 +18,7 @@ use crate::{
     Date, DateTime, Ipv4, Ipv6,
 };
 
+/// A raw Clickhouse type.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Type {
     Int8,
@@ -54,7 +55,9 @@ pub enum Type {
     Ipv4,
     Ipv6,
 
+    /// Not supported
     Enum8(Vec<(String, u8)>),
+    /// Not supported
     Enum16(Vec<(String, u16)>),
 
     LowCardinality(Box<Type>),
@@ -142,7 +145,7 @@ impl Type {
         }
     }
 
-    pub fn strip_clickhouse_semantics(&self) -> &Type {
+    pub fn strip_low_cardinality(&self) -> &Type {
         match self {
             Type::LowCardinality(x) => &**x,
             _ => self,
@@ -422,7 +425,7 @@ impl ToString for Type {
 }
 
 impl Type {
-    pub async fn deserialize_prefix<R: ClickhouseRead>(
+    pub(crate) async fn deserialize_prefix<R: ClickhouseRead>(
         &self,
         reader: &mut R,
         state: &mut DeserializerState,
@@ -474,7 +477,7 @@ impl Type {
         Ok(())
     }
 
-    pub async fn deserialize_column<R: ClickhouseRead>(
+    pub(crate) async fn deserialize_column<R: ClickhouseRead>(
         &self,
         reader: &mut R,
         rows: usize,
@@ -528,7 +531,7 @@ impl Type {
         })
     }
 
-    pub async fn deserialize<R: ClickhouseRead>(
+    pub(crate) async fn deserialize<R: ClickhouseRead>(
         &self,
         reader: &mut R,
         state: &mut DeserializerState,
@@ -576,7 +579,7 @@ impl Type {
         })
     }
 
-    pub async fn serialize_column<W: ClickhouseWrite>(
+    pub(crate) async fn serialize_column<W: ClickhouseWrite>(
         &self,
         values: &[Value],
         writer: &mut W,
@@ -631,7 +634,7 @@ impl Type {
         Ok(())
     }
 
-    pub async fn serialize<W: ClickhouseWrite>(
+    pub(crate) async fn serialize<W: ClickhouseWrite>(
         &self,
         value: &Value,
         writer: &mut W,
@@ -683,7 +686,7 @@ impl Type {
         Ok(())
     }
 
-    pub async fn serialize_prefix<W: ClickhouseWrite>(
+    pub(crate) async fn serialize_prefix<W: ClickhouseWrite>(
         &self,
         writer: &mut W,
         state: &mut SerializerState,
@@ -734,7 +737,7 @@ impl Type {
         Ok(())
     }
 
-    pub fn validate(&self, dimensions: usize) -> Result<()> {
+    pub(crate) fn validate(&self, dimensions: usize) -> Result<()> {
         match self {
             Type::Decimal32(precision) => {
                 if *precision == 0 || *precision > 9 {
@@ -874,7 +877,7 @@ impl Type {
         Ok(())
     }
 
-    pub fn validate_value(&self, value: &Value) -> Result<()> {
+    pub(crate) fn validate_value(&self, value: &Value) -> Result<()> {
         self.validate(0)?;
         if !self.inner_validate_value(value) {
             return Err(anyhow!(

@@ -1,9 +1,13 @@
+
+/// Clickhouse major version
 pub const VERSION_MAJOR: u64 = 21;
+/// Clickhouse minor version
 pub const VERSION_MINOR: u64 = 6;
 
 mod block;
 mod client;
 mod convert;
+/// Error generator functions used by `klickhouse_derive`
 pub mod errors;
 mod internal_client_in;
 mod internal_client_out;

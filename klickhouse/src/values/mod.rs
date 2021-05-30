@@ -22,6 +22,9 @@ pub use ip::*;
 #[cfg(test)]
 mod tests;
 
+/// A raw Clickhouse value.
+/// Types are not strictly/completely preserved (i.e. types `String` and `FixedString` both are value `String`).
+/// Use this if you want dynamically typed queries.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Value {
     Int8(i8),
@@ -88,7 +91,7 @@ impl Value {
         }
     }
 
-    pub fn justify_null<'a>(&'a self, type_: &Type) -> Cow<'a, Value> {
+    pub(crate) fn justify_null<'a>(&'a self, type_: &Type) -> Cow<'a, Value> {
         if self == &Value::Null {
             Cow::Owned(type_.default_value())
         } else {
@@ -96,10 +99,12 @@ impl Value {
         }
     }
 
+    /// Converts a [`Value`] to a [`T`] type by calling [`T::from_sql`].
     pub fn to_value<T: FromSql>(self, type_: &Type) -> Result<T> {
         T::from_sql(type_, self)
     }
 
+    /// Converts a [`T`] type to a [`Value`] by calling [`T::to_sql`].
     pub fn from_value<T: ToSql>(value: T) -> Result<Self> {
         value.to_sql()
     }

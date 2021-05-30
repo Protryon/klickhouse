@@ -137,7 +137,7 @@ impl Block {
             let (name, type_) = self.column_types.get_key_value(&name).unwrap();
             out.push((
                 &**name,
-                type_.strip_clickhouse_semantics(),
+                type_.strip_low_cardinality(),
                 values.into_iter(),
             ));
         }

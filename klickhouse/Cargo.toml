@@ -5,10 +5,9 @@ authors = ["Protryon <max.bruce12@gmail.com>"]
 edition = "2018"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/Protryon/klickhouse"
-description = "Rust crate for accessing Clickhouse"
+description = "Klickhouse is a pure Rust SDK for working with Clickhouse with the native protocol in async environments with minimal boilerplate and maximal performance."
 keywords = [ "clickhouse", "database", "tokio", "sql" ]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+readme = "../README.md"
 
 [dependencies]
 tokio = { version = "1", features = ["io-util", "net", "sync", "rt"] }

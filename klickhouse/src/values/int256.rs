@@ -5,6 +5,7 @@ use crate::{
 };
 use anyhow::*;
 
+/// Wrapper type for Clickhouse `Int256` type.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Default)]
 #[allow(non_camel_case_types)]
 pub struct i256(pub [u8; 32]);
@@ -53,6 +54,7 @@ impl From<(u128, u128)> for i256 {
     }
 }
 
+/// Wrapper type for Clickhouse `UInt256` type.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Default)]
 #[allow(non_camel_case_types)]
 pub struct u256(pub [u8; 32]);

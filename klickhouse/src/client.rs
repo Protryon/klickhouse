@@ -181,11 +181,13 @@ struct ClientRequest {
     data: ClientRequestData,
 }
 
+/// Client handle for a Clickhouse connection, has internal reference to connection, and can be freely cloned and sent across threads.
 #[derive(Clone)]
 pub struct Client {
     sender: mpsc::Sender<ClientRequest>,
 }
 
+/// Options set for a Clickhouse connection.
 #[derive(Debug, Clone)]
 pub struct ClientOptions {
     pub username: String,
@@ -204,6 +206,7 @@ impl Default for ClientOptions {
 }
 
 impl Client {
+    /// Consumes a reader and writer to connect to Klickhouse. To be used for exotic setups or TLS. Generally prefer [`Client::connect()`]
     pub fn connect_stream(
         read: impl AsyncRead + Unpin + Send + Sync + 'static,
         writer: impl AsyncWrite + Unpin + Send + Sync + 'static,
@@ -216,27 +219,13 @@ impl Client {
         ))
     }
 
+    /// Connects to a specific socket address over plaintext TCP for Clickhouse.
     pub async fn connect<A: ToSocketAddrs>(
         destination: A,
         options: ClientOptions,
     ) -> std::io::Result<Self> {
         let (read, writer) = TcpStream::connect(destination).await?.into_split();
-        Self::connect_direct(read, writer, options).await
-    }
-
-    pub async fn connect_direct<
-        R: AsyncRead + Unpin + Send + Sync + 'static,
-        W: AsyncWrite + Unpin + Send + Sync + 'static,
-    >(
-        reader: R,
-        writer: W,
-        options: ClientOptions,
-    ) -> std::io::Result<Self> {
-        Ok(Self::start(InnerClient::new(
-            BufReader::new(reader),
-            BufWriter::new(writer),
-            options,
-        )))
+        Ok(Self::connect_stream(read, writer, options))
     }
 
     fn start<R: ClickhouseRead, W: ClickhouseWrite>(inner: InnerClient<R, W>) -> Self {
@@ -245,6 +234,8 @@ impl Client {
         Client { sender }
     }
 
+    /// Sends a query string and read column blocks over a stream. 
+    /// You probably want [`Client::query()`]
     pub async fn query_raw(&self, query: &str) -> Result<impl Stream<Item = Block>> {
         let (sender, receiver) = oneshot::channel();
         self.sender
@@ -277,6 +268,9 @@ impl Client {
         Ok(())
     }
 
+    /// Sends a query string with streaming associated data (i.e. insert) over native protocol.
+    /// Once all outgoing blocks are written (EOF of `blocks` stream), then any response blocks from Clickhouse are read.
+    /// You probably want [`Client::insert_native`].
     pub async fn insert_native_raw(
         &self,
         query: &str,
@@ -308,6 +302,9 @@ impl Client {
         Ok(ReceiverStream::new(receiver))
     }
 
+    /// Sends a query string with streaming associated data (i.e. insert) over native protocol.
+    /// Once all outgoing blocks are written (EOF of `blocks` stream), then any response blocks from Clickhouse are read and DISCARDED.
+    /// Make sure any query you send native data with has a `format native` suffix.
     pub async fn insert_native<T: Row + Send + Sync + 'static>(
         &self,
         query: &str,
@@ -371,6 +368,8 @@ impl Client {
         Ok(())
     }
 
+    /// Wrapper over [`Client::insert_native`] to send a single block.
+    /// Make sure any query you send native data with has a `format native` suffix.
     pub async fn insert_native_block<T: Row + Send + Sync + 'static>(
         &self,
         query: &str,
@@ -381,6 +380,8 @@ impl Client {
         self.insert_native(query, stream).await
     }
 
+    /// Runs a query against Clickhouse, returning a stream of deserialized rows.
+    /// Note that no rows are returned until Clickhouse sends a full block (but it usually sends more than one block).
     pub async fn query<T: Row>(&self, query: &str) -> Result<impl Stream<Item = Result<T>>> {
         let raw = self.query_raw(query).await?;
         Ok(raw.flat_map(|mut block| {

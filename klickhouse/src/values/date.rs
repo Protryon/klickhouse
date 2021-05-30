@@ -8,6 +8,7 @@ use crate::{
 };
 use anyhow::*;
 
+/// Wrapper type for Clickhouse `Date` type.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Default)]
 pub struct Date(pub u16);
 
@@ -41,6 +42,7 @@ impl From<chrono::Date<Utc>> for Date {
     }
 }
 
+/// Wrapper type for Clickhouse `DateTime` type.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DateTime(pub Tz, pub u32);
 
@@ -85,6 +87,18 @@ impl From<chrono::DateTime<Tz>> for DateTime {
     }
 }
 
+impl From<chrono::DateTime<chrono::Utc>> for DateTime {
+    fn from(other: chrono::DateTime<Utc>) -> Self {
+        Self(
+            chrono_tz::UTC,
+            other
+                .signed_duration_since(chrono::MIN_DATETIME)
+                .num_seconds() as u32,
+        )
+    }
+}
+
+/// Wrapper type for Clickhouse `DateTime64` type.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DateTime64<const PRECISION: usize>(pub Tz, pub u64);
 

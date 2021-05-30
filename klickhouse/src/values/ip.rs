@@ -5,6 +5,7 @@ use std::{
     ops::Deref,
 };
 
+/// Wrapper type for Clickhouse `IPv4` type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Ipv4(pub Ipv4Addr);
 
@@ -40,6 +41,7 @@ impl Default for Ipv4 {
     }
 }
 
+/// Wrapper type for Clickhouse `IPv6` type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Ipv6(pub Ipv6Addr);
 

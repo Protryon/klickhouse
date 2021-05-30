@@ -5,7 +5,7 @@ authors = ["Protryon <max.bruce12@gmail.com>"]
 edition = "2018"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/Protryon/klickhouse"
-description = "Rust crate for accessing Clickhouse"
+description = "proc-macro crate for klickhouse"
 keywords = [ "clickhouse", "database", "tokio", "sql" ]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

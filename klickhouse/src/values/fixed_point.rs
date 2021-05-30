@@ -6,6 +6,7 @@ use crate::{
 };
 use anyhow::*;
 
+/// Wrapper type for Clickhouse `FixedPoint32` type.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Default)]
 pub struct FixedPoint32<const PRECISION: u64>(pub i32);
 
@@ -47,6 +48,7 @@ impl<const PRECISION: u64> Into<f64> for FixedPoint32<PRECISION> {
     }
 }
 
+/// Wrapper type for Clickhouse `FixedPoint64` type.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Default)]
 pub struct FixedPoint64<const PRECISION: u64>(pub i64);
 
@@ -88,6 +90,7 @@ impl<const PRECISION: u64> Into<f64> for FixedPoint64<PRECISION> {
     }
 }
 
+/// Wrapper type for Clickhouse `FixedPoint128` type.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Default)]
 pub struct FixedPoint128<const PRECISION: u64>(pub i128);
 
@@ -129,6 +132,7 @@ impl<const PRECISION: u64> Into<f64> for FixedPoint128<PRECISION> {
     }
 }
 
+/// Wrapper type for Clickhouse `FixedPoint256` type.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Default)]
 pub struct FixedPoint256<const PRECISION: u64>(pub i256);
 

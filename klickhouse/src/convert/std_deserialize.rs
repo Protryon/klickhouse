@@ -169,7 +169,7 @@ impl<T: FromSql> FromSql for Vec<T> {
             Type::Array(x) => &**x,
             x => return Err(unexpected_type(x)),
         }
-        .strip_clickhouse_semantics();
+        .strip_low_cardinality();
         match value {
             Value::Array(x) => Ok(x
                 .into_iter()
@@ -184,8 +184,8 @@ impl<T: FromSql + Hash + Eq, Y: FromSql> FromSql for HashMap<T, Y> {
     fn from_sql(type_: &Type, value: Value) -> Result<Self> {
         let (x_type, y_type) = match type_ {
             Type::Map(x_type, y_type) => (
-                x_type.strip_clickhouse_semantics(),
-                y_type.strip_clickhouse_semantics(),
+                x_type.strip_low_cardinality(),
+                y_type.strip_low_cardinality(),
             ),
             x => return Err(unexpected_type(x)),
         };
@@ -206,8 +206,8 @@ impl<T: FromSql + Ord, Y: FromSql> FromSql for BTreeMap<T, Y> {
     fn from_sql(type_: &Type, value: Value) -> Result<Self> {
         let (x_type, y_type) = match type_ {
             Type::Map(x_type, y_type) => (
-                x_type.strip_clickhouse_semantics(),
-                y_type.strip_clickhouse_semantics(),
+                x_type.strip_low_cardinality(),
+                y_type.strip_low_cardinality(),
             ),
             x => return Err(unexpected_type(x)),
         };
@@ -228,8 +228,8 @@ impl<T: FromSql + Hash + Eq, Y: FromSql> FromSql for IndexMap<T, Y> {
     fn from_sql(type_: &Type, value: Value) -> Result<Self> {
         let (x_type, y_type) = match type_ {
             Type::Map(x_type, y_type) => (
-                x_type.strip_clickhouse_semantics(),
-                y_type.strip_clickhouse_semantics(),
+                x_type.strip_low_cardinality(),
+                y_type.strip_low_cardinality(),
             ),
             x => return Err(unexpected_type(x)),
         };
@@ -249,7 +249,7 @@ impl<T: FromSql + Hash + Eq, Y: FromSql> FromSql for IndexMap<T, Y> {
 impl<T: FromSql> FromSql for Option<T> {
     fn from_sql(type_: &Type, value: Value) -> Result<Self> {
         let subtype = match type_ {
-            Type::Nullable(x) => x.strip_clickhouse_semantics(),
+            Type::Nullable(x) => x.strip_low_cardinality(),
             x => return Err(unexpected_type(x)),
         };
         match value {
@@ -263,7 +263,7 @@ impl<T: FromSql> FromSql for Option<T> {
 impl<T: FromSql + Default + Copy, const N: usize> FromSql for [T; N] {
     fn from_sql(type_: &Type, value: Value) -> Result<Self> {
         let subtype = match type_ {
-            Type::Array(x) => x.strip_clickhouse_semantics(),
+            Type::Array(x) => x.strip_low_cardinality(),
             x => return Err(unexpected_type(x)),
         };
         match value {
@@ -314,7 +314,7 @@ macro_rules! tuple_impls {
                     let mut deque = std::collections::VecDeque::from(values);
                     Ok((
                         $(
-                            $name::from_sql(subtype[$n].strip_clickhouse_semantics(), deque.pop_front().unwrap())?,
+                            $name::from_sql(subtype[$n].strip_low_cardinality(), deque.pop_front().unwrap())?,
                         )+
                     ))
                 }
