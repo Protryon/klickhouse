@@ -84,7 +84,11 @@ impl ToSql for String {
 
 impl<T: ToSql> ToSql for Vec<T> {
     fn to_sql(self) -> Result<Value> {
-        Ok(Value::Array(self.into_iter().map(|x| x.to_sql()).collect::<Result<Vec<_>>>()?))
+        Ok(Value::Array(
+            self.into_iter()
+                .map(|x| x.to_sql())
+                .collect::<Result<Vec<_>>>()?,
+        ))
     }
 }
 
@@ -136,7 +140,11 @@ impl<T: ToSql> ToSql for Option<T> {
 #[cfg(const_generics)]
 impl<T: ToSql, const N: usize> ToSql for [T; N] {
     fn to_sql(self) -> Result<Value> {
-        Ok(Value::Array(std::array::IntoIter::new(self).map(|x| x.to_sql()).collect::<Result<Vec<_>>>()?))
+        Ok(Value::Array(
+            std::array::IntoIter::new(self)
+                .map(|x| x.to_sql())
+                .collect::<Result<Vec<_>>>()?,
+        ))
     }
 }
 

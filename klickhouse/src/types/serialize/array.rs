@@ -5,13 +5,17 @@ use crate::{io::ClickhouseWrite, values::Value};
 
 use super::{Serializer, SerializerState, Type};
 
-
 pub struct ArraySerializer;
 
 struct Array2Serializer;
 
 impl Array2Serializer {
-    async fn write<W: ClickhouseWrite>(type_: &Type, values: &[Value], writer: &mut W, state: &mut SerializerState) -> Result<()> {
+    async fn write<W: ClickhouseWrite>(
+        type_: &Type,
+        values: &[Value],
+        writer: &mut W,
+        state: &mut SerializerState,
+    ) -> Result<()> {
         match type_ {
             Type::Array(inner) => {
                 let mut offset = 0;
@@ -24,7 +28,7 @@ impl Array2Serializer {
                     let values = value.unwrap_array();
                     inner.serialize_column(values, writer, state).await?;
                 }
-            },
+            }
             _ => unimplemented!(),
         }
         Ok(())
@@ -33,24 +37,35 @@ impl Array2Serializer {
 
 #[async_trait::async_trait]
 impl Serializer for ArraySerializer {
-    async fn write_prefix<W: ClickhouseWrite>(type_: &Type, writer: &mut W, state: &mut SerializerState) -> Result<()> {
+    async fn write_prefix<W: ClickhouseWrite>(
+        type_: &Type,
+        writer: &mut W,
+        state: &mut SerializerState,
+    ) -> Result<()> {
         match type_ {
             Type::Array(inner) => {
                 inner.serialize_prefix(writer, state).await?;
-            },
+            }
             _ => unimplemented!(),
         }
         Ok(())
     }
 
-    async fn write<W: ClickhouseWrite>(type_: &Type, value: &Value, writer: &mut W, state: &mut SerializerState) -> Result<()> {
+    async fn write<W: ClickhouseWrite>(
+        type_: &Type,
+        value: &Value,
+        writer: &mut W,
+        state: &mut SerializerState,
+    ) -> Result<()> {
         match (type_, value.justify_null(type_).as_ref()) {
             (Type::Array(inner_type), Value::Array(inner)) => {
                 writer.write_u64_le(inner.len() as u64).await?;
                 if let Type::Array(_) = &**inner_type {
                     return Array2Serializer::write(&**inner_type, &inner[..], writer, state).await;
                 }
-                inner_type.serialize_column(&inner[..], writer, state).await?;
+                inner_type
+                    .serialize_column(&inner[..], writer, state)
+                    .await?;
             }
             _ => unimplemented!(),
         }

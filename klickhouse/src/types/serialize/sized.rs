@@ -1,5 +1,5 @@
 use anyhow::*;
-use tokio::io::{AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
 use crate::{io::ClickhouseWrite, values::Value};
 
@@ -14,7 +14,12 @@ fn swap_endian_256(mut input: [u8; 32]) -> [u8; 32] {
 
 #[async_trait::async_trait]
 impl Serializer for SizedSerializer {
-    async fn write<W: ClickhouseWrite>(type_: &Type, value: &Value, writer: &mut W, _state: &mut SerializerState) -> Result<()> {
+    async fn write<W: ClickhouseWrite>(
+        type_: &Type,
+        value: &Value,
+        writer: &mut W,
+        _state: &mut SerializerState,
+    ) -> Result<()> {
         match value.justify_null(type_).as_ref() {
             Value::Int8(x) => writer.write_i8(*x).await?,
             Value::Int16(x) => writer.write_i16_le(*x).await?,
@@ -40,7 +45,7 @@ impl Serializer for SizedSerializer {
                 let n2 = n as u64;
                 writer.write_u64_le(n1).await?;
                 writer.write_u64_le(n2).await?;
-            },
+            }
             Value::Date(x) => writer.write_u16_le(x.0).await?,
             Value::DateTime(x) => writer.write_u32_le(x.1).await?,
             Value::DateTime64(_, _, x) => writer.write_u64_le(*x).await?,

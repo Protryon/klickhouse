@@ -1,4 +1,9 @@
-use crate::{Value, convert::{FromSql, ToSql, unexpected_type}, i256, types::Type};
+use crate::{
+    convert::{unexpected_type, FromSql, ToSql},
+    i256,
+    types::Type,
+    Value,
+};
 use anyhow::*;
 
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Default)]
@@ -123,7 +128,6 @@ impl<const PRECISION: u64> Into<f64> for FixedPoint128<PRECISION> {
         self.integer() as f64 + (self.fraction() as f64 / self.modulus() as f64)
     }
 }
-
 
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Default)]
 pub struct FixedPoint256<const PRECISION: u64>(pub i256);

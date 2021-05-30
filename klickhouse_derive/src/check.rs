@@ -1,5 +1,5 @@
-use crate::ast::{Container};
-use crate::{ctxt::Ctxt};
+use crate::ast::Container;
+use crate::ctxt::Ctxt;
 
 /// Cross-cutting checks that require looking at more than a single attrs
 /// object. Simpler checks should happen when parsing and building the attrs.

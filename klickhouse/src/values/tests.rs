@@ -2,10 +2,14 @@ use chrono_tz::UTC;
 use indexmap::IndexMap;
 use uuid::Uuid;
 
-use crate::{Date, DateTime, DateTime64, FixedPoint128, FixedPoint256, FixedPoint32, FixedPoint64, convert::{FromSql, ToSql}, i256, types::Type, u256};
+use crate::{
+    convert::{FromSql, ToSql},
+    i256,
+    types::Type,
+    u256, Date, DateTime, DateTime64, FixedPoint128, FixedPoint256, FixedPoint32, FixedPoint64,
+};
 
 use super::Value;
-
 
 fn roundtrip<T: FromSql + ToSql>(item: T, type_: &Type) -> T {
     let serialized = Value::from_value(item).expect("failed to serialize");
@@ -45,8 +49,14 @@ fn roundtrip_u128() {
 
 #[test]
 fn roundtrip_u256() {
-    assert_eq!(u256::from((0u128, 0u128)), roundtrip(u256::from((0u128, 0u128)), &Type::UInt256));
-    assert_eq!(u256::from((5u128, 0u128)), roundtrip(u256::from((5u128, 0u128)), &Type::UInt256));
+    assert_eq!(
+        u256::from((0u128, 0u128)),
+        roundtrip(u256::from((0u128, 0u128)), &Type::UInt256)
+    );
+    assert_eq!(
+        u256::from((5u128, 0u128)),
+        roundtrip(u256::from((5u128, 0u128)), &Type::UInt256)
+    );
 }
 
 #[test]
@@ -86,8 +96,14 @@ fn roundtrip_i128() {
 
 #[test]
 fn roundtrip_i256() {
-    assert_eq!(i256::from((0u128, 0u128)), roundtrip(i256::from((0u128, 0u128)), &Type::Int256));
-    assert_eq!(i256::from((5u128, 0u128)), roundtrip(i256::from((5u128, 0u128)), &Type::Int256));
+    assert_eq!(
+        i256::from((0u128, 0u128)),
+        roundtrip(i256::from((0u128, 0u128)), &Type::Int256)
+    );
+    assert_eq!(
+        i256::from((5u128, 0u128)),
+        roundtrip(i256::from((5u128, 0u128)), &Type::Int256)
+    );
 }
 
 #[test]
@@ -130,23 +146,50 @@ fn roundtrip_f64() {
 
 #[test]
 fn roundtrip_d32() {
-    assert_eq!(FixedPoint32::<3>(0), roundtrip(FixedPoint32::<3>(0), &Type::Decimal32(3)));
-    assert_eq!(FixedPoint32::<3>(5), roundtrip(FixedPoint32::<3>(5), &Type::Decimal32(3)));
-    assert_eq!(FixedPoint32::<3>(-5), roundtrip(FixedPoint32::<3>(-5), &Type::Decimal32(3)));
+    assert_eq!(
+        FixedPoint32::<3>(0),
+        roundtrip(FixedPoint32::<3>(0), &Type::Decimal32(3))
+    );
+    assert_eq!(
+        FixedPoint32::<3>(5),
+        roundtrip(FixedPoint32::<3>(5), &Type::Decimal32(3))
+    );
+    assert_eq!(
+        FixedPoint32::<3>(-5),
+        roundtrip(FixedPoint32::<3>(-5), &Type::Decimal32(3))
+    );
 }
 
 #[test]
 fn roundtrip_d64() {
-    assert_eq!(FixedPoint64::<3>(0), roundtrip(FixedPoint64::<3>(0), &Type::Decimal64(3)));
-    assert_eq!(FixedPoint64::<3>(5), roundtrip(FixedPoint64::<3>(5), &Type::Decimal64(3)));
-    assert_eq!(FixedPoint64::<3>(-5), roundtrip(FixedPoint64::<3>(-5), &Type::Decimal64(3)));
+    assert_eq!(
+        FixedPoint64::<3>(0),
+        roundtrip(FixedPoint64::<3>(0), &Type::Decimal64(3))
+    );
+    assert_eq!(
+        FixedPoint64::<3>(5),
+        roundtrip(FixedPoint64::<3>(5), &Type::Decimal64(3))
+    );
+    assert_eq!(
+        FixedPoint64::<3>(-5),
+        roundtrip(FixedPoint64::<3>(-5), &Type::Decimal64(3))
+    );
 }
 
 #[test]
 fn roundtrip_d128() {
-    assert_eq!(FixedPoint128::<3>(0), roundtrip(FixedPoint128::<3>(0), &Type::Decimal128(3)));
-    assert_eq!(FixedPoint128::<3>(5), roundtrip(FixedPoint128::<3>(5), &Type::Decimal128(3)));
-    assert_eq!(FixedPoint128::<3>(-5), roundtrip(FixedPoint128::<3>(-5), &Type::Decimal128(3)));
+    assert_eq!(
+        FixedPoint128::<3>(0),
+        roundtrip(FixedPoint128::<3>(0), &Type::Decimal128(3))
+    );
+    assert_eq!(
+        FixedPoint128::<3>(5),
+        roundtrip(FixedPoint128::<3>(5), &Type::Decimal128(3))
+    );
+    assert_eq!(
+        FixedPoint128::<3>(-5),
+        roundtrip(FixedPoint128::<3>(-5), &Type::Decimal128(3))
+    );
 }
 
 #[test]
@@ -179,13 +222,21 @@ fn roundtrip_fixed_string() {
 #[test]
 fn roundtrip_string_null() {
     let fixed = Some("test".to_string());
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Nullable(Box::new(Type::String))));
+    assert_eq!(
+        fixed,
+        roundtrip(fixed.clone(), &Type::Nullable(Box::new(Type::String)))
+    );
     let fixed = Some("".to_string());
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Nullable(Box::new(Type::String))));
+    assert_eq!(
+        fixed,
+        roundtrip(fixed.clone(), &Type::Nullable(Box::new(Type::String)))
+    );
     let fixed = None::<String>;
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Nullable(Box::new(Type::String))));
+    assert_eq!(
+        fixed,
+        roundtrip(fixed.clone(), &Type::Nullable(Box::new(Type::String)))
+    );
 }
-
 
 #[test]
 fn roundtrip_uuid() {
@@ -226,74 +277,207 @@ fn roundtrip_datetime64() {
 #[test]
 fn roundtrip_array() {
     let fixed = vec![5u32, 3, 2, 7];
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Array(Box::new(Type::UInt32))));
+    assert_eq!(
+        fixed,
+        roundtrip(fixed.clone(), &Type::Array(Box::new(Type::UInt32)))
+    );
     let fixed: Vec<u32> = vec![];
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Array(Box::new(Type::UInt32))));
+    assert_eq!(
+        fixed,
+        roundtrip(fixed.clone(), &Type::Array(Box::new(Type::UInt32)))
+    );
 }
 
 #[test]
 fn roundtrip_2array() {
-    let fixed = vec![vec![5u32, 3, 2, 7], vec![5u32, 3, 2, 7], vec![5u32, 3, 2, 7], vec![5u32, 3, 2, 7]];
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Array(Box::new(Type::Array(Box::new(Type::UInt32))))));
+    let fixed = vec![
+        vec![5u32, 3, 2, 7],
+        vec![5u32, 3, 2, 7],
+        vec![5u32, 3, 2, 7],
+        vec![5u32, 3, 2, 7],
+    ];
+    assert_eq!(
+        fixed,
+        roundtrip(
+            fixed.clone(),
+            &Type::Array(Box::new(Type::Array(Box::new(Type::UInt32))))
+        )
+    );
     let fixed: Vec<Vec<u32>> = vec![];
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Array(Box::new(Type::Array(Box::new(Type::UInt32))))));
+    assert_eq!(
+        fixed,
+        roundtrip(
+            fixed.clone(),
+            &Type::Array(Box::new(Type::Array(Box::new(Type::UInt32))))
+        )
+    );
     let fixed: Vec<Vec<u32>> = vec![vec![]];
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Array(Box::new(Type::Array(Box::new(Type::UInt32))))));
+    assert_eq!(
+        fixed,
+        roundtrip(
+            fixed.clone(),
+            &Type::Array(Box::new(Type::Array(Box::new(Type::UInt32))))
+        )
+    );
     let fixed: Vec<Vec<u32>> = vec![vec![], vec![5u32, 3, 2, 7]];
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Array(Box::new(Type::Array(Box::new(Type::UInt32))))));
+    assert_eq!(
+        fixed,
+        roundtrip(
+            fixed.clone(),
+            &Type::Array(Box::new(Type::Array(Box::new(Type::UInt32))))
+        )
+    );
 }
 
 #[test]
 fn roundtrip_tuple() {
     let fixed = (5u32, 7u16);
-    assert_eq!(fixed, roundtrip(fixed, &Type::Tuple(vec![Type::UInt32, Type::UInt16])));
+    assert_eq!(
+        fixed,
+        roundtrip(fixed, &Type::Tuple(vec![Type::UInt32, Type::UInt16]))
+    );
     let fixed = (1231123u32, 7123u16);
-    assert_eq!(fixed, roundtrip(fixed, &Type::Tuple(vec![Type::UInt32, Type::UInt16])));
+    assert_eq!(
+        fixed,
+        roundtrip(fixed, &Type::Tuple(vec![Type::UInt32, Type::UInt16]))
+    );
 }
 
 #[test]
 fn roundtrip_2tuple() {
     let fixed = (5u32, (5u32, 7u16));
-    assert_eq!(fixed, roundtrip(fixed, &Type::Tuple(vec![Type::UInt32, Type::Tuple(vec![Type::UInt32, Type::UInt16])])));
+    assert_eq!(
+        fixed,
+        roundtrip(
+            fixed,
+            &Type::Tuple(vec![
+                Type::UInt32,
+                Type::Tuple(vec![Type::UInt32, Type::UInt16])
+            ])
+        )
+    );
     let fixed = (1231123u32, (5u32, 7u16));
-    assert_eq!(fixed, roundtrip(fixed, &Type::Tuple(vec![Type::UInt32, Type::Tuple(vec![Type::UInt32, Type::UInt16])])));
+    assert_eq!(
+        fixed,
+        roundtrip(
+            fixed,
+            &Type::Tuple(vec![
+                Type::UInt32,
+                Type::Tuple(vec![Type::UInt32, Type::UInt16])
+            ])
+        )
+    );
 }
 
 #[test]
 fn roundtrip_array_tuple() {
     let fixed = vec![(5u32, 7u16)];
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Array(Box::new(Type::Tuple(vec![Type::UInt32, Type::UInt16])))));
+    assert_eq!(
+        fixed,
+        roundtrip(
+            fixed.clone(),
+            &Type::Array(Box::new(Type::Tuple(vec![Type::UInt32, Type::UInt16])))
+        )
+    );
     let fixed: Vec<(u32, u16)> = vec![];
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Array(Box::new(Type::Tuple(vec![Type::UInt32, Type::UInt16])))));
+    assert_eq!(
+        fixed,
+        roundtrip(
+            fixed.clone(),
+            &Type::Array(Box::new(Type::Tuple(vec![Type::UInt32, Type::UInt16])))
+        )
+    );
     let fixed = vec![(5u32, 7u16), (1231123u32, 7123u16)];
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Array(Box::new(Type::Tuple(vec![Type::UInt32, Type::UInt16])))));
+    assert_eq!(
+        fixed,
+        roundtrip(
+            fixed.clone(),
+            &Type::Array(Box::new(Type::Tuple(vec![Type::UInt32, Type::UInt16])))
+        )
+    );
 }
 
 #[test]
 fn roundtrip_tuple_array() {
     let fixed: (Vec<u32>, Vec<u16>) = (vec![], vec![]);
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Tuple(vec![Type::Array(Box::new(Type::UInt32)), Type::Array(Box::new(Type::UInt16))])));
+    assert_eq!(
+        fixed,
+        roundtrip(
+            fixed.clone(),
+            &Type::Tuple(vec![
+                Type::Array(Box::new(Type::UInt32)),
+                Type::Array(Box::new(Type::UInt16))
+            ])
+        )
+    );
     let fixed: (Vec<u32>, Vec<u16>) = (vec![5], vec![3]);
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Tuple(vec![Type::Array(Box::new(Type::UInt32)), Type::Array(Box::new(Type::UInt16))])));
+    assert_eq!(
+        fixed,
+        roundtrip(
+            fixed.clone(),
+            &Type::Tuple(vec![
+                Type::Array(Box::new(Type::UInt32)),
+                Type::Array(Box::new(Type::UInt16))
+            ])
+        )
+    );
     let fixed: (Vec<u32>, Vec<u16>) = (vec![5, 3], vec![3, 2, 7]);
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Tuple(vec![Type::Array(Box::new(Type::UInt32)), Type::Array(Box::new(Type::UInt16))])));
+    assert_eq!(
+        fixed,
+        roundtrip(
+            fixed.clone(),
+            &Type::Tuple(vec![
+                Type::Array(Box::new(Type::UInt32)),
+                Type::Array(Box::new(Type::UInt16))
+            ])
+        )
+    );
 }
 
 #[test]
 fn roundtrip_array_nulls() {
     let fixed = vec![Some(5u32), None, Some(3), Some(2), None];
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Array(Box::new(Type::Nullable(Box::new(Type::UInt32))))));
+    assert_eq!(
+        fixed,
+        roundtrip(
+            fixed.clone(),
+            &Type::Array(Box::new(Type::Nullable(Box::new(Type::UInt32))))
+        )
+    );
     let fixed: Vec<Option<u32>> = vec![None];
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Array(Box::new(Type::Nullable(Box::new(Type::UInt32))))));
+    assert_eq!(
+        fixed,
+        roundtrip(
+            fixed.clone(),
+            &Type::Array(Box::new(Type::Nullable(Box::new(Type::UInt32))))
+        )
+    );
 }
-
 
 #[test]
 fn roundtrip_map() {
     let mut fixed: IndexMap<String, String> = IndexMap::new();
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Map(Box::new(Type::String), Box::new(Type::String))));
+    assert_eq!(
+        fixed,
+        roundtrip(
+            fixed.clone(),
+            &Type::Map(Box::new(Type::String), Box::new(Type::String))
+        )
+    );
     fixed.insert("test".to_string(), "value".to_string());
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Map(Box::new(Type::String), Box::new(Type::String))));
+    assert_eq!(
+        fixed,
+        roundtrip(
+            fixed.clone(),
+            &Type::Map(Box::new(Type::String), Box::new(Type::String))
+        )
+    );
     fixed.insert("t2est".to_string(), "v2alue".to_string());
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Map(Box::new(Type::String), Box::new(Type::String))));
+    assert_eq!(
+        fixed,
+        roundtrip(
+            fixed.clone(),
+            &Type::Map(Box::new(Type::String), Box::new(Type::String))
+        )
+    );
 }

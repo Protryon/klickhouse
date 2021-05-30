@@ -1,5 +1,5 @@
 use anyhow::*;
-use indexmap::{IndexSet};
+use indexmap::IndexSet;
 use tokio::io::AsyncWriteExt;
 
 use crate::{io::ClickhouseWrite, values::Value};
@@ -12,12 +12,21 @@ pub struct LowCardinalitySerializer;
 
 #[async_trait::async_trait]
 impl Serializer for LowCardinalitySerializer {
-    async fn write_prefix<W: ClickhouseWrite>(_type_: &Type, writer: &mut W, _state: &mut SerializerState) -> Result<()> {
+    async fn write_prefix<W: ClickhouseWrite>(
+        _type_: &Type,
+        writer: &mut W,
+        _state: &mut SerializerState,
+    ) -> Result<()> {
         writer.write_u64_le(LOW_CARDINALITY_VERSION).await?;
         Ok(())
     }
 
-    async fn write_n<W: ClickhouseWrite>(type_: &Type, values: &[Value], writer: &mut W, state: &mut SerializerState) -> Result<()> {
+    async fn write_n<W: ClickhouseWrite>(
+        type_: &Type,
+        values: &[Value],
+        writer: &mut W,
+        state: &mut SerializerState,
+    ) -> Result<()> {
         let inner_type = match type_ {
             Type::LowCardinality(x) => &**x,
             _ => unimplemented!(),
@@ -59,11 +68,15 @@ impl Serializer for LowCardinalitySerializer {
         if is_nullable {
             let nulled = inner_type.default_value();
             inner_type.serialize(&nulled, writer, state).await?;
-            inner_type.serialize_column(&keys_arr[1..], writer, state).await?;
+            inner_type
+                .serialize_column(&keys_arr[1..], writer, state)
+                .await?;
         } else {
-            inner_type.serialize_column(&keys_arr[..], writer, state).await?;
+            inner_type
+                .serialize_column(&keys_arr[..], writer, state)
+                .await?;
         }
-        
+
         writer.write_u64_le(values.len() as u64).await?;
         for value in values {
             let index = keys.get_index_of(value).unwrap();
@@ -80,7 +93,12 @@ impl Serializer for LowCardinalitySerializer {
         Ok(())
     }
 
-    async fn write<W: ClickhouseWrite>(_type_: &Type, _value: &Value, _writer: &mut W, _state: &mut SerializerState) -> Result<()> {
+    async fn write<W: ClickhouseWrite>(
+        _type_: &Type,
+        _value: &Value,
+        _writer: &mut W,
+        _state: &mut SerializerState,
+    ) -> Result<()> {
         unimplemented!()
     }
 }

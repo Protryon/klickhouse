@@ -1,9 +1,8 @@
 use std::collections::HashSet;
 
-use syn;
-use syn::punctuated::{Pair};
+use syn::punctuated::Pair;
 
-use crate::ast::{Container};
+use crate::ast::Container;
 use crate::{attr, internal::ungroup};
 
 // Remove the default from every type parameter because in the generated impls
@@ -249,14 +248,17 @@ pub fn with_bound(
                 bounded_ty: syn::Type::Path(bounded_ty),
                 colon_token: <Token![:]>::default(),
                 // the bound e.g. Serialize
-                bounds: bound.into_iter().map(|bound| {
-                    syn::TypeParamBound::Trait(syn::TraitBound {
-                        paren_token: None,
-                        modifier: syn::TraitBoundModifier::None,
-                        lifetimes: None,
-                        path: (*bound).clone(),
+                bounds: bound
+                    .iter()
+                    .map(|bound| {
+                        syn::TypeParamBound::Trait(syn::TraitBound {
+                            paren_token: None,
+                            modifier: syn::TraitBoundModifier::None,
+                            lifetimes: None,
+                            path: (*bound).clone(),
+                        })
                     })
-                }).collect(),
+                    .collect(),
             })
         });
 

@@ -5,16 +5,19 @@ use anyhow::*;
 use tokio::io::AsyncReadExt;
 use uuid::Uuid;
 
-use crate::{Date, DateTime, i256, io::ClickhouseRead, u256, values::Value};
+use crate::{i256, io::ClickhouseRead, u256, values::Value, Date, DateTime};
 
 use super::{Deserializer, DeserializerState, Type};
-
 
 pub struct SizedDeserializer;
 
 #[async_trait::async_trait]
 impl Deserializer for SizedDeserializer {
-    async fn read<R: ClickhouseRead>(type_: &Type, reader: &mut R, _state: &mut DeserializerState) -> Result<Value> {
+    async fn read<R: ClickhouseRead>(
+        type_: &Type,
+        reader: &mut R,
+        _state: &mut DeserializerState,
+    ) -> Result<Value> {
         Ok(match type_ {
             Type::Int8 => Value::Int8(reader.read_i8().await?),
             Type::Int16 => Value::Int16(reader.read_i16_le().await?),
@@ -26,7 +29,7 @@ impl Deserializer for SizedDeserializer {
                 reader.read_exact(&mut buf[..]).await?;
                 buf.reverse();
                 Value::Int256(i256(buf))
-            },
+            }
             Type::UInt8 => Value::UInt8(reader.read_u8().await?),
             Type::UInt16 => Value::UInt16(reader.read_u16_le().await?),
             Type::UInt32 => Value::UInt32(reader.read_u32_le().await?),
@@ -37,7 +40,7 @@ impl Deserializer for SizedDeserializer {
                 reader.read_exact(&mut buf[..]).await?;
                 buf.reverse();
                 Value::UInt256(u256(buf))
-            },
+            }
             Type::Float32 => Value::Float32(reader.read_u32_le().await?),
             Type::Float64 => Value::Float64(reader.read_u64_le().await?),
             Type::Decimal32(s) => Value::Decimal32(*s, reader.read_i32_le().await?),
@@ -56,18 +59,16 @@ impl Deserializer for SizedDeserializer {
             }),
             Type::Date => Value::Date(Date(reader.read_u16_le().await?)),
             Type::DateTime(tz) => Value::DateTime(DateTime(*tz, reader.read_u32_le().await?)),
-            Type::Ipv4 => {
-                Value::Ipv4(Ipv4Addr::from(reader.read_u32_le().await?).into())
-            },
+            Type::Ipv4 => Value::Ipv4(Ipv4Addr::from(reader.read_u32_le().await?).into()),
             Type::Ipv6 => {
                 let mut octets = [0u8; 16];
                 reader.read_exact(&mut octets[..]).await?;
                 Value::Ipv6(Ipv6Addr::from(octets).into())
-            },
+            }
             Type::DateTime64(precision, tz) => {
                 let raw = reader.read_u64_le().await?;
                 Value::DateTime64(*tz, *precision, raw)
-            },
+            }
             Type::Enum8(_) => Value::Enum8(reader.read_u8().await?),
             Type::Enum16(_) => Value::Enum16(reader.read_u16_le().await?),
             _ => unimplemented!(),

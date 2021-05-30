@@ -1,5 +1,3 @@
-
-
 pub const NEED_GLOBAL_DICTIONARY_BIT: u64 = 1u64 << 8;
 pub const HAS_ADDITIONAL_KEYS_BIT: u64 = 1u64 << 9;
 pub const NEED_UPDATE_DICTIONARY_BIT: u64 = 1u64 << 10;

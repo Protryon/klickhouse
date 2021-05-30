@@ -1,4 +1,7 @@
-use std::{collections::{BTreeMap, HashMap}, hash::Hash};
+use std::{
+    collections::{BTreeMap, HashMap},
+    hash::Hash,
+};
 
 use indexmap::IndexMap;
 
@@ -165,9 +168,13 @@ impl<T: FromSql> FromSql for Vec<T> {
         let subtype = match type_ {
             Type::Array(x) => &**x,
             x => return Err(unexpected_type(x)),
-        }.strip_clickhouse_semantics();
+        }
+        .strip_clickhouse_semantics();
         match value {
-            Value::Array(x) => Ok(x.into_iter().map(|x| T::from_sql(subtype, x)).collect::<Result<Vec<_>>>()?),
+            Value::Array(x) => Ok(x
+                .into_iter()
+                .map(|x| T::from_sql(subtype, x))
+                .collect::<Result<Vec<_>>>()?),
             _ => unimplemented!(),
         }
     }
@@ -176,7 +183,10 @@ impl<T: FromSql> FromSql for Vec<T> {
 impl<T: FromSql + Hash + Eq, Y: FromSql> FromSql for HashMap<T, Y> {
     fn from_sql(type_: &Type, value: Value) -> Result<Self> {
         let (x_type, y_type) = match type_ {
-            Type::Map(x_type, y_type) => (x_type.strip_clickhouse_semantics(), y_type.strip_clickhouse_semantics()),
+            Type::Map(x_type, y_type) => (
+                x_type.strip_clickhouse_semantics(),
+                y_type.strip_clickhouse_semantics(),
+            ),
             x => return Err(unexpected_type(x)),
         };
         match value {
@@ -186,7 +196,7 @@ impl<T: FromSql + Hash + Eq, Y: FromSql> FromSql for HashMap<T, Y> {
                     out.insert(T::from_sql(x_type, x)?, Y::from_sql(y_type, y)?);
                 }
                 Ok(out)
-            },
+            }
             _ => unimplemented!(),
         }
     }
@@ -195,7 +205,10 @@ impl<T: FromSql + Hash + Eq, Y: FromSql> FromSql for HashMap<T, Y> {
 impl<T: FromSql + Ord, Y: FromSql> FromSql for BTreeMap<T, Y> {
     fn from_sql(type_: &Type, value: Value) -> Result<Self> {
         let (x_type, y_type) = match type_ {
-            Type::Map(x_type, y_type) => (x_type.strip_clickhouse_semantics(), y_type.strip_clickhouse_semantics()),
+            Type::Map(x_type, y_type) => (
+                x_type.strip_clickhouse_semantics(),
+                y_type.strip_clickhouse_semantics(),
+            ),
             x => return Err(unexpected_type(x)),
         };
         match value {
@@ -205,7 +218,7 @@ impl<T: FromSql + Ord, Y: FromSql> FromSql for BTreeMap<T, Y> {
                     out.insert(T::from_sql(x_type, x)?, Y::from_sql(y_type, y)?);
                 }
                 Ok(out)
-            },
+            }
             _ => unimplemented!(),
         }
     }
@@ -214,7 +227,10 @@ impl<T: FromSql + Ord, Y: FromSql> FromSql for BTreeMap<T, Y> {
 impl<T: FromSql + Hash + Eq, Y: FromSql> FromSql for IndexMap<T, Y> {
     fn from_sql(type_: &Type, value: Value) -> Result<Self> {
         let (x_type, y_type) = match type_ {
-            Type::Map(x_type, y_type) => (x_type.strip_clickhouse_semantics(), y_type.strip_clickhouse_semantics()),
+            Type::Map(x_type, y_type) => (
+                x_type.strip_clickhouse_semantics(),
+                y_type.strip_clickhouse_semantics(),
+            ),
             x => return Err(unexpected_type(x)),
         };
         match value {
@@ -224,7 +240,7 @@ impl<T: FromSql + Hash + Eq, Y: FromSql> FromSql for IndexMap<T, Y> {
                     out.insert(T::from_sql(x_type, x)?, Y::from_sql(y_type, y)?);
                 }
                 Ok(out)
-            },
+            }
             _ => unimplemented!(),
         }
     }
@@ -253,14 +269,18 @@ impl<T: FromSql + Default + Copy, const N: usize> FromSql for [T; N] {
         match value {
             Value::Array(x) => {
                 if x.len() != N {
-                    return Err(anyhow!("invalid length for array: {} expected {}", x.len(), N));
+                    return Err(anyhow!(
+                        "invalid length for array: {} expected {}",
+                        x.len(),
+                        N
+                    ));
                 }
                 let mut out = [T::default(); N];
                 for (i, value) in x.into_iter().enumerate() {
                     out[i] = T::from_sql(subtype, value)?;
                 }
                 Ok(out)
-            },
+            }
             _ => unimplemented!(),
         }
     }

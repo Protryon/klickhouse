@@ -1,4 +1,3 @@
-
 #[derive(Debug, Clone, Copy)]
 pub struct Progress {
     pub read_rows: u64,

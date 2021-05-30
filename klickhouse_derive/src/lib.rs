@@ -3,20 +3,19 @@ extern crate syn;
 #[macro_use]
 extern crate quote;
 
-
-mod row;
-mod fragment;
 mod ast;
 mod attr;
-mod symbol;
-mod case;
-mod respan;
-mod ctxt;
-mod internal;
-mod check;
-mod receiver;
 mod bound;
+mod case;
+mod check;
+mod ctxt;
 mod dummy;
+mod fragment;
+mod internal;
+mod receiver;
+mod respan;
+mod row;
+mod symbol;
 
 use proc_macro::TokenStream;
 use syn::DeriveInput;

@@ -1,4 +1,4 @@
-use rustc_version::{Version, version};
+use rustc_version::{version, Version};
 
 fn main() {
     if version().unwrap() >= Version::parse("1.51.0").unwrap() {

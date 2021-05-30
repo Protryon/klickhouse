@@ -2,7 +2,10 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 
 use futures::StreamExt;
 use indexmap::IndexMap;
-use klickhouse::{Client, ClientOptions, Date, DateTime, DateTime64, FixedPoint128, FixedPoint256, FixedPoint32, FixedPoint64, Ipv4, Ipv6, Uuid, i256, u256};
+use klickhouse::{
+    i256, u256, Client, ClientOptions, Date, DateTime, DateTime64, FixedPoint128, FixedPoint256,
+    FixedPoint32, FixedPoint64, Ipv4, Ipv6, Uuid,
+};
 
 #[derive(klickhouse::Row, Debug, Default)]
 pub struct TestType {
@@ -50,9 +53,16 @@ pub struct TestType {
 
 #[tokio::test]
 async fn test_client() {
-    env_logger::builder().filter_level(log::LevelFilter::Info).init();
-    let client = Client::connect("127.0.0.1:9000", ClientOptions::default()).await.unwrap();
-    let mut names = client.query::<TestType>("select * from test_types;").await.unwrap();
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Info)
+        .init();
+    let client = Client::connect("127.0.0.1:9000", ClientOptions::default())
+        .await
+        .unwrap();
+    let mut names = client
+        .query::<TestType>("select * from test_types;")
+        .await
+        .unwrap();
     while let Some(name) = names.next().await {
         let name = name.unwrap();
         println!("name = {:?}", name);
@@ -61,12 +71,17 @@ async fn test_client() {
     println!("begin insert");
 
     let mut block = TestType::default();
-    block.d_low_card_array.push("te1ssdsdsdsdasdasdasdsadt".to_string());
+    block
+        .d_low_card_array
+        .push("te1ssdsdsdsdasdasdasdsadt".to_string());
     block.d_low_card_array.push("te2st".to_string());
     block.d_ip4 = "5.6.7.8".parse::<Ipv4Addr>().unwrap().into();
     block.d_ip6 = "ff26:0:0:0:0:0:0:c5".parse::<Ipv6Addr>().unwrap().into();
 
-    client.insert_native_block("insert into test_types format native", vec![block]).await.unwrap();
+    client
+        .insert_native_block("insert into test_types format native", vec![block])
+        .await
+        .unwrap();
 
     println!("done");
 }

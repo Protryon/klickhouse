@@ -1,4 +1,8 @@
-use crate::{Value, convert::{FromSql, ToSql, unexpected_type}, types::Type};
+use crate::{
+    convert::{unexpected_type, FromSql, ToSql},
+    types::Type,
+    Value,
+};
 use anyhow::*;
 
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Default)]
@@ -52,7 +56,6 @@ impl From<(u128, u128)> for i256 {
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Default)]
 #[allow(non_camel_case_types)]
 pub struct u256(pub [u8; 32]);
-
 
 impl ToSql for u256 {
     fn to_sql(self) -> Result<Value> {

@@ -1,10 +1,19 @@
-use crate::{block::{Block}, io::ClickhouseRead, progress::Progress, protocol::{self, BlockStreamProfileInfo, DBMS_MIN_REVISION_WITH_CLIENT_WRITE_INFO, DBMS_MIN_REVISION_WITH_SERVER_DISPLAY_NAME, DBMS_MIN_REVISION_WITH_SERVER_TIMEZONE, DBMS_MIN_REVISION_WITH_VERSION_PATCH, MAX_STRING_SIZE, ServerData, ServerException, ServerHello, ServerPacket, TableColumns, TableStatus, TablesStatusResponse}};
+use crate::{
+    block::Block,
+    io::ClickhouseRead,
+    progress::Progress,
+    protocol::{
+        self, BlockStreamProfileInfo, ServerData, ServerException, ServerHello, ServerPacket,
+        TableColumns, TableStatus, TablesStatusResponse, DBMS_MIN_REVISION_WITH_CLIENT_WRITE_INFO,
+        DBMS_MIN_REVISION_WITH_SERVER_DISPLAY_NAME, DBMS_MIN_REVISION_WITH_SERVER_TIMEZONE,
+        DBMS_MIN_REVISION_WITH_VERSION_PATCH, MAX_STRING_SIZE,
+    },
+};
 use anyhow::*;
 use indexmap::IndexMap;
 use protocol::ServerPacketId;
-use tokio::io::{AsyncReadExt};
+use tokio::io::AsyncReadExt;
 use uuid::Uuid;
-
 
 pub struct InternalClientIn<R: ClickhouseRead> {
     reader: R,
@@ -40,10 +49,7 @@ impl<R: ClickhouseRead> InternalClientIn<R> {
 
         let block = Block::read(&mut self.reader, self.server_hello.revision_version).await?;
 
-        Ok(ServerData {
-            table_name,
-            block,
-        })
+        Ok(ServerData { table_name, block })
     }
 
     async fn receive_log_data(&mut self) -> Result<ServerData> {
@@ -63,7 +69,8 @@ impl<R: ClickhouseRead> InternalClientIn<R> {
                 } else {
                     None
                 };
-                let display_name = if revision_version > DBMS_MIN_REVISION_WITH_SERVER_DISPLAY_NAME {
+                let display_name = if revision_version > DBMS_MIN_REVISION_WITH_SERVER_DISPLAY_NAME
+                {
                     Some(self.reader.read_string().await?)
                 } else {
                     None
@@ -83,22 +90,22 @@ impl<R: ClickhouseRead> InternalClientIn<R> {
                     patch_version,
                 }))
             }
-            ServerPacketId::Data => {
-                Ok(ServerPacket::Data(self.receive_data().await?))
-            }
-            ServerPacketId::Exception => {
-                Ok(ServerPacket::Exception(self.read_exception().await?))
-            }
+            ServerPacketId::Data => Ok(ServerPacket::Data(self.receive_data().await?)),
+            ServerPacketId::Exception => Ok(ServerPacket::Exception(self.read_exception().await?)),
             ServerPacketId::Progress => {
                 let read_rows = self.reader.read_var_uint().await?;
                 let read_bytes = self.reader.read_var_uint().await?;
                 let new_total_rows_to_read = self.reader.read_var_uint().await?;
-                let new_written_rows = if self.server_hello.revision_version >= DBMS_MIN_REVISION_WITH_CLIENT_WRITE_INFO {
+                let new_written_rows = if self.server_hello.revision_version
+                    >= DBMS_MIN_REVISION_WITH_CLIENT_WRITE_INFO
+                {
                     Some(self.reader.read_var_uint().await?)
                 } else {
                     None
                 };
-                let new_written_bytes = if self.server_hello.revision_version >= DBMS_MIN_REVISION_WITH_CLIENT_WRITE_INFO {
+                let new_written_bytes = if self.server_hello.revision_version
+                    >= DBMS_MIN_REVISION_WITH_CLIENT_WRITE_INFO
+                {
                     Some(self.reader.read_var_uint().await?)
                 } else {
                     None
@@ -111,12 +118,8 @@ impl<R: ClickhouseRead> InternalClientIn<R> {
                     new_written_bytes,
                 }))
             }
-            ServerPacketId::Pong => {
-                Ok(ServerPacket::Pong)
-            }
-            ServerPacketId::EndOfStream => {
-                Ok(ServerPacket::EndOfStream)
-            }
+            ServerPacketId::Pong => Ok(ServerPacket::Pong),
+            ServerPacketId::EndOfStream => Ok(ServerPacket::EndOfStream),
             ServerPacketId::ProfileInfo => {
                 let rows = self.reader.read_var_uint().await?;
                 let blocks = self.reader.read_var_uint().await?;
@@ -133,12 +136,8 @@ impl<R: ClickhouseRead> InternalClientIn<R> {
                     calculated_rows_before_limit,
                 }))
             }
-            ServerPacketId::Totals => {
-                Ok(ServerPacket::Totals(self.receive_data().await?))
-            }
-            ServerPacketId::Extremes => {
-                Ok(ServerPacket::Extremes(self.receive_data().await?))
-            }
+            ServerPacketId::Totals => Ok(ServerPacket::Totals(self.receive_data().await?)),
+            ServerPacketId::Extremes => Ok(ServerPacket::Extremes(self.receive_data().await?)),
             ServerPacketId::TablesStatusResponse => {
                 let mut response = TablesStatusResponse {
                     database_tables: IndexMap::new(),
@@ -156,19 +155,21 @@ impl<R: ClickhouseRead> InternalClientIn<R> {
                     } else {
                         0
                     };
-                    response.database_tables
+                    response
+                        .database_tables
                         .entry(database_name)
                         .or_insert_with(IndexMap::new)
-                        .insert(table_name, TableStatus {
-                            is_replicated,
-                            absolute_delay,
-                        });
+                        .insert(
+                            table_name,
+                            TableStatus {
+                                is_replicated,
+                                absolute_delay,
+                            },
+                        );
                 }
                 Ok(ServerPacket::TablesStatusResponse(response))
             }
-            ServerPacketId::Log => {
-                Ok(ServerPacket::Log(self.receive_log_data().await?))
-            }
+            ServerPacketId::Log => Ok(ServerPacket::Log(self.receive_log_data().await?)),
             ServerPacketId::TableColumns => {
                 let name = self.reader.read_string().await?;
                 let description = self.reader.read_string().await?;
@@ -188,9 +189,7 @@ impl<R: ClickhouseRead> InternalClientIn<R> {
                 }
                 Ok(ServerPacket::PartUUIDs(out))
             }
-            ServerPacketId::ReadTaskRequest => {
-                Ok(ServerPacket::ReadTaskRequest)
-            }
+            ServerPacketId::ReadTaskRequest => Ok(ServerPacket::ReadTaskRequest),
         }
     }
 
@@ -198,7 +197,10 @@ impl<R: ClickhouseRead> InternalClientIn<R> {
         match self.receive_packet().await? {
             ServerPacket::Hello(hello) => Ok(hello),
             ServerPacket::Exception(e) => Err(e.emit()),
-            packet => Err(anyhow!("unexpected packet {:?}, expected server hello", packet)),
+            packet => Err(anyhow!(
+                "unexpected packet {:?}, expected server hello",
+                packet
+            )),
         }
     }
 }

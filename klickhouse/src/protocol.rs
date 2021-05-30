@@ -113,7 +113,13 @@ pub struct ServerException {
 
 impl ServerException {
     pub fn emit(&self) -> Error {
-        anyhow!("server error {} {}: {}\n{}", self.code, self.name, self.message, self.stack_trace)
+        anyhow!(
+            "server error {} {}: {}\n{}",
+            self.code,
+            self.name,
+            self.message,
+            self.stack_trace
+        )
     }
 }
 
@@ -126,7 +132,6 @@ pub struct BlockStreamProfileInfo {
     pub rows_before_limit: u64,
     pub calculated_rows_before_limit: bool,
 }
-
 
 #[derive(Debug, Clone)]
 pub struct TableColumns {

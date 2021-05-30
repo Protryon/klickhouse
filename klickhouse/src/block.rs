@@ -4,8 +4,11 @@ use anyhow::*;
 use indexmap::IndexMap;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-use crate::{io::{ClickhouseRead, ClickhouseWrite}, types::{DeserializerState, SerializerState, Type}, values::Value};
-
+use crate::{
+    io::{ClickhouseRead, ClickhouseWrite},
+    types::{DeserializerState, SerializerState, Type},
+    values::Value,
+};
 
 #[derive(Debug, Clone)]
 pub struct BlockInfo {
@@ -31,10 +34,10 @@ impl BlockInfo {
                 0 => break,
                 1 => {
                     new.is_overflows = reader.read_u8().await? != 0;
-                },
+                }
                 2 => {
                     new.bucket_num = reader.read_i32().await?;
-                },
+                }
                 field_num => {
                     return Err(anyhow!("unknown block info field number: {}", field_num));
                 }
@@ -45,7 +48,9 @@ impl BlockInfo {
 
     pub async fn write<W: ClickhouseWrite>(&self, writer: &mut W) -> Result<()> {
         writer.write_var_uint(1).await?;
-        writer.write_u8(if self.is_overflows { 1 } else { 2 }).await?;
+        writer
+            .write_u8(if self.is_overflows { 1 } else { 2 })
+            .await?;
         writer.write_var_uint(2).await?;
         writer.write_i32(self.bucket_num).await?;
         writer.write_var_uint(0).await?;
@@ -60,7 +65,6 @@ pub struct Block {
     pub column_types: IndexMap<String, Type>,
     pub column_data: IndexMap<String, Vec<Value>>,
 }
-
 
 pub struct BlockRowIter<'a> {
     block: &'a Block,
@@ -131,20 +135,29 @@ impl Block {
         let mut out = Vec::with_capacity(self.rows as usize);
         for (name, values) in column_data.into_iter() {
             let (name, type_) = self.column_types.get_key_value(&name).unwrap();
-            out.push((&**name, type_.strip_clickhouse_semantics(), values.into_iter()));
+            out.push((
+                &**name,
+                type_.strip_clickhouse_semantics(),
+                values.into_iter(),
+            ));
         }
-        BlockRowValueIter {
-            column_data: out,
-        }
+        BlockRowValueIter { column_data: out }
     }
 
     pub fn into_iter_rows(self) -> BlockRowIntoIter {
         let column_types = self.column_types;
         BlockRowIntoIter {
-            column_data: self.column_data.into_iter().map(|(name, values)| {
-                let type_ = column_types.get(&name).unwrap();
-                (name, values.into_iter().map(|x| (type_.clone(), x)).collect())
-            }).collect(),
+            column_data: self
+                .column_data
+                .into_iter()
+                .map(|(name, values)| {
+                    let type_ = column_types.get(&name).unwrap();
+                    (
+                        name,
+                        values.into_iter().map(|x| (type_.clone(), x)).collect(),
+                    )
+                })
+                .collect(),
         }
     }
 
@@ -170,7 +183,9 @@ impl Block {
             let mut state = DeserializerState {};
             let row_data = if rows > 0 {
                 type_.deserialize_prefix(reader, &mut state).await?;
-                type_.deserialize_column(reader, rows as usize, &mut state).await?
+                type_
+                    .deserialize_column(reader, rows as usize, &mut state)
+                    .await?
             } else {
                 vec![]
             };
@@ -184,7 +199,9 @@ impl Block {
         if revision > 0 {
             self.info.write(writer).await?;
         }
-        let joined = self.column_types.iter()
+        let joined = self
+            .column_types
+            .iter()
             .flat_map(|(key, type_)| Some((key, (type_, self.column_data.get(key)?))))
             .collect::<Vec<_>>();
         writer.write_var_uint(joined.len() as u64).await?;
@@ -196,9 +213,11 @@ impl Block {
                 return Err(anyhow!("row and column length mismatch"));
             }
             if self.rows > 0 {
-                let mut state = SerializerState{};
+                let mut state = SerializerState {};
                 type_.serialize_prefix(writer, &mut state).await?;
-                type_.serialize_column(&data[..], writer, &mut state).await?;
+                type_
+                    .serialize_column(&data[..], writer, &mut state)
+                    .await?;
             }
         }
         Ok(())

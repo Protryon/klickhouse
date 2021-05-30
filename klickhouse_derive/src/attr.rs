@@ -1,6 +1,6 @@
+use crate::ctxt::Ctxt;
 use crate::respan::respan;
 use crate::symbol::*;
-use crate::{ctxt::Ctxt};
 use proc_macro2::{Span, TokenStream, TokenTree};
 use quote::ToTokens;
 use syn::parse::{self, Parse, ParseStream};
@@ -39,8 +39,10 @@ impl<'c, T> Attr<'c, T> {
         let tokens = obj.into_token_stream();
 
         if self.value.is_some() {
-            self.cx
-                .error_spanned_by(tokens, format!("duplicate klickhouse attribute `{}`", self.name));
+            self.cx.error_spanned_by(
+                tokens,
+                format!("duplicate klickhouse attribute `{}`", self.name),
+            );
         } else {
             self.tokens = tokens;
             self.value = Some(value);
@@ -62,7 +64,6 @@ impl<'c, T> Attr<'c, T> {
     fn get(self) -> Option<T> {
         self.value
     }
-
 }
 
 struct BoolAttr<'c>(Attr<'c, ()>);
@@ -95,10 +96,7 @@ fn unraw(ident: &Ident) -> String {
 }
 
 impl Name {
-    fn from_attrs(
-        source_name: String,
-        rename: Attr<String>,
-    ) -> Name {
+    fn from_attrs(source_name: String, rename: Attr<String>) -> Name {
         let rename = rename.get();
         Name {
             renamed: rename.is_some(),
@@ -260,7 +258,10 @@ impl Container {
                 }
 
                 Lit(lit) => {
-                    cx.error_spanned_by(lit, "unexpected literal in klickhouse container attribute");
+                    cx.error_spanned_by(
+                        lit,
+                        "unexpected literal in klickhouse container attribute",
+                    );
                 }
             }
         }
@@ -534,7 +535,10 @@ impl Field {
     }
 }
 
-pub fn get_klickhouse_meta_items(cx: &Ctxt, attr: &syn::Attribute) -> Result<Vec<syn::NestedMeta>, ()> {
+pub fn get_klickhouse_meta_items(
+    cx: &Ctxt,
+    attr: &syn::Attribute,
+) -> Result<Vec<syn::NestedMeta>, ()> {
     if attr.path != KLICKHOUSE {
         return Ok(Vec::new());
     }

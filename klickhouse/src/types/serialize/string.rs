@@ -1,7 +1,7 @@
 use anyhow::*;
-use tokio::io::{AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
-use crate::{io::{ClickhouseWrite}, values::Value};
+use crate::{io::ClickhouseWrite, values::Value};
 
 use super::{Serializer, SerializerState, Type};
 
@@ -9,7 +9,12 @@ pub struct StringSerializer;
 
 #[async_trait::async_trait]
 impl Serializer for StringSerializer {
-    async fn write<W: ClickhouseWrite>(type_: &Type, value: &Value, writer: &mut W, _state: &mut SerializerState) -> Result<()> {
+    async fn write<W: ClickhouseWrite>(
+        type_: &Type,
+        value: &Value,
+        writer: &mut W,
+        _state: &mut SerializerState,
+    ) -> Result<()> {
         match value.justify_null(type_).as_ref() {
             Value::String(x) => {
                 if let Type::FixedString(s) = type_ {
@@ -25,7 +30,7 @@ impl Serializer for StringSerializer {
                 } else {
                     writer.write_string(&**x).await?;
                 }
-            },
+            }
             _ => unimplemented!(),
         }
         Ok(())

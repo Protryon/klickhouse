@@ -5,22 +5,29 @@ use crate::{io::ClickhouseRead, values::Value};
 
 use super::{Deserializer, DeserializerState, Type};
 
-
 pub struct NullableDeserializer;
 
 #[async_trait::async_trait]
 impl Deserializer for NullableDeserializer {
-    async fn read_prefix<R: ClickhouseRead>(type_: &Type, reader: &mut R, state: &mut DeserializerState) -> Result<()> {
+    async fn read_prefix<R: ClickhouseRead>(
+        type_: &Type,
+        reader: &mut R,
+        state: &mut DeserializerState,
+    ) -> Result<()> {
         match type_ {
             Type::Nullable(inner) => {
                 inner.deserialize_prefix(reader, state).await?;
-            },
+            }
             _ => unimplemented!(),
         }
         Ok(())
     }
 
-    async fn read<R: ClickhouseRead>(type_: &Type, reader: &mut R, state: &mut DeserializerState) -> Result<Value> {
+    async fn read<R: ClickhouseRead>(
+        type_: &Type,
+        reader: &mut R,
+        state: &mut DeserializerState,
+    ) -> Result<Value> {
         Ok(match type_ {
             Type::Nullable(inner) => {
                 let is_present = reader.read_u8().await? == 0;
@@ -31,12 +38,17 @@ impl Deserializer for NullableDeserializer {
                 } else {
                     Value::Null
                 }
-            },
+            }
             _ => unimplemented!(),
         })
     }
 
-    async fn read_n<R: ClickhouseRead>(type_: &Type, reader: &mut R, n: usize, state: &mut DeserializerState) -> Result<Vec<Value>> {
+    async fn read_n<R: ClickhouseRead>(
+        type_: &Type,
+        reader: &mut R,
+        n: usize,
+        state: &mut DeserializerState,
+    ) -> Result<Vec<Value>> {
         let mut mask = vec![false; n];
         #[allow(clippy::needless_range_loop)]
         for i in 0..n {
@@ -45,13 +57,16 @@ impl Deserializer for NullableDeserializer {
                 mask[i] = true;
             }
         }
-        let mut out = type_.strip_null().deserialize_column(reader, n, state).await?;
+        let mut out = type_
+            .strip_null()
+            .deserialize_column(reader, n, state)
+            .await?;
         for (i, mask) in mask.iter().enumerate() {
             if !*mask {
                 out[i] = Value::Null;
             }
         }
-        
+
         Ok(out)
     }
 }

@@ -1,11 +1,11 @@
-use proc_macro2::{Span, TokenStream};
-use syn::spanned::Spanned;
-use syn::{self, Ident, Member};
 use crate::ast::{Container, Field};
-use crate::{attr, bound, dummy};
 use crate::ctxt::Ctxt;
 use crate::fragment::{Expr, Fragment, Match, Stmts};
 use crate::receiver::replace_receiver;
+use crate::{attr, bound, dummy};
+use proc_macro2::{Span, TokenStream};
+use syn::spanned::Spanned;
+use syn::{self, Ident, Member};
 
 macro_rules! quote_block {
     ($($tt:tt)*) => {
@@ -39,8 +39,7 @@ struct Parameters {
 fn build_generics(cont: &Container) -> syn::Generics {
     let generics = bound::without_defaults(cont.generics);
 
-    let generics =
-        bound::with_where_predicates_from_fields(cont, &generics, attr::Field::bound);
+    let generics = bound::with_where_predicates_from_fields(cont, &generics, attr::Field::bound);
 
     match cont.attrs.bound() {
         Some(predicates) => bound::with_where_predicates(&generics, predicates),
@@ -57,12 +56,8 @@ fn build_generics(cont: &Container) -> syn::Generics {
 }
 
 fn needs_serialize_bound(field: &attr::Field) -> bool {
-    !field.skip_serializing()
-        && field.serialize_with().is_none()
-        && field.bound().is_none()
+    !field.skip_serializing() && field.serialize_with().is_none() && field.bound().is_none()
 }
-
-
 
 impl Parameters {
     fn new(cont: &Container) -> Self {
@@ -81,9 +76,7 @@ impl Parameters {
             is_packed,
         }
     }
-
 }
-
 
 pub fn expand_derive_serialize(
     input: &mut syn::DeriveInput,
@@ -117,9 +110,7 @@ pub fn expand_derive_serialize(
         }
     };
 
-    Ok(dummy::wrap_in_const(
-        impl_block,
-    ))
+    Ok(dummy::wrap_in_const(impl_block))
 }
 
 fn serialize_body(cont: &Container, params: &Parameters) -> Fragment {
@@ -150,8 +141,7 @@ fn serialize_struct_as_struct(
     fields: &[Field],
     _cattrs: &attr::Container,
 ) -> Fragment {
-    let serialize_fields =
-        serialize_struct_visitor(fields, params);
+    let serialize_fields = serialize_struct_visitor(fields, params);
 
     quote_block! {
         let mut out = vec![];
@@ -160,11 +150,7 @@ fn serialize_struct_as_struct(
     }
 }
 
-
-fn serialize_struct_visitor(
-    fields: &[Field],
-    params: &Parameters,
-) -> Vec<TokenStream> {
+fn serialize_struct_visitor(fields: &[Field], params: &Parameters) -> Vec<TokenStream> {
     fields
         .iter()
         .filter(|&field| !field.attrs.skip_serializing())
@@ -216,7 +202,6 @@ fn get_member(params: &Parameters, member: &Member) -> TokenStream {
     }
 }
 
-
 fn deserialize_body(cont: &Container, params: &Parameters) -> Fragment {
     if let Some(type_from) = cont.attrs.type_from() {
         deserialize_from(type_from)
@@ -243,12 +228,7 @@ fn deserialize_try_from(type_try_from: &syn::Type) -> Fragment {
     }
 }
 
-fn deserialize_struct(
-    params: &Parameters,
-    fields: &[Field],
-    cattrs: &attr::Container,
-) -> Fragment {
-
+fn deserialize_struct(params: &Parameters, fields: &[Field], cattrs: &attr::Container) -> Fragment {
     let this = &params.this;
     // let (de_impl_generics, de_ty_generics, ty_generics, where_clause) =
     //     split_with_de_lifetime(params);

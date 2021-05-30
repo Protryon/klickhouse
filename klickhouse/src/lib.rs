@@ -1,18 +1,17 @@
-
 pub const VERSION_MAJOR: u64 = 21;
 pub const VERSION_MINOR: u64 = 6;
 
-mod io;
-mod internal_client_out;
-mod internal_client_in;
-mod protocol;
-mod client;
 mod block;
-mod progress;
-mod types;
-mod values;
+mod client;
 mod convert;
 pub mod errors;
+mod internal_client_in;
+mod internal_client_out;
+mod io;
+mod progress;
+mod protocol;
+mod types;
+mod values;
 
 #[cfg(feature = "uuid")]
 pub use uuid::Uuid;
@@ -25,8 +24,8 @@ pub use uuid::Uuid;
 pub use klickhouse_derive::Row;
 
 pub use client::*;
-pub use values::*;
-pub use convert::{FromSql, ToSql, Row};
+pub use convert::{FromSql, Row, ToSql};
 pub use types::Type;
+pub use values::*;
 
-pub use anyhow::{ Result, Error };
+pub use anyhow::{Error, Result};

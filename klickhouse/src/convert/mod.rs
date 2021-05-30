@@ -1,8 +1,8 @@
-use crate::{Value, types::Type};
+use crate::{types::Type, Value};
 use anyhow::*;
 
-mod std_serialize;
 mod std_deserialize;
+mod std_serialize;
 
 pub trait ToSql {
     fn to_sql(self) -> Result<Value>;

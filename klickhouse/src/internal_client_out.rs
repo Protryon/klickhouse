@@ -1,8 +1,16 @@
-use crate::{block::{Block}, io::ClickhouseWrite, protocol::{self, DBMS_MIN_PROTOCOL_VERSION_WITH_DISTRIBUTED_DEPTH, DBMS_MIN_REVISION_WITH_CLIENT_INFO, DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET, DBMS_MIN_REVISION_WITH_OPENTELEMETRY, DBMS_MIN_REVISION_WITH_QUOTA_KEY_IN_CLIENT_INFO, DBMS_MIN_REVISION_WITH_VERSION_PATCH, ServerHello}};
+use crate::{
+    block::Block,
+    io::ClickhouseWrite,
+    protocol::{
+        self, ServerHello, DBMS_MIN_PROTOCOL_VERSION_WITH_DISTRIBUTED_DEPTH,
+        DBMS_MIN_REVISION_WITH_CLIENT_INFO, DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET,
+        DBMS_MIN_REVISION_WITH_OPENTELEMETRY, DBMS_MIN_REVISION_WITH_QUOTA_KEY_IN_CLIENT_INFO,
+        DBMS_MIN_REVISION_WITH_VERSION_PATCH,
+    },
+};
 use anyhow::*;
 use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
-
 
 pub struct InternalClientOut<W: ClickhouseWrite> {
     writer: W,
@@ -51,7 +59,7 @@ impl<'a> ClientInfo<'a> {
     pub async fn write<W: ClickhouseWrite>(&self, to: &mut W, revision: u64) -> Result<()> {
         to.write_u8(self.kind as u8).await?;
         if self.kind == QueryKind::NoQuery {
-            return Ok(())
+            return Ok(());
         }
         to.write_string(self.initial_user).await?;
         to.write_string(self.initial_query_id).await?;
@@ -83,7 +91,7 @@ impl<'a> ClientInfo<'a> {
                 to.write_u8(0u8).await?;
             }
         }
-        
+
         Ok(())
     }
 }
@@ -104,7 +112,6 @@ pub enum QueryProcessingStage {
     Complete,
     WithMergableStateAfterAggregation,
 }
-
 
 pub struct Query<'a> {
     pub id: &'a str,
@@ -127,10 +134,15 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
 
     #[allow(clippy::needless_lifetimes)]
     pub async fn send_query<'a>(&mut self, params: Query<'a>) -> Result<()> {
-        self.writer.write_var_uint(protocol::ClientPacketId::Query as u64).await?;
+        self.writer
+            .write_var_uint(protocol::ClientPacketId::Query as u64)
+            .await?;
         self.writer.write_string(params.id).await?;
         if self.server_hello.revision_version >= DBMS_MIN_REVISION_WITH_CLIENT_INFO {
-            params.info.write(&mut self.writer, self.server_hello.revision_version).await?;
+            params
+                .info
+                .write(&mut self.writer, self.server_hello.revision_version)
+                .await?;
         }
         //todo: settings
         self.writer.write_string("").await?;
@@ -139,7 +151,9 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
             self.writer.write_string("").await?;
         }
         self.writer.write_var_uint(params.stage as u64).await?;
-        self.writer.write_u8(if params.compression { 1 } else { 0 }).await?;
+        self.writer
+            .write_u8(if params.compression { 1 } else { 0 })
+            .await?;
         self.writer.write_string(params.query).await?;
 
         self.writer.flush().await?;
@@ -148,12 +162,18 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
 
     pub async fn send_data(&mut self, block: &Block, name: &str, scalar: bool) -> Result<()> {
         if scalar {
-            self.writer.write_var_uint(protocol::ClientPacketId::Scalar as u64).await?;
+            self.writer
+                .write_var_uint(protocol::ClientPacketId::Scalar as u64)
+                .await?;
         } else {
-            self.writer.write_var_uint(protocol::ClientPacketId::Data as u64).await?;
+            self.writer
+                .write_var_uint(protocol::ClientPacketId::Data as u64)
+                .await?;
         }
         self.writer.write_string(name).await?;
-        block.write(&mut self.writer, self.server_hello.revision_version).await?;
+        block
+            .write(&mut self.writer, self.server_hello.revision_version)
+            .await?;
         self.writer.flush().await?;
 
         Ok(())
@@ -161,11 +181,20 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
 
     #[allow(clippy::needless_lifetimes)]
     pub async fn send_hello<'a>(&mut self, params: ClientHello<'a>) -> Result<()> {
-        self.writer.write_var_uint(protocol::ClientPacketId::Hello as u64).await?;
-        self.writer.write_string(&*format!("ClickHouse Rust-Klickhouse {}", env!("CARGO_PKG_VERSION"))).await?;
+        self.writer
+            .write_var_uint(protocol::ClientPacketId::Hello as u64)
+            .await?;
+        self.writer
+            .write_string(&*format!(
+                "ClickHouse Rust-Klickhouse {}",
+                env!("CARGO_PKG_VERSION")
+            ))
+            .await?;
         self.writer.write_var_uint(crate::VERSION_MAJOR).await?;
         self.writer.write_var_uint(crate::VERSION_MINOR).await?;
-        self.writer.write_var_uint(protocol::DBMS_TCP_PROTOCOL_VERSION).await?;
+        self.writer
+            .write_var_uint(protocol::DBMS_TCP_PROTOCOL_VERSION)
+            .await?;
         self.writer.write_string(params.default_database).await?;
         self.writer.write_string(params.username).await?;
         self.writer.write_string(params.password).await?;

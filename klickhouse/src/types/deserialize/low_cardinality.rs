@@ -11,7 +11,11 @@ pub struct LowCardinalityDeserializer;
 
 #[async_trait::async_trait]
 impl Deserializer for LowCardinalityDeserializer {
-    async fn read_prefix<R: ClickhouseRead>(_type_: &Type, reader: &mut R, _state: &mut DeserializerState) -> Result<()> {
+    async fn read_prefix<R: ClickhouseRead>(
+        _type_: &Type,
+        reader: &mut R,
+        _state: &mut DeserializerState,
+    ) -> Result<()> {
         let version = reader.read_u64_le().await?;
         if version != LOW_CARDINALITY_VERSION {
             return Err(anyhow!("invalid low cardinality version: {}", version));
@@ -19,10 +23,14 @@ impl Deserializer for LowCardinalityDeserializer {
         Ok(())
     }
 
-    async fn read_n<R: ClickhouseRead>(type_: &Type, reader: &mut R, rows: usize, state: &mut DeserializerState) -> Result<Vec<Value>> {
+    async fn read_n<R: ClickhouseRead>(
+        type_: &Type,
+        reader: &mut R,
+        rows: usize,
+        state: &mut DeserializerState,
+    ) -> Result<Vec<Value>> {
         Ok(match type_ {
             Type::LowCardinality(inner) => {
-
                 let mut num_pending_rows = 0usize;
                 let mut limit = rows;
 
@@ -57,10 +65,13 @@ impl Deserializer for LowCardinalityDeserializer {
                         is_nullable = inner.is_nullable();
                         let inner = inner.strip_null();
 
-                        let interior_needs_update_dictionary = global_dictionary.is_none() || needs_update_dictionary;
+                        let interior_needs_update_dictionary =
+                            global_dictionary.is_none() || needs_update_dictionary;
                         if needs_global_dictionary && interior_needs_update_dictionary {
                             let index_count = reader.read_u64_le().await?;
-                            let new_index = inner.deserialize_column(reader, index_count as usize, state).await?;    
+                            let new_index = inner
+                                .deserialize_column(reader, index_count as usize, state)
+                                .await?;
                             global_dictionary = Some(new_index); // should this be append?
                         }
 
@@ -69,7 +80,11 @@ impl Deserializer for LowCardinalityDeserializer {
                         if has_additional_keys {
                             let key_count = reader.read_u64_le().await?;
                             // println!("keyct = {:?}", key_count);
-                            additional_keys = Some(inner.deserialize_column(reader, key_count as usize, state).await?)
+                            additional_keys = Some(
+                                inner
+                                    .deserialize_column(reader, key_count as usize, state)
+                                    .await?,
+                            )
                         }
                         // println!("additional_keys = {:?}", additional_keys);
 
@@ -78,39 +93,65 @@ impl Deserializer for LowCardinalityDeserializer {
 
                     let reading_rows = limit.min(num_pending_rows);
 
-                    let entries = indexed_type.deserialize_column(reader, reading_rows, state).await?;
+                    let entries = indexed_type
+                        .deserialize_column(reader, reading_rows, state)
+                        .await?;
                     limit -= reading_rows;
                     num_pending_rows -= reading_rows;
                     if has_additional_keys && !needs_global_dictionary {
-                        let additional_keys = additional_keys.as_ref().ok_or_else(|| anyhow!("missing additional keys"))?;
+                        let additional_keys = additional_keys
+                            .as_ref()
+                            .ok_or_else(|| anyhow!("missing additional keys"))?;
                         for entry in entries {
                             let entry = entry.index_value();
                             let value = if is_nullable && entry == 0 {
                                 Value::Null
                             } else {
-                                additional_keys.get(entry).cloned().ok_or_else(|| anyhow!("illegal index {} in additional_keys", entry))?
+                                additional_keys.get(entry).cloned().ok_or_else(|| {
+                                    anyhow!("illegal index {} in additional_keys", entry)
+                                })?
                             };
                             output.push(value);
                         }
                     } else if needs_global_dictionary && !has_additional_keys {
-                        let global_dictionary = global_dictionary.as_ref().ok_or_else(|| anyhow!("missing global dictionary"))?;
+                        let global_dictionary = global_dictionary
+                            .as_ref()
+                            .ok_or_else(|| anyhow!("missing global dictionary"))?;
                         for entry in entries {
-                            output.push(global_dictionary.get(entry.index_value()).cloned()
-                                .ok_or_else(|| anyhow!("illegal index {} in global_dictionary", entry.index_value()))?);
+                            output.push(
+                                global_dictionary
+                                    .get(entry.index_value())
+                                    .cloned()
+                                    .ok_or_else(|| {
+                                        anyhow!(
+                                            "illegal index {} in global_dictionary",
+                                            entry.index_value()
+                                        )
+                                    })?,
+                            );
                         }
                     } else if needs_global_dictionary && has_additional_keys {
-                        let additional_keys = additional_keys.as_ref().ok_or_else(|| anyhow!("missing additional keys"))?;
-                        let global_dictionary = global_dictionary.as_ref().ok_or_else(|| anyhow!("missing global dictionary"))?;
+                        let additional_keys = additional_keys
+                            .as_ref()
+                            .ok_or_else(|| anyhow!("missing additional keys"))?;
+                        let global_dictionary = global_dictionary
+                            .as_ref()
+                            .ok_or_else(|| anyhow!("missing global dictionary"))?;
                         for entry in entries {
                             let entry = entry.index_value();
                             let value = if is_nullable && entry == 0 {
                                 Value::Null
                             } else if entry < additional_keys.len() {
-                                additional_keys.get(entry).cloned()
-                                    .ok_or_else(|| anyhow!("illegal index {} in additional_keys", entry))?
+                                additional_keys.get(entry).cloned().ok_or_else(|| {
+                                    anyhow!("illegal index {} in additional_keys", entry)
+                                })?
                             } else {
-                                global_dictionary.get(entry - additional_keys.len()).cloned()
-                                    .ok_or_else(|| anyhow!("illegal index {} in global_dictionary", entry))?
+                                global_dictionary
+                                    .get(entry - additional_keys.len())
+                                    .cloned()
+                                    .ok_or_else(|| {
+                                        anyhow!("illegal index {} in global_dictionary", entry)
+                                    })?
                             };
                             output.push(value);
                         }
@@ -118,12 +159,16 @@ impl Deserializer for LowCardinalityDeserializer {
                 }
 
                 output
-            },
+            }
             _ => unimplemented!(),
         })
     }
 
-    async fn read<R: ClickhouseRead>(_type_: &Type, _reader: &mut R, _state: &mut DeserializerState) -> Result<Value> {
+    async fn read<R: ClickhouseRead>(
+        _type_: &Type,
+        _reader: &mut R,
+        _state: &mut DeserializerState,
+    ) -> Result<Value> {
         unimplemented!()
     }
 }

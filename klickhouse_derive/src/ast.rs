@@ -1,10 +1,8 @@
-
 use crate::{attr, check};
 // use crate::check;
-use crate::{ctxt::Ctxt};
-use syn;
-use syn::Token;
+use crate::ctxt::Ctxt;
 use syn::punctuated::Punctuated;
+use syn::Token;
 
 /// A source data structure annotated with `#[derive(Serialize)]` and/or `#[derive(Deserialize)]`,
 /// parsed into an internal representation.
@@ -36,16 +34,11 @@ pub struct Field<'a> {
 
 impl<'a> Container<'a> {
     /// Convert the raw Syn ast into a parsed container object, collecting errors in `cx`.
-    pub fn from_ast(
-        cx: &Ctxt,
-        item: &'a syn::DeriveInput,
-    ) -> Option<Container<'a>> {
+    pub fn from_ast(cx: &Ctxt, item: &'a syn::DeriveInput) -> Option<Container<'a>> {
         let attrs = attr::Container::from_ast(cx, item);
 
         let mut data = match &item.data {
-            syn::Data::Struct(data) => {
-                struct_from_ast(cx, &data.fields, attrs.default())
-            }
+            syn::Data::Struct(data) => struct_from_ast(cx, &data.fields, attrs.default()),
             syn::Data::Union(_) => {
                 cx.error_spanned_by(item, "Klickhouse Row does not support unions");
                 return None;
@@ -70,7 +63,6 @@ impl<'a> Container<'a> {
         check::check(cx, &mut item);
         Some(item)
     }
-
 }
 
 fn struct_from_ast<'a>(
@@ -83,11 +75,11 @@ fn struct_from_ast<'a>(
         syn::Fields::Unnamed(fields) => {
             cx.error_spanned_by(fields, "Klickhouse Row does not support tuple structs");
             vec![]
-        },
+        }
         syn::Fields::Unit => {
             cx.error_spanned_by(fields, "Klickhouse Row does not support unit structs");
             vec![]
-        },
+        }
     }
 }
 

@@ -1,5 +1,9 @@
-use std::{fmt, net::{Ipv4Addr, Ipv6Addr}, ops::Deref};
 use super::*;
+use std::{
+    fmt,
+    net::{Ipv4Addr, Ipv6Addr},
+    ops::Deref,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Ipv4(pub Ipv4Addr);
@@ -70,7 +74,6 @@ impl Default for Ipv6 {
         Self(Ipv6Addr::UNSPECIFIED)
     }
 }
-
 
 impl ToSql for Ipv4 {
     fn to_sql(self) -> Result<Value> {

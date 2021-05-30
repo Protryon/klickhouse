@@ -1,7 +1,11 @@
 use chrono::{Duration, Utc};
 use chrono_tz::{Tz, UTC};
 
-use crate::{Value, convert::{FromSql, ToSql, unexpected_type}, types::Type};
+use crate::{
+    convert::{unexpected_type, FromSql, ToSql},
+    types::Type,
+    Value,
+};
 use anyhow::*;
 
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Default)]
@@ -72,7 +76,12 @@ impl Into<chrono::DateTime<Tz>> for DateTime {
 
 impl From<chrono::DateTime<Tz>> for DateTime {
     fn from(other: chrono::DateTime<Tz>) -> Self {
-        Self(other.timezone(), other.signed_duration_since(chrono::MIN_DATETIME).num_seconds() as u32)
+        Self(
+            other.timezone(),
+            other
+                .signed_duration_since(chrono::MIN_DATETIME)
+                .num_seconds() as u32,
+        )
     }
 }
 
@@ -111,14 +120,19 @@ impl<const PRECISION: usize> Into<chrono::DateTime<Tz>> for DateTime64<PRECISION
 
 impl<const PRECISION: usize> From<chrono::DateTime<Tz>> for DateTime64<PRECISION> {
     fn from(other: chrono::DateTime<Tz>) -> Self {
-        Self(other.timezone(), other.signed_duration_since(chrono::MIN_DATETIME).num_seconds() as u64)
+        Self(
+            other.timezone(),
+            other
+                .signed_duration_since(chrono::MIN_DATETIME)
+                .num_seconds() as u64,
+        )
     }
 }
 
 #[cfg(test)]
 mod chrono_tests {
-    use chrono_tz::UTC;
     use super::*;
+    use chrono_tz::UTC;
 
     #[test]
     fn test_date() {

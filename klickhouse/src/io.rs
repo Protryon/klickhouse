@@ -1,7 +1,7 @@
 use anyhow::*;
 use std::io::Result;
 
-use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt, AsyncReadExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use crate::protocol::MAX_STRING_SIZE;
 
@@ -61,7 +61,6 @@ pub trait ClickhouseWrite: AsyncWrite + Unpin + Send + Sync + 'static {
     async fn write_var_uint(&mut self, value: u64) -> Result<()>;
 
     async fn write_string(&mut self, mut value: &str) -> Result<()>;
-    
 }
 
 #[async_trait::async_trait]

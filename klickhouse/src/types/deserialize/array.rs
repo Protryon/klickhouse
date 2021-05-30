@@ -5,13 +5,17 @@ use crate::{io::ClickhouseRead, values::Value};
 
 use super::{Deserializer, DeserializerState, Type};
 
-
 pub struct ArrayDeserializer;
 
 struct Array2Deserializer;
 
 impl Array2Deserializer {
-    async fn read<R: ClickhouseRead>(type_: &Type, reader: &mut R, n: u64, state: &mut DeserializerState) -> Result<Value> {
+    async fn read<R: ClickhouseRead>(
+        type_: &Type,
+        reader: &mut R,
+        n: u64,
+        state: &mut DeserializerState,
+    ) -> Result<Value> {
         Ok(match type_ {
             Type::Array(inner) => {
                 let mut offsets = vec![];
@@ -23,12 +27,14 @@ impl Array2Deserializer {
                 for offset in offsets {
                     let len = offset - read_offset;
                     read_offset = offset;
-                    let items = inner.deserialize_column(reader, len as usize, state).await?;
+                    let items = inner
+                        .deserialize_column(reader, len as usize, state)
+                        .await?;
                     out.push(Value::Array(items));
                 }
 
                 Value::Array(out)
-            },
+            }
             _ => unimplemented!(),
         })
     }
@@ -36,26 +42,36 @@ impl Array2Deserializer {
 
 #[async_trait::async_trait]
 impl Deserializer for ArrayDeserializer {
-    async fn read_prefix<R: ClickhouseRead>(type_: &Type, reader: &mut R, state: &mut DeserializerState) -> Result<()> {
+    async fn read_prefix<R: ClickhouseRead>(
+        type_: &Type,
+        reader: &mut R,
+        state: &mut DeserializerState,
+    ) -> Result<()> {
         match type_ {
             Type::Array(inner) => {
                 inner.deserialize_prefix(reader, state).await?;
-            },
+            }
             _ => unimplemented!(),
         }
         Ok(())
     }
 
-    async fn read<R: ClickhouseRead>(type_: &Type, reader: &mut R, state: &mut DeserializerState) -> Result<Value> {
+    async fn read<R: ClickhouseRead>(
+        type_: &Type,
+        reader: &mut R,
+        state: &mut DeserializerState,
+    ) -> Result<Value> {
         Ok(match type_ {
             Type::Array(inner) => {
                 let len = reader.read_u64_le().await?;
                 if let Type::Array(_) = &**inner {
                     return Array2Deserializer::read(&**inner, reader, len, state).await;
                 }
-                let items = inner.deserialize_column(reader, len as usize, state).await?;
+                let items = inner
+                    .deserialize_column(reader, len as usize, state)
+                    .await?;
                 Value::Array(items)
-            },
+            }
             _ => unimplemented!(),
         })
     }

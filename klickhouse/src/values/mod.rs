@@ -1,24 +1,26 @@
-use std::{borrow::Cow};
+use std::borrow::Cow;
 
 use chrono_tz::Tz;
 
-use crate::{convert::{FromSql, ToSql, unexpected_type}, types::Type};
+use crate::{
+    convert::{unexpected_type, FromSql, ToSql},
+    types::Type,
+};
 use anyhow::*;
 
+mod clickhouse_uuid;
+mod date;
 mod fixed_point;
 mod int256;
-mod date;
-mod clickhouse_uuid;
 mod ip;
 
+pub use date::*;
 pub use fixed_point::*;
 pub use int256::*;
-pub use date::*;
 pub use ip::*;
 
 #[cfg(test)]
 mod tests;
-
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Value {
@@ -58,9 +60,8 @@ pub enum Value {
     Array(Vec<Value>),
 
     // Nested(IndexMap<String, Value>),
-
     Tuple(Vec<Value>),
-    
+
     Null,
 
     Map(Vec<Value>, Vec<Value>),
