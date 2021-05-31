@@ -63,7 +63,7 @@ pub fn with_where_predicates_from_fields(
 //     struct S<'b, A, B: 'b, C> {
 //         a: A,
 //         b: Option<&'b B>
-//         #[serde(skip_serializing)]
+//         #[klickhouse(skip_serializing)]
 //         c: C,
 //     }
 pub fn with_bound(
