@@ -260,7 +260,7 @@ dependencies = [
 
 [[package]]
 name = "klickhouse"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -282,7 +282,7 @@ dependencies = [
 
 [[package]]
 name = "klickhouse_derive"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "proc-macro2",
  "quote",
