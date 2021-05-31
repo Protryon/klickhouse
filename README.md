@@ -9,7 +9,6 @@ See [example usage](https://github.com/Protryon/klickhouse/blob/master/klickhous
 ## Unsupported Features
 
 * Clickhouse `Enum8` and `Enum16` types -- use `LowCardinality` instead.
-* Compression (coming soon)
 
 ## Credit
 
