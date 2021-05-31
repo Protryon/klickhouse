@@ -6,7 +6,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use crate::protocol::MAX_STRING_SIZE;
 
 #[async_trait::async_trait]
-pub trait ClickhouseRead: AsyncRead + Unpin + Send + Sync + 'static {
+pub trait ClickhouseRead: AsyncRead + Unpin + Send + Sync {
     async fn read_var_uint(&mut self) -> Result<u64>;
 
     async fn read_string(&mut self) -> anyhow::Result<String>;
@@ -15,7 +15,7 @@ pub trait ClickhouseRead: AsyncRead + Unpin + Send + Sync + 'static {
 }
 
 #[async_trait::async_trait]
-impl<T: AsyncRead + Unpin + Send + Sync + 'static> ClickhouseRead for T {
+impl<T: AsyncRead + Unpin + Send + Sync> ClickhouseRead for T {
     async fn read_var_uint(&mut self) -> Result<u64> {
         let mut out = 0u64;
         for i in 0..9u64 {

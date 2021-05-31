@@ -2,13 +2,14 @@ use crate::{
     block::Block,
     io::ClickhouseWrite,
     protocol::{
-        self, ServerHello, DBMS_MIN_PROTOCOL_VERSION_WITH_DISTRIBUTED_DEPTH,
+        self, CompressionMethod, ServerHello, DBMS_MIN_PROTOCOL_VERSION_WITH_DISTRIBUTED_DEPTH,
         DBMS_MIN_REVISION_WITH_CLIENT_INFO, DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET,
         DBMS_MIN_REVISION_WITH_OPENTELEMETRY, DBMS_MIN_REVISION_WITH_QUOTA_KEY_IN_CLIENT_INFO,
         DBMS_MIN_REVISION_WITH_VERSION_PATCH,
     },
 };
 use anyhow::*;
+use cityhash_rs::cityhash_102_128;
 use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
 
@@ -119,7 +120,7 @@ pub struct Query<'a> {
     // pub settings: (), //TODO
     //todo: interserver secret
     pub stage: QueryProcessingStage,
-    pub compression: bool,
+    pub compression: CompressionMethod,
     pub query: &'a str,
     //todo: data
 }
@@ -152,7 +153,11 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
         }
         self.writer.write_var_uint(params.stage as u64).await?;
         self.writer
-            .write_u8(if params.compression { 1 } else { 0 })
+            .write_u8(if matches!(params.compression, CompressionMethod::None) {
+                0
+            } else {
+                1
+            })
             .await?;
         self.writer.write_string(params.query).await?;
 
@@ -160,7 +165,37 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
         Ok(())
     }
 
-    pub async fn send_data(&mut self, block: &Block, name: &str, scalar: bool) -> Result<()> {
+    #[cfg(feature = "compression")]
+    async fn compress_data(&mut self, byte: u8, block: &Block) -> Result<()> {
+        let (out, decompressed_size) =
+            crate::compression::compress_block(block, self.server_hello.revision_version).await?;
+        let mut new_out = Vec::with_capacity(out.len() + 5);
+        new_out.push(byte);
+        new_out.extend_from_slice(&(out.len() as u32 + 9).to_le_bytes()[..]);
+        new_out.extend_from_slice(&(decompressed_size as u32).to_le_bytes()[..]);
+        new_out.extend(out);
+
+        let hash = cityhash_102_128(&new_out[..]);
+        self.writer.write_u64_le((hash >> 64) as u64).await?;
+        self.writer.write_u64_le(hash as u64).await?;
+        // self.writer.write_u8(byte).await?;
+        // self.writer.write_u32_le(out.len() as u32).await?;
+        self.writer.write_all(&new_out[..]).await?;
+        Ok(())
+    }
+
+    #[cfg(not(feature = "compression"))]
+    async fn compress_data(&mut self, byte: u8, block: &Block) -> Result<()> {
+        panic!("attempted to use compression when not compiled with `compression` feature in klickhouse");
+    }
+
+    pub async fn send_data(
+        &mut self,
+        block: &Block,
+        compression: CompressionMethod,
+        name: &str,
+        scalar: bool,
+    ) -> Result<()> {
         if scalar {
             self.writer
                 .write_var_uint(protocol::ClientPacketId::Scalar as u64)
@@ -171,9 +206,18 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
                 .await?;
         }
         self.writer.write_string(name).await?;
-        block
-            .write(&mut self.writer, self.server_hello.revision_version)
-            .await?;
+        match compression {
+            CompressionMethod::None => {
+                block
+                    .write(&mut self.writer, self.server_hello.revision_version)
+                    .await?;
+            }
+            CompressionMethod::LZ4 => {
+                self.compress_data(CompressionMethod::LZ4.byte(), block)
+                    .await?;
+            }
+        }
+
         self.writer.flush().await?;
 
         Ok(())

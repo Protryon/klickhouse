@@ -3,13 +3,15 @@ use crate::{
     io::ClickhouseRead,
     progress::Progress,
     protocol::{
-        self, BlockStreamProfileInfo, ServerData, ServerException, ServerHello, ServerPacket,
-        TableColumns, TableStatus, TablesStatusResponse, DBMS_MIN_REVISION_WITH_CLIENT_WRITE_INFO,
-        DBMS_MIN_REVISION_WITH_SERVER_DISPLAY_NAME, DBMS_MIN_REVISION_WITH_SERVER_TIMEZONE,
-        DBMS_MIN_REVISION_WITH_VERSION_PATCH, MAX_STRING_SIZE,
+        self, BlockStreamProfileInfo, CompressionMethod, ServerData, ServerException, ServerHello,
+        ServerPacket, TableColumns, TableStatus, TablesStatusResponse,
+        DBMS_MIN_REVISION_WITH_CLIENT_WRITE_INFO, DBMS_MIN_REVISION_WITH_SERVER_DISPLAY_NAME,
+        DBMS_MIN_REVISION_WITH_SERVER_TIMEZONE, DBMS_MIN_REVISION_WITH_VERSION_PATCH,
+        MAX_STRING_SIZE,
     },
 };
 use anyhow::*;
+use cityhash_rs::cityhash_102_128;
 use indexmap::IndexMap;
 use protocol::ServerPacketId;
 use tokio::io::AsyncReadExt;
@@ -44,10 +46,64 @@ impl<R: ClickhouseRead> InternalClientIn<R> {
         })
     }
 
-    async fn receive_data(&mut self) -> Result<ServerData> {
+    #[cfg(feature = "compression")]
+    async fn decompress_data(&mut self, compression: CompressionMethod) -> Result<Block> {
+        let checksum = (self.reader.read_u64_le().await? as u128) << 64u128
+            | (self.reader.read_u64_le().await? as u128);
+        let type_byte = self.reader.read_u8().await?;
+        if type_byte != compression.byte() {
+            return Err(anyhow!(
+                "unexpected compression algorithm identifier: '{:02X}', expected {:02X} ({:?})",
+                type_byte,
+                compression.byte(),
+                compression
+            ));
+        }
+        let compressed_size = self.reader.read_u32_le().await?;
+        if compressed_size > 0x40000000 {
+            // 1 GB
+            return Err(anyhow!("compressed payload too large!"));
+        } else if compressed_size < 9 {
+            return Err(anyhow!("compressed payload too small!"));
+        }
+        let decompressed_size = self.reader.read_u32_le().await?;
+        let mut compressed = vec![0u8; compressed_size as usize];
+        self.reader.read_exact(&mut compressed[9..]).await?;
+        compressed[0] = type_byte;
+        (&mut compressed[1..5]).copy_from_slice(&compressed_size.to_le_bytes()[..]);
+        (&mut compressed[5..9]).copy_from_slice(&decompressed_size.to_le_bytes()[..]);
+        let calc_checksum = cityhash_102_128(&compressed[..]);
+        if calc_checksum != checksum {
+            return Err(anyhow!(
+                "corrupt checksum from clickhouse '{:032X}' vs '{:032X}'",
+                calc_checksum,
+                checksum
+            ));
+        }
+        let block = crate::compression::decompress_block(
+            &compressed[9..],
+            decompressed_size,
+            self.server_hello.revision_version,
+        )
+        .await?;
+
+        Ok(block)
+    }
+
+    #[cfg(not(feature = "compression"))]
+    async fn decompress_data(&mut self, compression: CompressionMethod) -> Result<Block> {
+        panic!("attempted to use compression when not compiled with `compression` feature in klickhouse");
+    }
+
+    async fn receive_data(&mut self, compression: CompressionMethod) -> Result<ServerData> {
         let table_name = self.reader.read_string().await?;
 
-        let block = Block::read(&mut self.reader, self.server_hello.revision_version).await?;
+        let block = match compression {
+            CompressionMethod::None => {
+                Block::read(&mut self.reader, self.server_hello.revision_version).await?
+            }
+            _ => self.decompress_data(compression).await?,
+        };
 
         Ok(ServerData { table_name, block })
     }
@@ -90,7 +146,9 @@ impl<R: ClickhouseRead> InternalClientIn<R> {
                     patch_version,
                 }))
             }
-            ServerPacketId::Data => Ok(ServerPacket::Data(self.receive_data().await?)),
+            ServerPacketId::Data => Ok(ServerPacket::Data(
+                self.receive_data(CompressionMethod::default()).await?,
+            )),
             ServerPacketId::Exception => Ok(ServerPacket::Exception(self.read_exception().await?)),
             ServerPacketId::Progress => {
                 let read_rows = self.reader.read_var_uint().await?;
@@ -136,8 +194,12 @@ impl<R: ClickhouseRead> InternalClientIn<R> {
                     calculated_rows_before_limit,
                 }))
             }
-            ServerPacketId::Totals => Ok(ServerPacket::Totals(self.receive_data().await?)),
-            ServerPacketId::Extremes => Ok(ServerPacket::Extremes(self.receive_data().await?)),
+            ServerPacketId::Totals => Ok(ServerPacket::Totals(
+                self.receive_data(CompressionMethod::default()).await?,
+            )),
+            ServerPacketId::Extremes => Ok(ServerPacket::Extremes(
+                self.receive_data(CompressionMethod::default()).await?,
+            )),
             ServerPacketId::TablesStatusResponse => {
                 let mut response = TablesStatusResponse {
                     database_tables: IndexMap::new(),

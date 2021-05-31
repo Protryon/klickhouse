@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 
 use futures::{stream, Stream, StreamExt};
 use indexmap::IndexMap;
+use protocol::CompressionMethod;
 use tokio::{
     io::{AsyncRead, AsyncWrite, BufReader, BufWriter},
     net::{TcpStream, ToSocketAddrs},
@@ -66,7 +67,7 @@ impl<R: ClickhouseRead, W: ClickhouseWrite> InnerClient<R, W> {
                             open_telemetry: None,
                         },
                         stage: QueryProcessingStage::Complete,
-                        compression: false,
+                        compression: CompressionMethod::default(),
                         query: &*query,
                     })
                     .await?;
@@ -82,13 +83,16 @@ impl<R: ClickhouseRead, W: ClickhouseWrite> InnerClient<R, W> {
                             column_types: IndexMap::new(),
                             column_data: IndexMap::new(),
                         },
+                        CompressionMethod::default(),
                         "",
                         false,
                     )
                     .await?;
             }
             ClientRequestData::SendData { block, response } => {
-                self.output.send_data(&block, "", false).await?;
+                self.output
+                    .send_data(&block, CompressionMethod::default(), "", false)
+                    .await?;
                 response.send(()).ok();
             }
         }
@@ -228,13 +232,13 @@ impl Client {
         Ok(Self::connect_stream(read, writer, options))
     }
 
-    fn start<R: ClickhouseRead, W: ClickhouseWrite>(inner: InnerClient<R, W>) -> Self {
+    fn start<R: ClickhouseRead + 'static, W: ClickhouseWrite>(inner: InnerClient<R, W>) -> Self {
         let (sender, receiver) = mpsc::channel(1024);
         tokio::spawn(inner.run(receiver));
         Client { sender }
     }
 
-    /// Sends a query string and read column blocks over a stream. 
+    /// Sends a query string and read column blocks over a stream.
     /// You probably want [`Client::query()`]
     pub async fn query_raw(&self, query: &str) -> Result<impl Stream<Item = Block>> {
         let (sender, receiver) = oneshot::channel();

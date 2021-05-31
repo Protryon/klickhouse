@@ -135,11 +135,7 @@ impl Block {
         let mut out = Vec::with_capacity(self.rows as usize);
         for (name, values) in column_data.into_iter() {
             let (name, type_) = self.column_types.get_key_value(&name).unwrap();
-            out.push((
-                &**name,
-                type_.strip_low_cardinality(),
-                values.into_iter(),
-            ));
+            out.push((&**name, type_.strip_low_cardinality(), values.into_iter()));
         }
         BlockRowValueIter { column_data: out }
     }

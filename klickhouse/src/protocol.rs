@@ -167,3 +167,33 @@ pub enum ServerPacket {
     PartUUIDs(Vec<Uuid>),
     ReadTaskRequest,
 }
+
+#[derive(Clone, Copy, Debug)]
+#[allow(unused)]
+pub enum CompressionMethod {
+    None,
+    LZ4,
+}
+
+#[cfg(feature = "compression")]
+impl Default for CompressionMethod {
+    fn default() -> Self {
+        CompressionMethod::LZ4
+    }
+}
+
+#[cfg(not(feature = "compression"))]
+impl Default for CompressionMethod {
+    fn default() -> Self {
+        CompressionMethod::None
+    }
+}
+
+impl CompressionMethod {
+    pub fn byte(&self) -> u8 {
+        match self {
+            CompressionMethod::None => 0x02,
+            CompressionMethod::LZ4 => 0x82,
+        }
+    }
+}
