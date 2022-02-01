@@ -10,9 +10,9 @@ use anyhow::*;
 #[allow(non_camel_case_types)]
 pub struct i256(pub [u8; 32]);
 
-impl Into<u256> for i256 {
-    fn into(self) -> u256 {
-        u256(self.0)
+impl From<i256> for u256 {
+    fn from(i: i256) -> Self {
+        u256(i.0)
     }
 }
 
@@ -34,12 +34,12 @@ impl FromSql for i256 {
     }
 }
 
-impl Into<(u128, u128)> for i256 {
-    fn into(self) -> (u128, u128) {
+impl From<i256> for (u128, u128) {
+    fn from(i: i256) -> Self {
         let mut buf = [0u8; 16];
-        buf.copy_from_slice(&self.0[..16]);
+        buf.copy_from_slice(&i.0[..16]);
         let n1 = u128::from_be_bytes(buf);
-        buf.copy_from_slice(&self.0[16..]);
+        buf.copy_from_slice(&i.0[16..]);
         let n2 = u128::from_be_bytes(buf);
         (n1, n2)
     }
@@ -77,18 +77,18 @@ impl FromSql for u256 {
     }
 }
 
-impl Into<i256> for u256 {
-    fn into(self) -> i256 {
-        i256(self.0)
+impl From<u256> for i256 {
+    fn from(u: u256) -> Self {
+        i256(u.0)
     }
 }
 
-impl Into<(u128, u128)> for u256 {
-    fn into(self) -> (u128, u128) {
+impl From<u256> for (u128, u128) {
+    fn from(u: u256) -> Self {
         let mut buf = [0u8; 16];
-        buf.copy_from_slice(&self.0[..16]);
+        buf.copy_from_slice(&u.0[..16]);
         let n1 = u128::from_be_bytes(buf);
-        buf.copy_from_slice(&self.0[16..]);
+        buf.copy_from_slice(&u.0[16..]);
         let n2 = u128::from_be_bytes(buf);
         (n1, n2)
     }

@@ -23,9 +23,9 @@ impl Deref for Ipv4 {
     }
 }
 
-impl Into<Ipv4Addr> for Ipv4 {
-    fn into(self) -> Ipv4Addr {
-        self.0
+impl From<Ipv4> for Ipv4Addr {
+    fn from(i: Ipv4) -> Self {
+        i.0
     }
 }
 
@@ -59,9 +59,9 @@ impl Deref for Ipv6 {
     }
 }
 
-impl Into<Ipv6Addr> for Ipv6 {
-    fn into(self) -> Ipv6Addr {
-        self.0
+impl From<Ipv6> for Ipv6Addr {
+    fn from(i: Ipv6) -> Self {
+        i.0
     }
 }
 
