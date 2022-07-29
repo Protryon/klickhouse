@@ -137,7 +137,9 @@ impl Value {
             Value::DateTime64(tz, p, _) => Type::DateTime64(*p, *tz),
             Value::Enum8(_) => unimplemented!(),
             Value::Enum16(_) => unimplemented!(),
-            Value::Array(x) => Type::Array(Box::new(x.first().map(|x| x.guess_type()).unwrap_or(Type::String))),
+            Value::Array(x) => Type::Array(Box::new(
+                x.first().map(|x| x.guess_type()).unwrap_or(Type::String),
+            )),
             Value::Tuple(values) => Type::Tuple(values.iter().map(|x| x.guess_type()).collect()),
             Value::Null => Type::Nullable(Box::new(Type::String)),
             Value::Map(k, v) => Type::Map(

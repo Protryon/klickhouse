@@ -141,7 +141,7 @@ impl<T: ToSql> ToSql for Option<T> {
 impl<T: ToSql, const N: usize> ToSql for [T; N] {
     fn to_sql(self) -> Result<Value> {
         Ok(Value::Array(
-            std::array::IntoIter::new(self)
+            IntoIterator::into_iter(self)
                 .map(|x| x.to_sql())
                 .collect::<Result<Vec<_>>>()?,
         ))
