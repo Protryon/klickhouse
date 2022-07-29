@@ -1,6 +1,4 @@
-use anyhow::anyhow;
-use anyhow::Result;
-
+use crate::{KlickhouseError, Result};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use crate::protocol::MAX_STRING_SIZE;
@@ -9,9 +7,9 @@ use crate::protocol::MAX_STRING_SIZE;
 pub trait ClickhouseRead: AsyncRead + Unpin + Send + Sync {
     async fn read_var_uint(&mut self) -> Result<u64>;
 
-    async fn read_string(&mut self) -> anyhow::Result<String>;
+    async fn read_string(&mut self) -> Result<String>;
 
-    async fn read_binary(&mut self) -> anyhow::Result<Vec<u8>>;
+    async fn read_binary(&mut self) -> Result<Vec<u8>>;
 }
 
 #[async_trait::async_trait]
@@ -29,27 +27,35 @@ impl<T: AsyncRead + Unpin + Send + Sync> ClickhouseRead for T {
         Ok(out)
     }
 
-    #[allow(clippy::uninit_vec)]
-    async fn read_string(&mut self) -> anyhow::Result<String> {
+    async fn read_string(&mut self) -> Result<String> {
         let len = self.read_var_uint().await?;
         if len as usize > MAX_STRING_SIZE {
-            return Err(anyhow!("string too large"));
+            return Err(KlickhouseError::ProtocolError(format!(
+                "string too large: {} > {}",
+                len, MAX_STRING_SIZE
+            )));
         }
         let mut buf = Vec::with_capacity(len as usize);
-        unsafe { buf.set_len(len as usize) };
 
-        self.read_exact(&mut buf[..]).await?;
+        let buf_mut = unsafe { std::slice::from_raw_parts_mut(buf.as_mut_ptr(), len as usize) };
+        self.read_exact(buf_mut).await?;
+        unsafe { buf.set_len(len as usize) };
 
         Ok(String::from_utf8(buf)?)
     }
 
-    #[allow(clippy::uninit_vec)]
-    async fn read_binary(&mut self) -> anyhow::Result<Vec<u8>> {
+    async fn read_binary(&mut self) -> Result<Vec<u8>> {
         let len = self.read_var_uint().await?;
         if len as usize > MAX_STRING_SIZE {
-            return Err(anyhow!("binary too large"));
+            return Err(KlickhouseError::ProtocolError(format!(
+                "binary blob too large: {} > {}",
+                len, MAX_STRING_SIZE
+            )));
         }
         let mut buf = Vec::with_capacity(len as usize);
+
+        let buf_mut = unsafe { std::slice::from_raw_parts_mut(buf.as_mut_ptr(), len as usize) };
+        self.read_exact(buf_mut).await?;
         unsafe { buf.set_len(len as usize) };
 
         self.read_exact(&mut buf[..]).await?;

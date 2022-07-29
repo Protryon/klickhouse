@@ -1,7 +1,5 @@
 use std::collections::VecDeque;
 
-use anyhow::anyhow;
-use anyhow::Result;
 use futures::{stream, Stream, StreamExt};
 use indexmap::IndexMap;
 use protocol::CompressionMethod;
@@ -16,6 +14,7 @@ use tokio::{
 };
 use tokio_stream::wrappers::ReceiverStream;
 
+use crate::Result;
 use crate::{
     block::{Block, BlockInfo},
     convert::Row,
@@ -25,6 +24,7 @@ use crate::{
     },
     io::{ClickhouseRead, ClickhouseWrite},
     protocol::{self, ServerPacket},
+    KlickhouseError,
 };
 use log::*;
 
@@ -103,13 +103,17 @@ impl<R: ClickhouseRead, W: ClickhouseWrite> InnerClient<R, W> {
     async fn receive_packet(&mut self, packet: ServerPacket) -> Result<()> {
         match packet {
             ServerPacket::Hello(_) => {
-                return Err(anyhow!("unexpected retransmission of server hello"))
+                return Err(KlickhouseError::ProtocolError(
+                    "unexpected retransmission of server hello".to_string(),
+                ))
             }
             ServerPacket::Data(block) => {
                 if let Some(current) = self.pending_queries.front() {
                     current.send(block.block).await.ok();
                 } else {
-                    return Err(anyhow!("received data block, but no pending queries"));
+                    return Err(KlickhouseError::ProtocolError(
+                        "received data block, but no pending queries".to_string(),
+                    ));
                 }
             }
             ServerPacket::Exception(e) => {
@@ -121,7 +125,9 @@ impl<R: ClickhouseRead, W: ClickhouseWrite> InnerClient<R, W> {
                 if self.pending_queries.pop_front().is_some() {
                     // drop sender
                 } else {
-                    return Err(anyhow!("received end of stream, but no pending queries"));
+                    return Err(KlickhouseError::ProtocolError(
+                        "received end of stream, but no pending queries".to_string(),
+                    ));
                 }
             }
             ServerPacket::ProfileInfo(_) => {}
@@ -251,8 +257,10 @@ impl Client {
                 },
             })
             .await
-            .map_err(|_| anyhow!("failed to send query"))?;
-        let receiver = receiver.await?;
+            .map_err(|_| KlickhouseError::ProtocolError("failed to send query".to_string()))?;
+        let receiver = receiver.await.map_err(|_| {
+            KlickhouseError::ProtocolError("failed to receive blocks from upstream".to_string())
+        })?;
 
         Ok(ReceiverStream::new(receiver))
     }
@@ -267,8 +275,10 @@ impl Client {
                 },
             })
             .await
-            .map_err(|_| anyhow!("failed to send block"))?;
-        receiver.await?;
+            .map_err(|_| KlickhouseError::ProtocolError("failed to send block".to_string()))?;
+        receiver.await.map_err(|_| {
+            KlickhouseError::ProtocolError("failed to receive blocks from upstream".to_string())
+        })?;
 
         Ok(())
     }
@@ -290,8 +300,10 @@ impl Client {
                 },
             })
             .await
-            .map_err(|_| anyhow!("failed to send query"))?;
-        let receiver = receiver.await?;
+            .map_err(|_| KlickhouseError::ProtocolError("failed to send query".to_string()))?;
+        let receiver = receiver.await.map_err(|_| {
+            KlickhouseError::ProtocolError("failed to receive blocks from upstream".to_string())
+        })?;
 
         while let Some(block) = blocks.next().await {
             self.send_data(block).await?;
@@ -324,12 +336,13 @@ impl Client {
                 },
             })
             .await
-            .map_err(|_| anyhow!("failed to send query"))?;
-        let mut receiver = receiver.await?;
-        let first_block = receiver
-            .recv()
-            .await
-            .ok_or_else(|| anyhow!("missing header block from server"))?;
+            .map_err(|_| KlickhouseError::ProtocolError("failed to send query".to_string()))?;
+        let mut receiver = receiver.await.map_err(|_| {
+            KlickhouseError::ProtocolError("failed to receive blocks from upstream".to_string())
+        })?;
+        let first_block = receiver.recv().await.ok_or_else(|| {
+            KlickhouseError::ProtocolError("missing header block from server".to_string())
+        })?;
         while let Some(rows) = blocks.next().await {
             let mut block = Block {
                 info: BlockInfo::default(),
@@ -348,10 +361,9 @@ impl Client {
                 })
                 .try_for_each(|x| -> Result<()> {
                     for (key, value) in x {
-                        let type_ = first_block
-                            .column_types
-                            .get(key)
-                            .ok_or_else(|| anyhow!("missing type for data"))?;
+                        let type_ = first_block.column_types.get(key).ok_or_else(|| {
+                            KlickhouseError::ProtocolError("missing type for data".to_string())
+                        })?;
                         type_.validate_value(&value)?;
                         if let Some(column) = block.column_data.get_mut(key) {
                             column.push(value);

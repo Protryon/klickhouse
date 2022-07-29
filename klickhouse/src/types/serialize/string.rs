@@ -1,7 +1,6 @@
-use anyhow::*;
 use tokio::io::AsyncWriteExt;
 
-use crate::{io::ClickhouseWrite, values::Value};
+use crate::{io::ClickhouseWrite, values::Value, Result};
 
 use super::{Serializer, SerializerState, Type};
 

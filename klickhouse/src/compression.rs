@@ -1,8 +1,7 @@
-use anyhow::anyhow;
-
 use crate::block::Block;
+use crate::{KlickhouseError, Result};
 
-pub async fn compress_block(block: &Block, revision: u64) -> anyhow::Result<(Vec<u8>, usize)> {
+pub async fn compress_block(block: &Block, revision: u64) -> Result<(Vec<u8>, usize)> {
     let mut raw = vec![];
     block.write(&mut raw, revision).await?;
     let raw_len = raw.len();
@@ -16,7 +15,9 @@ pub async fn compress_block(block: &Block, revision: u64) -> anyhow::Result<(Vec
         )
     };
     if out_len <= 0 {
-        return Err(anyhow!("invalid compression state"));
+        return Err(KlickhouseError::ProtocolError(
+            "invalid compression state".to_string(),
+        ));
     }
     if out_len as usize > compressed.capacity() {
         panic!("buffer overflow in compress_block?");
@@ -26,11 +27,7 @@ pub async fn compress_block(block: &Block, revision: u64) -> anyhow::Result<(Vec
     Ok((compressed, raw_len))
 }
 
-pub async fn decompress_block(
-    data: &[u8],
-    decompressed_size: u32,
-    revision: u64,
-) -> anyhow::Result<Block> {
+pub async fn decompress_block(data: &[u8], decompressed_size: u32, revision: u64) -> Result<Block> {
     let mut output = Vec::with_capacity(decompressed_size as usize + 1);
 
     let out_len = unsafe {
@@ -42,7 +39,9 @@ pub async fn decompress_block(
         )
     };
     if out_len < 0 {
-        return Err(anyhow!("malformed compressed block"));
+        return Err(KlickhouseError::ProtocolError(
+            "malformed compressed block".to_string(),
+        ));
     }
     if out_len as usize > output.capacity() {
         panic!("buffer overflow in decompress_block?");

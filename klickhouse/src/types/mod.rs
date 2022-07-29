@@ -1,6 +1,5 @@
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
-use anyhow::*;
 use chrono_tz::Tz;
 use uuid::Uuid;
 
@@ -15,7 +14,7 @@ use crate::{
     io::{ClickhouseRead, ClickhouseWrite},
     u256,
     values::Value,
-    Date, DateTime, Ipv4, Ipv6,
+    Date, DateTime, Ipv4, Ipv6, KlickhouseError, Result,
 };
 
 /// A raw Clickhouse type.
@@ -167,7 +166,9 @@ fn eat_identifier(input: &str) -> (&str, &str) {
 
 fn parse_args(input: &str) -> Result<Vec<&str>> {
     if !input.starts_with('(') || !input.ends_with(')') {
-        return Err(anyhow!("malformed arguments to type"));
+        return Err(KlickhouseError::TypeParseError(
+            "malformed arguments to type".to_string(),
+        ));
     }
     let input = input[1..input.len() - 1].trim();
     let mut out = vec![];
@@ -192,7 +193,9 @@ fn parse_args(input: &str) -> Result<Vec<&str>> {
         }
     }
     if in_parens != 0 {
-        return Err(anyhow!("mismatched parenthesis"));
+        return Err(KlickhouseError::TypeParseError(
+            "mismatched parenthesis".to_string(),
+        ));
     }
     if last_start != input.len() {
         out.push(input[last_start..input.len()].trim());
@@ -200,13 +203,26 @@ fn parse_args(input: &str) -> Result<Vec<&str>> {
     Ok(out)
 }
 
+fn parse_scale(from: &str) -> Result<usize> {
+    from.parse()
+        .map_err(|_| KlickhouseError::TypeParseError("couldn't parse scale".to_string()))
+}
+
+fn parse_precision(from: &str) -> Result<usize> {
+    from.parse()
+        .map_err(|_| KlickhouseError::TypeParseError("couldn't parse precision".to_string()))
+}
+
 impl FromStr for Type {
-    type Err = anyhow::Error;
+    type Err = KlickhouseError;
 
     fn from_str(s: &str) -> Result<Self> {
         let (ident, following) = eat_identifier(s);
         if ident.is_empty() {
-            return Err(anyhow!("invalid empty identifier for type: '{}'", s));
+            return Err(KlickhouseError::TypeParseError(format!(
+                "invalid empty identifier for type: '{}'",
+                s
+            )));
         }
         let following = following.trim();
         if !following.is_empty() {
@@ -214,10 +230,13 @@ impl FromStr for Type {
             return Ok(match ident {
                 "Decimal" => {
                     if args.len() != 2 {
-                        return Err(anyhow!("bad arg count for Decimal"));
+                        return Err(KlickhouseError::TypeParseError(format!(
+                            "bad arg count for Decimal, expected 2 and got {}",
+                            args.len()
+                        )));
                     }
-                    let p: usize = args[0].parse()?;
-                    let s: usize = args[1].parse()?;
+                    let p: usize = parse_precision(args[0])?;
+                    let s: usize = parse_scale(args[1])?;
                     if p <= 9 {
                         Type::Decimal32(s)
                     } else if p <= 18 {
@@ -227,89 +246,134 @@ impl FromStr for Type {
                     } else if p <= 76 {
                         Type::Decimal256(s)
                     } else {
-                        return Err(anyhow!("bad decimal spec"));
+                        return Err(KlickhouseError::TypeParseError(
+                            "bad decimal spec, cannot exceed 76 precision".to_string(),
+                        ));
                     }
                 }
                 "Decimal32" => {
                     if args.len() != 1 {
-                        return Err(anyhow!("bad arg count for Decimal32"));
+                        return Err(KlickhouseError::TypeParseError(format!(
+                            "bad arg count for Decimal32, expected 1 and got {}",
+                            args.len()
+                        )));
                     }
-                    Type::Decimal32(args[0].parse()?)
+                    Type::Decimal32(parse_scale(args[0])?)
                 }
                 "Decimal64" => {
                     if args.len() != 1 {
-                        return Err(anyhow!("bad arg count for Decimal64"));
+                        return Err(KlickhouseError::TypeParseError(format!(
+                            "bad arg count for Decimal64, expected 1 and got {}",
+                            args.len()
+                        )));
                     }
-                    Type::Decimal64(args[0].parse()?)
+                    Type::Decimal64(parse_scale(args[0])?)
                 }
                 "Decimal128" => {
                     if args.len() != 1 {
-                        return Err(anyhow!("bad arg count for Decimal128"));
+                        return Err(KlickhouseError::TypeParseError(format!(
+                            "bad arg count for Decimal128, expected 1 and got {}",
+                            args.len()
+                        )));
                     }
-                    Type::Decimal128(args[0].parse()?)
+                    Type::Decimal128(parse_scale(args[0])?)
                 }
                 "Decimal256" => {
                     if args.len() != 1 {
-                        return Err(anyhow!("bad arg count for Decimal256"));
+                        return Err(KlickhouseError::TypeParseError(format!(
+                            "bad arg count for Decimal256, expected 1 and got {}",
+                            args.len()
+                        )));
                     }
-                    Type::Decimal256(args[0].parse()?)
+                    Type::Decimal256(parse_scale(args[0])?)
                 }
                 "FixedString" => {
                     if args.len() != 1 {
-                        return Err(anyhow!("bad arg count for FixedString"));
+                        return Err(KlickhouseError::TypeParseError(format!(
+                            "bad arg count for FixedString, expected 1 and got {}",
+                            args.len()
+                        )));
                     }
-                    Type::FixedString(args[0].parse()?)
+                    Type::FixedString(parse_scale(args[0])?)
                 }
                 "DateTime" => {
                     if args.len() != 1 {
-                        return Err(anyhow!("bad arg count for DateTime"));
+                        return Err(KlickhouseError::TypeParseError(format!(
+                            "bad arg count for DateTime, expected 1 and got {}",
+                            args.len()
+                        )));
                     }
                     if !args[0].starts_with('\'') || !args[0].ends_with('\'') {
-                        return Err(anyhow!("failed to parse timezone for DateTime"));
+                        return Err(KlickhouseError::TypeParseError(format!(
+                            "failed to parse timezone for DateTime: '{}'",
+                            args[0]
+                        )));
                     }
-                    Type::DateTime(
-                        args[0][1..args[0].len() - 1]
-                            .parse()
-                            .map_err(|_| anyhow!("failed to parse timezone for DateTime"))?,
-                    )
+                    Type::DateTime(args[0][1..args[0].len() - 1].parse().map_err(|e| {
+                        KlickhouseError::TypeParseError(format!(
+                            "failed to parse timezone for DateTime: '{}': {}",
+                            args[0], e
+                        ))
+                    })?)
                 }
                 "DateTime64" => {
                     if args.len() == 2 {
                         if !args[1].starts_with('\'') || !args[1].ends_with('\'') {
-                            return Err(anyhow!("failed to parse timezone for DateTime64"));
+                            return Err(KlickhouseError::TypeParseError(format!(
+                                "failed to parse timezone for DateTime64: '{}'",
+                                args[0]
+                            )));
                         }
                         Type::DateTime64(
-                            args[0].parse()?,
-                            args[1][1..args[1].len() - 1]
-                                .parse()
-                                .map_err(|_| anyhow!("failed to parse timezone for DateTime64"))?,
+                            parse_precision(args[0])?,
+                            args[1][1..args[1].len() - 1].parse().map_err(|e| {
+                                KlickhouseError::TypeParseError(format!(
+                                    "failed to parse timezone for DateTime64: '{}': {}",
+                                    args[0], e
+                                ))
+                            })?,
                         )
                     } else if args.len() == 1 {
-                        Type::DateTime64(args[0].parse()?, chrono_tz::UTC)
+                        Type::DateTime64(parse_precision(args[0])?, chrono_tz::UTC)
                     } else {
-                        return Err(anyhow!("bad arg count for DateTime64"));
+                        return Err(KlickhouseError::TypeParseError(format!(
+                            "bad arg count for DateTime64, expected 1 or 2 and got {}",
+                            args.len()
+                        )));
                     }
                 }
                 "Enum8" => {
-                    todo!()
+                    return Err(KlickhouseError::TypeParseError(
+                        "unsupported Enum8 type".to_string(),
+                    ));
                 }
                 "Enum16" => {
-                    todo!()
+                    return Err(KlickhouseError::TypeParseError(
+                        "unsupported Enum16 type".to_string(),
+                    ));
                 }
                 "LowCardinality" => {
                     if args.len() != 1 {
-                        return Err(anyhow!("bad arg count for LowCardinality"));
+                        return Err(KlickhouseError::TypeParseError(format!(
+                            "bad arg count for LowCardinality, expected 1 and got {}",
+                            args.len()
+                        )));
                     }
                     Type::LowCardinality(Box::new(Type::from_str(args[0])?))
                 }
                 "Array" => {
                     if args.len() != 1 {
-                        return Err(anyhow!("bad arg count for Array"));
+                        return Err(KlickhouseError::TypeParseError(format!(
+                            "bad arg count for Array, expected 1 and got {}",
+                            args.len()
+                        )));
                     }
                     Type::Array(Box::new(Type::from_str(args[0])?))
                 }
                 "Nested" => {
-                    todo!()
+                    return Err(KlickhouseError::TypeParseError(
+                        "unsupported Nested type".to_string(),
+                    ));
                 }
                 "Tuple" => {
                     let mut inner = vec![];
@@ -320,20 +384,31 @@ impl FromStr for Type {
                 }
                 "Nullable" => {
                     if args.len() != 1 {
-                        return Err(anyhow!("bad arg count for Nullable"));
+                        return Err(KlickhouseError::TypeParseError(format!(
+                            "bad arg count for Nullable, expected 1 and got {}",
+                            args.len()
+                        )));
                     }
                     Type::Nullable(Box::new(Type::from_str(args[0])?))
                 }
                 "Map" => {
                     if args.len() != 2 {
-                        return Err(anyhow!("bad arg count for Map"));
+                        return Err(KlickhouseError::TypeParseError(format!(
+                            "bad arg count for Map, expected 2 and got {}",
+                            args.len()
+                        )));
                     }
                     Type::Map(
                         Box::new(Type::from_str(args[0])?),
                         Box::new(Type::from_str(args[1])?),
                     )
                 }
-                _ => return Err(anyhow!("invalid type with arguments: '{}'", ident)),
+                _ => {
+                    return Err(KlickhouseError::TypeParseError(format!(
+                        "invalid type with arguments: '{}'",
+                        ident
+                    )))
+                }
             });
         }
         Ok(match ident {
@@ -357,41 +432,47 @@ impl FromStr for Type {
             "DateTime" => Type::DateTime(chrono_tz::UTC),
             "IPv4" => Type::Ipv4,
             "IPv6" => Type::Ipv6,
-            _ => return Err(anyhow!("invalid type name: '{}'", ident)),
+            _ => {
+                return Err(KlickhouseError::TypeParseError(format!(
+                    "invalid type name: '{}'",
+                    ident
+                )))
+            }
         })
     }
 }
 
-impl ToString for Type {
-    fn to_string(&self) -> String {
+impl Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Type::Int8 => "Int8".to_string(),
-            Type::Int16 => "Int16".to_string(),
-            Type::Int32 => "Int32".to_string(),
-            Type::Int64 => "Int64".to_string(),
-            Type::Int128 => "Int128".to_string(),
-            Type::Int256 => "Int256".to_string(),
-            Type::UInt8 => "UInt8".to_string(),
-            Type::UInt16 => "UInt16".to_string(),
-            Type::UInt32 => "UInt32".to_string(),
-            Type::UInt64 => "UInt64".to_string(),
-            Type::UInt128 => "UInt128".to_string(),
-            Type::UInt256 => "UInt256".to_string(),
-            Type::Float32 => "Float32".to_string(),
-            Type::Float64 => "Float64".to_string(),
-            Type::Decimal32(s) => format!("Decimal32({})", s),
-            Type::Decimal64(s) => format!("Decimal64({})", s),
-            Type::Decimal128(s) => format!("Decimal128({})", s),
-            Type::Decimal256(s) => format!("Decimal256({})", s),
-            Type::String => "String".to_string(),
-            Type::FixedString(s) => format!("FixedString({})", s),
-            Type::Uuid => "UUID".to_string(),
-            Type::Date => "Date".to_string(),
-            Type::DateTime(tz) => format!("DateTime('{}')", tz),
-            Type::DateTime64(precision, tz) => format!("DateTime64({},'{}')", precision, tz),
-            Type::Ipv4 => "IPv4".to_string(),
-            Type::Ipv6 => "IPv6".to_string(),
-            Type::Enum8(items) => format!(
+            Type::Int8 => write!(f, "Int8"),
+            Type::Int16 => write!(f, "Int16"),
+            Type::Int32 => write!(f, "Int32"),
+            Type::Int64 => write!(f, "Int64"),
+            Type::Int128 => write!(f, "Int128"),
+            Type::Int256 => write!(f, "Int256"),
+            Type::UInt8 => write!(f, "UInt8"),
+            Type::UInt16 => write!(f, "UInt16"),
+            Type::UInt32 => write!(f, "UInt32"),
+            Type::UInt64 => write!(f, "UInt64"),
+            Type::UInt128 => write!(f, "UInt128"),
+            Type::UInt256 => write!(f, "UInt256"),
+            Type::Float32 => write!(f, "Float32"),
+            Type::Float64 => write!(f, "Float64"),
+            Type::Decimal32(s) => write!(f, "Decimal32({})", s),
+            Type::Decimal64(s) => write!(f, "Decimal64({})", s),
+            Type::Decimal128(s) => write!(f, "Decimal128({})", s),
+            Type::Decimal256(s) => write!(f, "Decimal256({})", s),
+            Type::String => write!(f, "String"),
+            Type::FixedString(s) => write!(f, "FixedString({})", s),
+            Type::Uuid => write!(f, "UUID"),
+            Type::Date => write!(f, "Date"),
+            Type::DateTime(tz) => write!(f, "DateTime('{}')", tz),
+            Type::DateTime64(precision, tz) => write!(f, "DateTime64({},'{}')", precision, tz),
+            Type::Ipv4 => write!(f, "IPv4"),
+            Type::Ipv6 => write!(f, "IPv6"),
+            Type::Enum8(items) => write!(
+                f,
                 "Enum8({})",
                 items
                     .iter()
@@ -399,7 +480,8 @@ impl ToString for Type {
                     .collect::<Vec<_>>()
                     .join(",")
             ),
-            Type::Enum16(items) => format!(
+            Type::Enum16(items) => write!(
+                f,
                 "Enum16({})",
                 items
                     .iter()
@@ -407,10 +489,11 @@ impl ToString for Type {
                     .collect::<Vec<_>>()
                     .join(",")
             ),
-            Type::LowCardinality(inner) => format!("LowCardinality({})", inner.to_string()),
-            Type::Array(inner) => format!("Array({})", inner.to_string()),
+            Type::LowCardinality(inner) => write!(f, "LowCardinality({})", inner.to_string()),
+            Type::Array(inner) => write!(f, "Array({})", inner.to_string()),
             // Type::Nested(items) => format!("Nested({})", items.iter().map(|(key, value)| format!("{} {}", key, value.to_string())).collect::<Vec<_>>().join(",")),
-            Type::Tuple(items) => format!(
+            Type::Tuple(items) => write!(
+                f,
                 "Tuple({})",
                 items
                     .iter()
@@ -418,8 +501,8 @@ impl ToString for Type {
                     .collect::<Vec<_>>()
                     .join(",")
             ),
-            Type::Nullable(inner) => format!("Nullable({})", inner.to_string()),
-            Type::Map(key, value) => format!("Map({},{})", key.to_string(), value.to_string()),
+            Type::Nullable(inner) => write!(f, "Nullable({})", inner.to_string()),
+            Type::Map(key, value) => write!(f, "Map({},{})", key.to_string(), value.to_string()),
         }
     }
 }
@@ -741,31 +824,31 @@ impl Type {
         match self {
             Type::Decimal32(precision) => {
                 if *precision == 0 || *precision > 9 {
-                    return Err(anyhow!(
+                    return Err(KlickhouseError::TypeParseError(format!(
                         "precision out of bounds for Decimal32({}) must be in range (1..=9)",
                         *precision
-                    ));
+                    )));
                 }
             }
             Type::DateTime64(precision, _) | Type::Decimal64(precision) => {
                 if *precision == 0 || *precision > 18 {
-                    return Err(anyhow!("precision out of bounds for Decimal64/DateTime64({}) must be in range (1..=18)", *precision));
+                    return Err(KlickhouseError::TypeParseError(format!("precision out of bounds for Decimal64/DateTime64({}) must be in range (1..=18)", *precision)));
                 }
             }
             Type::Decimal128(precision) => {
                 if *precision == 0 || *precision > 38 {
-                    return Err(anyhow!(
+                    return Err(KlickhouseError::TypeParseError(format!(
                         "precision out of bounds for Decimal128({}) must be in range (1..=38)",
                         *precision
-                    ));
+                    )));
                 }
             }
             Type::Decimal256(precision) => {
                 if *precision == 0 || *precision > 9 {
-                    return Err(anyhow!(
+                    return Err(KlickhouseError::TypeParseError(format!(
                         "precision out of bounds for Decimal256({}) must be in range (1..=76)",
                         *precision
-                    ));
+                    )));
                 }
             }
             Type::LowCardinality(inner) => match inner.strip_null() {
@@ -788,15 +871,17 @@ impl Type {
                 | Type::UInt128
                 | Type::UInt256 => inner.validate(dimensions)?,
                 _ => {
-                    return Err(anyhow!(
+                    return Err(KlickhouseError::TypeParseError(format!(
                         "illegal type '{:?}' in LowCardinality, not allowed",
                         inner
-                    ))
+                    )))
                 }
             },
             Type::Array(inner) => {
                 if dimensions >= 2 {
-                    return Err(anyhow!("too many dimensions (limited to 2D structure)"));
+                    return Err(KlickhouseError::TypeParseError(format!(
+                        "too many dimensions (limited to 2D structure)"
+                    )));
                 }
                 inner.validate(dimensions + 1)?;
             }
@@ -814,17 +899,19 @@ impl Type {
                     | Type::Tuple(_)
                     | Type::Nullable(_) => {
                         /*  | Type::Nested(_) */
-                        return Err(anyhow!(
+                        return Err(KlickhouseError::TypeParseError(format!(
                             "nullable cannot contain composite type '{:?}'",
                             inner
-                        ));
+                        )));
                     }
                     _ => inner.validate(dimensions)?,
                 }
             }
             Type::Map(key, value) => {
                 if dimensions >= 2 {
-                    return Err(anyhow!("too many dimensions (limited to 2D structure)"));
+                    return Err(KlickhouseError::TypeParseError(format!(
+                        "too many dimensions (limited to 2D structure)"
+                    )));
                 }
                 if !matches!(
                     &**key,
@@ -843,9 +930,9 @@ impl Type {
                         | Type::UInt128
                         | Type::UInt256
                 ) {
-                    return Err(anyhow!(
+                    return Err(KlickhouseError::TypeParseError(format!(
                         "key in map must be String, FixedString(n), or integer"
-                    ));
+                    )));
                 }
                 key.validate(dimensions + 1)?;
                 if !matches!(
@@ -866,9 +953,9 @@ impl Type {
                         | Type::UInt256
                         | Type::Array(_)
                 ) {
-                    return Err(anyhow!(
+                    return Err(KlickhouseError::TypeParseError(format!(
                         "value in map must be String, FixedString(n), integer, or array"
-                    ));
+                    )));
                 }
                 value.validate(dimensions + 1)?;
             }
@@ -880,11 +967,10 @@ impl Type {
     pub(crate) fn validate_value(&self, value: &Value) -> Result<()> {
         self.validate(0)?;
         if !self.inner_validate_value(value) {
-            return Err(anyhow!(
+            return Err(KlickhouseError::TypeParseError(format!(
                 "could not assign value '{:?}' to type '{:?}'",
-                value,
-                self
-            ));
+                value, self
+            )));
         }
         Ok(())
     }

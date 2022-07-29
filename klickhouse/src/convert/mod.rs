@@ -1,5 +1,4 @@
-use crate::{types::Type, Value};
-use anyhow::*;
+use crate::{types::Type, KlickhouseError, Result, Value};
 
 mod std_deserialize;
 mod std_serialize;
@@ -15,8 +14,8 @@ impl ToSql for Value {
     }
 }
 
-pub fn unexpected_type(type_: &Type) -> anyhow::Error {
-    anyhow!("unexpected type: {}", type_.to_string())
+pub fn unexpected_type(type_: &Type) -> KlickhouseError {
+    KlickhouseError::DeserializeError(format!("unexpected type: {}", type_))
 }
 
 /// A type that can be converted from a raw Clickhouse SQL value.

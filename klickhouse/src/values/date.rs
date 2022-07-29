@@ -4,9 +4,8 @@ use chrono_tz::{Tz, UTC};
 use crate::{
     convert::{unexpected_type, FromSql, ToSql},
     types::Type,
-    Value,
+    Result, Value,
 };
-use anyhow::*;
 
 /// Wrapper type for Clickhouse `Date` type.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Default)]

@@ -293,7 +293,7 @@ fn deserialize_map(
             quote! {
                 #deser_name => {
                     if ::std::option::Option::is_some(&#name) {
-                        return ::klickhouse::Result::Err(::klickhouse::errors::duplicate_field(#deser_name));
+                        return ::klickhouse::Result::Err(::klickhouse::KlickhouseError::DuplicateField(#deser_name));
                     }
                     #name = ::std::option::Option::Some(#visit);
                 }
@@ -304,7 +304,7 @@ fn deserialize_map(
     let ignored_arm = if cattrs.deny_unknown_fields() {
         quote! {
             _ => {
-                return ::klickhouse::Result::Err(::klickhouse::errors::unknown_field(_name));
+                return ::klickhouse::Result::Err(::klickhouse::KlickhouseError::UnknownField(_name));
             }
         }
     } else {
@@ -398,7 +398,7 @@ fn expr_is_missing(field: &Field, cattrs: &attr::Container) -> Fragment {
 
     let name = field.attrs.name().name();
     let span = field.original.span();
-    let func = quote_spanned!(span=> ::klickhouse::errors::missing_field);
+    let func = quote_spanned!(span=> ::klickhouse::KlickhouseError::MissingField);
     quote_expr! {
         return ::klickhouse::Result::Err(#func(#name))
     }

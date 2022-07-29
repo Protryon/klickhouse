@@ -12,7 +12,7 @@ readme = "../README.md"
 [dependencies]
 tokio = { version = "1", features = ["io-util", "net", "sync", "rt"] }
 async-trait = "0.1"
-anyhow = "1.0"
+thiserror = "1.0"
 log = "0.4"
 indexmap = { version = "1.6" }
 uuid = { version = "0.8", features = ["v4"], optional = true }

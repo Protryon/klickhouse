@@ -1,9 +1,8 @@
 use crate::{
     convert::{unexpected_type, FromSql, ToSql},
     types::Type,
-    Value,
+    Result, Value,
 };
-use anyhow::*;
 
 /// Wrapper type for Clickhouse `Int256` type.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Default)]

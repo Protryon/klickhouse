@@ -1,9 +1,8 @@
 use crate::{
     convert::{unexpected_type, FromSql},
     types::Type,
-    Uuid,
+    Result, Uuid,
 };
-use anyhow::*;
 
 use crate::{convert::ToSql, Value};
 

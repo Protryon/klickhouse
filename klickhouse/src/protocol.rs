@@ -1,8 +1,7 @@
-use anyhow::*;
 use indexmap::IndexMap;
 use uuid::Uuid;
 
-use crate::{block::Block, progress::Progress};
+use crate::{block::Block, progress::Progress, KlickhouseError, Result};
 
 pub const DBMS_MIN_REVISION_WITH_CLIENT_INFO: u64 = 54032;
 pub const DBMS_MIN_REVISION_WITH_SERVER_TIMEZONE: u64 = 54058;
@@ -80,7 +79,12 @@ impl ServerPacketId {
             11 => ServerPacketId::TableColumns,
             12 => ServerPacketId::PartUUIDs,
             13 => ServerPacketId::ReadTaskRequest,
-            x => return Err(anyhow!("invalid packet id from server: {}", x)),
+            x => {
+                return Err(KlickhouseError::ProtocolError(format!(
+                    "invalid packet id from server: {}",
+                    x
+                )))
+            }
         })
     }
 }
@@ -112,14 +116,13 @@ pub struct ServerException {
 }
 
 impl ServerException {
-    pub fn emit(&self) -> Error {
-        anyhow!(
-            "server error {} {}: {}\n{}",
-            self.code,
-            self.name,
-            self.message,
-            self.stack_trace
-        )
+    pub fn emit(&self) -> KlickhouseError {
+        KlickhouseError::ServerException {
+            code: self.code,
+            name: self.name.clone(),
+            message: self.message.clone(),
+            stack_trace: self.stack_trace.clone(),
+        }
     }
 }
 

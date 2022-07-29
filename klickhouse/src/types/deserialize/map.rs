@@ -1,7 +1,6 @@
-use anyhow::*;
 use tokio::io::AsyncReadExt;
 
-use crate::{io::ClickhouseRead, values::Value};
+use crate::{io::ClickhouseRead, values::Value, Result};
 
 use super::{Deserializer, DeserializerState, Type};
 

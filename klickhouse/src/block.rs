@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, str::FromStr};
 
-use anyhow::*;
+use crate::Result;
 use indexmap::IndexMap;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -8,6 +8,7 @@ use crate::{
     io::{ClickhouseRead, ClickhouseWrite},
     types::{DeserializerState, SerializerState, Type},
     values::Value,
+    KlickhouseError,
 };
 
 #[derive(Debug, Clone)]
@@ -39,7 +40,10 @@ impl BlockInfo {
                     new.bucket_num = reader.read_i32().await?;
                 }
                 field_num => {
-                    return Err(anyhow!("unknown block info field number: {}", field_num));
+                    return Err(KlickhouseError::ProtocolError(format!(
+                        "unknown block info field number: {}",
+                        field_num
+                    )));
                 }
             }
         }
@@ -206,7 +210,11 @@ impl Block {
             writer.write_string(&*name).await?;
             writer.write_string(&*type_.to_string()).await?;
             if data.len() != self.rows as usize {
-                return Err(anyhow!("row and column length mismatch"));
+                return Err(KlickhouseError::ProtocolError(format!(
+                    "row and column length mismatch. {} != {}",
+                    data.len(),
+                    self.rows
+                )));
             }
             if self.rows > 0 {
                 let mut state = SerializerState {};

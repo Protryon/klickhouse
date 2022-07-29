@@ -5,8 +5,8 @@ use chrono_tz::Tz;
 use crate::{
     convert::{unexpected_type, FromSql, ToSql},
     types::Type,
+    Result,
 };
-use anyhow::*;
 
 mod clickhouse_uuid;
 mod date;

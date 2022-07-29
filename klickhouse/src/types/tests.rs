@@ -1,5 +1,6 @@
 use std::io::Cursor;
 
+use crate::Result;
 use crate::{
     i256,
     types::{DeserializerState, SerializerState},
@@ -7,7 +8,6 @@ use crate::{
     values::Value,
     Date, DateTime,
 };
-use anyhow::*;
 use uuid::Uuid;
 
 use super::Type;

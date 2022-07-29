@@ -1,6 +1,4 @@
-use anyhow::*;
-
-use crate::{io::ClickhouseRead, values::Value};
+use crate::{io::ClickhouseRead, values::Value, Result};
 
 use super::{Deserializer, DeserializerState, Type};
 

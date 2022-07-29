@@ -1,3 +1,4 @@
+use crate::Result;
 use crate::{
     block::Block,
     io::ClickhouseRead,
@@ -9,13 +10,16 @@ use crate::{
         DBMS_MIN_REVISION_WITH_SERVER_TIMEZONE, DBMS_MIN_REVISION_WITH_VERSION_PATCH,
         MAX_STRING_SIZE,
     },
+    KlickhouseError,
 };
-use anyhow::*;
 use cityhash_rs::cityhash_102_128;
 use indexmap::IndexMap;
 use protocol::ServerPacketId;
 use tokio::io::AsyncReadExt;
 use uuid::Uuid;
+
+#[cfg(feature = "compression")]
+const MAX_COMPRESSION_SIZE: u32 = 0x40000000;
 
 pub struct InternalClientIn<R: ClickhouseRead> {
     reader: R,
@@ -52,19 +56,25 @@ impl<R: ClickhouseRead> InternalClientIn<R> {
             | (self.reader.read_u64_le().await? as u128);
         let type_byte = self.reader.read_u8().await?;
         if type_byte != compression.byte() {
-            return Err(anyhow!(
+            return Err(KlickhouseError::ProtocolError(format!(
                 "unexpected compression algorithm identifier: '{:02X}', expected {:02X} ({:?})",
                 type_byte,
                 compression.byte(),
                 compression
-            ));
+            )));
         }
         let compressed_size = self.reader.read_u32_le().await?;
-        if compressed_size > 0x40000000 {
+        if compressed_size > MAX_COMPRESSION_SIZE {
             // 1 GB
-            return Err(anyhow!("compressed payload too large!"));
+            return Err(KlickhouseError::ProtocolError(format!(
+                "compressed payload too large! {} > {}",
+                compressed_size, MAX_COMPRESSION_SIZE
+            )));
         } else if compressed_size < 9 {
-            return Err(anyhow!("compressed payload too small!"));
+            return Err(KlickhouseError::ProtocolError(format!(
+                "compressed payload too small! {} < 9",
+                compressed_size
+            )));
         }
         let decompressed_size = self.reader.read_u32_le().await?;
         let mut compressed = vec![0u8; compressed_size as usize];
@@ -74,11 +84,10 @@ impl<R: ClickhouseRead> InternalClientIn<R> {
         (&mut compressed[5..9]).copy_from_slice(&decompressed_size.to_le_bytes()[..]);
         let calc_checksum = cityhash_102_128(&compressed[..]);
         if calc_checksum != checksum {
-            return Err(anyhow!(
+            return Err(KlickhouseError::ProtocolError(format!(
                 "corrupt checksum from clickhouse '{:032X}' vs '{:032X}'",
-                calc_checksum,
-                checksum
-            ));
+                calc_checksum, checksum
+            )));
         }
         let block = crate::compression::decompress_block(
             &compressed[9..],
@@ -206,7 +215,10 @@ impl<R: ClickhouseRead> InternalClientIn<R> {
                 };
                 let size = self.reader.read_var_uint().await?;
                 if size as usize > MAX_STRING_SIZE {
-                    return Err(anyhow!("table status response size too large"));
+                    return Err(KlickhouseError::ProtocolError(format!(
+                        "table status response size too large. {} > {}",
+                        size, MAX_STRING_SIZE
+                    )));
                 }
                 for _ in 0..size {
                     let database_name = self.reader.read_string().await?;
@@ -259,10 +271,10 @@ impl<R: ClickhouseRead> InternalClientIn<R> {
         match self.receive_packet().await? {
             ServerPacket::Hello(hello) => Ok(hello),
             ServerPacket::Exception(e) => Err(e.emit()),
-            packet => Err(anyhow!(
+            packet => Err(KlickhouseError::ProtocolError(format!(
                 "unexpected packet {:?}, expected server hello",
                 packet
-            )),
+            ))),
         }
     }
 }

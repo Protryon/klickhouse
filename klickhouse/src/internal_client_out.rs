@@ -7,8 +7,8 @@ use crate::{
         DBMS_MIN_REVISION_WITH_OPENTELEMETRY, DBMS_MIN_REVISION_WITH_QUOTA_KEY_IN_CLIENT_INFO,
         DBMS_MIN_REVISION_WITH_VERSION_PATCH,
     },
+    Result,
 };
-use anyhow::*;
 use cityhash_rs::cityhash_102_128;
 use tokio::io::AsyncWriteExt;
 use uuid::Uuid;

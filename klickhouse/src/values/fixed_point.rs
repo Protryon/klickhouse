@@ -2,9 +2,8 @@ use crate::{
     convert::{unexpected_type, FromSql, ToSql},
     i256,
     types::Type,
-    Value,
+    Result, Value,
 };
-use anyhow::*;
 
 /// Wrapper type for Clickhouse `FixedPoint32` type.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Default)]

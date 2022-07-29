@@ -1,6 +1,4 @@
-use anyhow::*;
-
-use crate::{io::ClickhouseWrite, values::Value};
+use crate::{io::ClickhouseWrite, values::Value, Result};
 
 use super::{Serializer, SerializerState, Type};
 

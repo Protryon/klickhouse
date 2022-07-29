@@ -9,7 +9,7 @@ mod client;
 mod compression;
 mod convert;
 /// Error generator functions used by `klickhouse_derive`
-pub mod errors;
+mod errors;
 mod internal_client_in;
 mod internal_client_out;
 mod io;
@@ -30,7 +30,6 @@ pub use klickhouse_derive::Row;
 
 pub use client::*;
 pub use convert::{FromSql, Row, ToSql};
+pub use errors::*;
 pub use types::Type;
 pub use values::*;
-
-pub use anyhow::{Error, Result};
