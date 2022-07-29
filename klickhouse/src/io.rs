@@ -1,5 +1,5 @@
-use anyhow::*;
-use std::io::Result;
+use anyhow::anyhow;
+use anyhow::Result;
 
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
@@ -29,6 +29,7 @@ impl<T: AsyncRead + Unpin + Send + Sync> ClickhouseRead for T {
         Ok(out)
     }
 
+    #[allow(clippy::uninit_vec)]
     async fn read_string(&mut self) -> anyhow::Result<String> {
         let len = self.read_var_uint().await?;
         if len as usize > MAX_STRING_SIZE {
@@ -42,6 +43,7 @@ impl<T: AsyncRead + Unpin + Send + Sync> ClickhouseRead for T {
         Ok(String::from_utf8(buf)?)
     }
 
+    #[allow(clippy::uninit_vec)]
     async fn read_binary(&mut self) -> anyhow::Result<Vec<u8>> {
         let len = self.read_var_uint().await?;
         if len as usize > MAX_STRING_SIZE {

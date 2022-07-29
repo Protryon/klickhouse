@@ -42,9 +42,9 @@ impl<const PRECISION: u64> FromSql for FixedPoint32<PRECISION> {
     }
 }
 
-impl<const PRECISION: u64> Into<f64> for FixedPoint32<PRECISION> {
-    fn into(self) -> f64 {
-        self.integer() as f64 + (self.fraction() as f64 / self.modulus() as f64)
+impl<const PRECISION: u64> From<FixedPoint32<PRECISION>> for f64 {
+    fn from(fp: FixedPoint32<PRECISION>) -> Self {
+        fp.integer() as f64 + (fp.fraction() as f64 / fp.modulus() as f64)
     }
 }
 
@@ -84,9 +84,9 @@ impl<const PRECISION: u64> FixedPoint64<PRECISION> {
     }
 }
 
-impl<const PRECISION: u64> Into<f64> for FixedPoint64<PRECISION> {
-    fn into(self) -> f64 {
-        self.integer() as f64 + (self.fraction() as f64 / self.modulus() as f64)
+impl<const PRECISION: u64> From<FixedPoint64<PRECISION>> for f64 {
+    fn from(fp: FixedPoint64<PRECISION>) -> Self {
+        fp.integer() as f64 + (fp.fraction() as f64 / fp.modulus() as f64)
     }
 }
 
@@ -126,9 +126,9 @@ impl<const PRECISION: u64> FixedPoint128<PRECISION> {
     }
 }
 
-impl<const PRECISION: u64> Into<f64> for FixedPoint128<PRECISION> {
-    fn into(self) -> f64 {
-        self.integer() as f64 + (self.fraction() as f64 / self.modulus() as f64)
+impl<const PRECISION: u64> From<FixedPoint128<PRECISION>> for f64 {
+    fn from(fp: FixedPoint128<PRECISION>) -> Self {
+        fp.integer() as f64 + (fp.fraction() as f64 / fp.modulus() as f64)
     }
 }
 

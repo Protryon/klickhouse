@@ -1,5 +1,7 @@
 use std::collections::VecDeque;
 
+use anyhow::anyhow;
+use anyhow::Result;
 use futures::{stream, Stream, StreamExt};
 use indexmap::IndexMap;
 use protocol::CompressionMethod;
@@ -24,7 +26,6 @@ use crate::{
     io::{ClickhouseRead, ClickhouseWrite},
     protocol::{self, ServerPacket},
 };
-use anyhow::*;
 use log::*;
 
 struct InnerClient<R: ClickhouseRead, W: ClickhouseWrite> {

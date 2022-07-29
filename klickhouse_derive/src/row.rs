@@ -157,7 +157,7 @@ fn serialize_struct_visitor(fields: &[Field], params: &Parameters) -> Vec<TokenS
         .map(|field| {
             let member = &field.member;
 
-            let field_expr = get_member(params, &member);
+            let field_expr = get_member(params, member);
 
             let key_expr = field.attrs.name().name();
 

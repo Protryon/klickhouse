@@ -26,7 +26,7 @@ pub struct ClientHello<'a> {
 
 #[repr(u8)]
 #[derive(PartialEq, Clone, Copy)]
-#[allow(unused)]
+#[allow(unused, clippy::enum_variant_names)]
 pub enum QueryKind {
     NoQuery,
     InitialQuery,
