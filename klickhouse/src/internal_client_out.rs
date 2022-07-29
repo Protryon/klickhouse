@@ -9,7 +9,6 @@ use crate::{
     },
     Result,
 };
-use cityhash_rs::cityhash_102_128;
 use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
 
@@ -175,7 +174,7 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
         new_out.extend_from_slice(&(decompressed_size as u32).to_le_bytes()[..]);
         new_out.extend(out);
 
-        let hash = cityhash_102_128(&new_out[..]);
+        let hash = cityhash_rs::cityhash_102_128(&new_out[..]);
         self.writer.write_u64_le((hash >> 64) as u64).await?;
         self.writer.write_u64_le(hash as u64).await?;
         // self.writer.write_u8(byte).await?;
@@ -185,7 +184,7 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
     }
 
     #[cfg(not(feature = "compression"))]
-    async fn compress_data(&mut self, byte: u8, block: &Block) -> Result<()> {
+    async fn compress_data(&mut self, _byte: u8, _block: &Block) -> Result<()> {
         panic!("attempted to use compression when not compiled with `compression` feature in klickhouse");
     }
 

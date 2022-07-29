@@ -12,7 +12,6 @@ use crate::{
     },
     KlickhouseError,
 };
-use cityhash_rs::cityhash_102_128;
 use indexmap::IndexMap;
 use protocol::ServerPacketId;
 use tokio::io::AsyncReadExt;
@@ -82,7 +81,7 @@ impl<R: ClickhouseRead> InternalClientIn<R> {
         compressed[0] = type_byte;
         (&mut compressed[1..5]).copy_from_slice(&compressed_size.to_le_bytes()[..]);
         (&mut compressed[5..9]).copy_from_slice(&decompressed_size.to_le_bytes()[..]);
-        let calc_checksum = cityhash_102_128(&compressed[..]);
+        let calc_checksum = cityhash_rs::cityhash_102_128(&compressed[..]);
         if calc_checksum != checksum {
             return Err(KlickhouseError::ProtocolError(format!(
                 "corrupt checksum from clickhouse '{:032X}' vs '{:032X}'",
@@ -100,7 +99,7 @@ impl<R: ClickhouseRead> InternalClientIn<R> {
     }
 
     #[cfg(not(feature = "compression"))]
-    async fn decompress_data(&mut self, compression: CompressionMethod) -> Result<Block> {
+    async fn decompress_data(&mut self, _compression: CompressionMethod) -> Result<Block> {
         panic!("attempted to use compression when not compiled with `compression` feature in klickhouse");
     }
 

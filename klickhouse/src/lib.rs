@@ -18,11 +18,6 @@ mod protocol;
 mod types;
 mod values;
 
-#[cfg(feature = "uuid")]
-pub use uuid::Uuid;
-#[cfg(not(feature = "uuid"))]
-pub mod uuid;
-#[cfg(not(feature = "uuid"))]
 pub use uuid::Uuid;
 
 #[cfg(feature = "derive")]
