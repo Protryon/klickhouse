@@ -337,6 +337,7 @@ pub struct Field {
     bound: Option<Vec<syn::WherePredicate>>,
 }
 
+#[allow(clippy::enum_variant_names)]
 /// Represents the default to use for a field when deserializing.
 pub enum Default {
     /// Field must always be specified because it does not have a default.

@@ -30,9 +30,9 @@ impl FromSql for Date {
     }
 }
 
-impl Into<chrono::Date<Utc>> for Date {
-    fn into(self) -> chrono::Date<Utc> {
-        chrono::MIN_DATE + Duration::days(self.0 as i64)
+impl From<Date> for chrono::Date<Utc> {
+    fn from(date: Date) -> Self {
+        chrono::MIN_DATE + Duration::days(date.0 as i64)
     }
 }
 
@@ -70,9 +70,9 @@ impl Default for DateTime {
     }
 }
 
-impl Into<chrono::DateTime<Tz>> for DateTime {
-    fn into(self) -> chrono::DateTime<Tz> {
-        chrono::MIN_DATETIME.with_timezone(&self.0) + Duration::seconds(self.1 as i64)
+impl From<DateTime> for chrono::DateTime<Tz> {
+    fn from(date: DateTime) -> Self {
+        chrono::MIN_DATETIME.with_timezone(&date.0) + Duration::seconds(date.1 as i64)
     }
 }
 
@@ -126,9 +126,9 @@ impl<const PRECISION: usize> Default for DateTime64<PRECISION> {
     }
 }
 
-impl<const PRECISION: usize> Into<chrono::DateTime<Tz>> for DateTime64<PRECISION> {
-    fn into(self) -> chrono::DateTime<Tz> {
-        chrono::MIN_DATETIME.with_timezone(&self.0) + Duration::seconds(self.1 as i64)
+impl<const PRECISION: usize> From<DateTime64<PRECISION>> for chrono::DateTime<Tz> {
+    fn from(date: DateTime64<PRECISION>) -> Self {
+        chrono::MIN_DATETIME.with_timezone(&date.0) + Duration::seconds(date.1 as i64)
     }
 }
 
