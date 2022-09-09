@@ -1,4 +1,4 @@
-use chrono::{Duration, Utc};
+use chrono::{Duration, TimeZone, Utc};
 use chrono_tz::{Tz, UTC};
 
 use crate::{
@@ -71,29 +71,20 @@ impl Default for DateTime {
 
 impl From<DateTime> for chrono::DateTime<Tz> {
     fn from(date: DateTime) -> Self {
-        chrono::MIN_DATETIME.with_timezone(&date.0) + Duration::seconds(date.1 as i64)
+        let native_date = chrono::NaiveDateTime::from_timestamp(date.1 as i64, 0);
+        Self::from_utc(native_date, date.0.offset_from_utc_datetime(&native_date))
     }
 }
 
 impl From<chrono::DateTime<Tz>> for DateTime {
     fn from(other: chrono::DateTime<Tz>) -> Self {
-        Self(
-            other.timezone(),
-            other
-                .signed_duration_since(chrono::MIN_DATETIME)
-                .num_seconds() as u32,
-        )
+        Self(other.timezone(), other.timestamp() as u32)
     }
 }
 
 impl From<chrono::DateTime<chrono::Utc>> for DateTime {
     fn from(other: chrono::DateTime<Utc>) -> Self {
-        Self(
-            chrono_tz::UTC,
-            other
-                .signed_duration_since(chrono::MIN_DATETIME)
-                .num_seconds() as u32,
-        )
+        Self(chrono_tz::UTC, other.timestamp() as u32)
     }
 }
 
@@ -165,5 +156,21 @@ mod chrono_tests {
             let new_date = DateTime::from(chrono_date);
             assert_eq!(new_date, date);
         }
+    }
+
+    #[test]
+    fn test_consistency_with_convert_for_str() {
+        let test_date = "2022-04-22 00:00:00";
+
+        let dt = chrono::NaiveDateTime::parse_from_str(test_date, "%Y-%m-%d %H:%M:%S").unwrap();
+
+        let chrono_date =
+            chrono::DateTime::<Tz>::from_utc(dt, chrono_tz::UTC.offset_from_utc_datetime(&dt));
+
+        let date = DateTime(UTC, dt.timestamp() as u32);
+
+        let new_chrono_date: chrono::DateTime<Tz> = date.into();
+
+        assert_eq!(new_chrono_date, chrono_date);
     }
 }
