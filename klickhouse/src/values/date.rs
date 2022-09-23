@@ -6,7 +6,7 @@ use chrono_tz::{Tz, UTC};
 use crate::{
     convert::{unexpected_type, FromSql, ToSql},
     types::Type,
-    Result, Value,
+    KlickhouseError, Result, Value,
 };
 
 /// Wrapper type for Clickhouse `Date` type.
@@ -75,9 +75,19 @@ impl Default for DateTime {
     }
 }
 
-impl From<DateTime> for chrono::DateTime<Tz> {
-    fn from(date: DateTime) -> Self {
-        date.0.timestamp(date.1 as i64, 0)
+impl TryFrom<DateTime> for chrono::DateTime<Tz> {
+    type Error = TryFromIntError;
+
+    fn try_from(date: DateTime) -> Result<Self, TryFromIntError> {
+        Ok(date.0.timestamp(date.1.try_into()?, 0))
+    }
+}
+
+impl TryFrom<DateTime> for chrono::DateTime<Utc> {
+    type Error = TryFromIntError;
+
+    fn try_from(date: DateTime) -> Result<Self, TryFromIntError> {
+        Ok(date.0.timestamp(date.1.try_into()?, 0).with_timezone(&Utc))
     }
 }
 
@@ -89,7 +99,7 @@ impl TryFrom<chrono::DateTime<Tz>> for DateTime {
     }
 }
 
-impl TryFrom<chrono::DateTime<chrono::Utc>> for DateTime {
+impl TryFrom<chrono::DateTime<Utc>> for DateTime {
     type Error = TryFromIntError;
 
     fn try_from(other: chrono::DateTime<chrono::Utc>) -> Result<Self, TryFromIntError> {
@@ -125,18 +135,133 @@ impl<const PRECISION: usize> Default for DateTime64<PRECISION> {
     }
 }
 
+impl ToSql for chrono::DateTime<Utc> {
+    fn to_sql(self) -> Result<Value> {
+        Ok(Value::DateTime64(
+            chrono_tz::UTC,
+            9,
+            self.timestamp_nanos().try_into().map_err(|e| {
+                KlickhouseError::DeserializeError(format!("failed to convert DateTime64: {:?}", e))
+            })?,
+        ))
+    }
+}
+
+impl FromSql for chrono::DateTime<Utc> {
+    fn from_sql(type_: &Type, value: Value) -> Result<Self> {
+        if !matches!(type_, Type::DateTime64(_, _) | Type::DateTime(_)) {
+            return Err(unexpected_type(type_));
+        }
+        match value {
+            Value::DateTime64(tz, precision, value) => {
+                let seconds = value / 10u64.pow(precision as u32);
+                let units = value % 10u64.pow(precision as u32);
+                let units_ns = units * 10u64.pow(9 - precision as u32);
+                let (seconds, units_ns): (i64, u32) = seconds
+                    .try_into()
+                    .and_then(|k| Ok((k, units_ns.try_into()?)))
+                    .map_err(|e| {
+                        KlickhouseError::DeserializeError(format!(
+                            "failed to convert DateTime: {:?}",
+                            e
+                        ))
+                    })?;
+                Ok(tz.timestamp(seconds, units_ns).with_timezone(&Utc))
+            }
+            Value::DateTime(date) => Ok(date.try_into().map_err(|e| {
+                KlickhouseError::DeserializeError(format!("failed to convert DateTime: {:?}", e))
+            })?),
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl<const PRECISION: usize> TryFrom<DateTime64<PRECISION>> for chrono::DateTime<Utc> {
+    type Error = TryFromIntError;
+
+    fn try_from(date: DateTime64<PRECISION>) -> Result<Self, TryFromIntError> {
+        let seconds = date.1 / 10u64.pow(PRECISION as u32);
+        let units = date.1 % 10u64.pow(PRECISION as u32);
+        let units_ns = units * 10u64.pow(9 - PRECISION as u32);
+        Ok(date
+            .0
+            .timestamp(seconds.try_into()?, units_ns.try_into()?)
+            .with_timezone(&Utc))
+    }
+}
+
+impl ToSql for chrono::DateTime<Tz> {
+    fn to_sql(self) -> Result<Value> {
+        Ok(Value::DateTime64(
+            self.timezone(),
+            9,
+            self.timestamp_nanos().try_into().map_err(|e| {
+                KlickhouseError::DeserializeError(format!("failed to convert DateTime64: {:?}", e))
+            })?,
+        ))
+    }
+}
+
+impl FromSql for chrono::DateTime<Tz> {
+    fn from_sql(type_: &Type, value: Value) -> Result<Self> {
+        if !matches!(type_, Type::DateTime64(_, _) | Type::DateTime(_)) {
+            return Err(unexpected_type(type_));
+        }
+        match value {
+            Value::DateTime64(tz, precision, value) => {
+                let seconds = value / 10u64.pow(precision as u32);
+                let units = value % 10u64.pow(precision as u32);
+                let units_ns = units * 10u64.pow(9 - precision as u32);
+                let (seconds, units_ns): (i64, u32) = seconds
+                    .try_into()
+                    .and_then(|k| Ok((k, units_ns.try_into()?)))
+                    .map_err(|e| {
+                        KlickhouseError::DeserializeError(format!(
+                            "failed to convert DateTime: {:?}",
+                            e
+                        ))
+                    })?;
+                Ok(tz.timestamp(seconds, units_ns))
+            }
+            Value::DateTime(date) => Ok(date.try_into().map_err(|e| {
+                KlickhouseError::DeserializeError(format!("failed to convert DateTime: {:?}", e))
+            })?),
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl<const PRECISION: usize> TryFrom<chrono::DateTime<Utc>> for DateTime64<PRECISION> {
+    type Error = TryFromIntError;
+
+    fn try_from(other: chrono::DateTime<Utc>) -> Result<Self, TryFromIntError> {
+        let seconds: u64 = other.timestamp().try_into()?;
+        let sub_seconds: u64 = other.timestamp_subsec_nanos() as u64;
+        let total =
+            seconds * 10u64.pow(PRECISION as u32) + sub_seconds / 10u64.pow(9 - PRECISION as u32);
+        Ok(Self(chrono_tz::UTC, total))
+    }
+}
+
 impl<const PRECISION: usize> TryFrom<DateTime64<PRECISION>> for chrono::DateTime<Tz> {
     type Error = TryFromIntError;
 
     fn try_from(date: DateTime64<PRECISION>) -> Result<Self, TryFromIntError> {
-        Ok(date.0.timestamp(date.1.try_into()?, 0))
+        let seconds = date.1 / 10u64.pow(PRECISION as u32);
+        let units = date.1 % 10u64.pow(PRECISION as u32);
+        let units_ns = units * 10u64.pow(9 - PRECISION as u32);
+        Ok(date.0.timestamp(seconds.try_into()?, units_ns.try_into()?))
     }
 }
 impl<const PRECISION: usize> TryFrom<chrono::DateTime<Tz>> for DateTime64<PRECISION> {
     type Error = TryFromIntError;
 
     fn try_from(other: chrono::DateTime<Tz>) -> Result<Self, TryFromIntError> {
-        Ok(Self(other.timezone(), other.timestamp().try_into()?))
+        let seconds: u64 = other.timestamp().try_into()?;
+        let sub_seconds: u64 = other.timestamp_subsec_nanos() as u64;
+        let total =
+            seconds * 10u64.pow(PRECISION as u32) + sub_seconds / 10u64.pow(9 - PRECISION as u32);
+        Ok(Self(other.timezone(), total))
     }
 }
 
@@ -160,9 +285,53 @@ mod chrono_tests {
     fn test_datetime() {
         for i in (0..30000u32).map(|x| x * 10000) {
             let date = DateTime(UTC, i);
-            let chrono_date: chrono::DateTime<Tz> = date.into();
+            let chrono_date: chrono::DateTime<Tz> = date.try_into().unwrap();
             let new_date = DateTime::try_from(chrono_date).unwrap();
             assert_eq!(new_date, date);
+        }
+    }
+
+    #[test]
+    fn test_datetime64() {
+        for i in (0..30000u64).map(|x| x * 10000) {
+            let date = DateTime64::<6>(UTC, i);
+            let chrono_date: chrono::DateTime<Tz> = date.try_into().unwrap();
+            let new_date = DateTime64::try_from(chrono_date).unwrap();
+            assert_eq!(new_date, date);
+        }
+    }
+
+    #[test]
+    fn test_datetime64_precision() {
+        for i in (0..30000u64).map(|x| x * 10000) {
+            let date = DateTime64::<6>(UTC, i);
+            let date_value = date.to_sql().unwrap();
+            assert_eq!(date_value, Value::DateTime64(UTC, 6, i));
+            let chrono_date: chrono::DateTime<Utc> =
+                FromSql::from_sql(&Type::DateTime64(6, UTC), date_value).unwrap();
+            let new_date = DateTime64::try_from(chrono_date).unwrap();
+            assert_eq!(new_date, date);
+        }
+    }
+
+    #[test]
+    fn test_datetime64_precision2() {
+        for i in (0..300u64).map(|x| x * 10000) {
+            let chrono_time = Utc.timestamp(i as i64, i as u32);
+            let date = chrono_time.to_sql().unwrap();
+            let out_time: chrono::DateTime<Utc> =
+                FromSql::from_sql(&Type::DateTime64(9, UTC), date.clone()).unwrap();
+            assert_eq!(chrono_time, out_time);
+            let date = match date {
+                Value::DateTime64(tz, precision, value) => {
+                    Value::DateTime64(tz, precision - 3, value / 1000)
+                }
+                _ => unimplemented!(),
+            };
+            let out_time: chrono::DateTime<Utc> =
+                FromSql::from_sql(&Type::DateTime64(9, UTC), date.clone()).unwrap();
+
+            assert_eq!(chrono_time, out_time);
         }
     }
 
@@ -177,7 +346,7 @@ mod chrono_tests {
 
         let date = DateTime(UTC, dt.timestamp() as u32);
 
-        let new_chrono_date: chrono::DateTime<Tz> = date.into();
+        let new_chrono_date: chrono::DateTime<Tz> = date.try_into().unwrap();
 
         assert_eq!(new_chrono_date, chrono_date);
     }
