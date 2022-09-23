@@ -14,7 +14,6 @@ use tokio::{
 };
 use tokio_stream::wrappers::ReceiverStream;
 
-use crate::Result;
 use crate::{
     block::{Block, BlockInfo},
     convert::Row,
@@ -26,6 +25,7 @@ use crate::{
     protocol::{self, ServerPacket},
     KlickhouseError,
 };
+use crate::{convert::UnitValue, Result};
 use log::*;
 
 struct InnerClient<R: ClickhouseRead, W: ClickhouseWrite> {
@@ -409,6 +409,36 @@ impl Client {
                 .collect::<Vec<_>>();
             stream::iter(blocks)
         }))
+    }
+
+    /// Same as `query`, but collects all rows into a `Vec`
+    pub async fn query_collect<T: Row>(&self, query: &str) -> Result<Vec<T>> {
+        let mut out = vec![];
+        let mut stream = self.query::<T>(query).await?;
+        while let Some(next) = stream.next().await {
+            out.push(next?);
+        }
+        Ok(out)
+    }
+
+    /// Same as `query`, but returns the first row and discards the rest.
+    pub async fn query_one<T: Row>(&self, query: &str) -> Result<T> {
+        self.query::<T>(query)
+            .await?
+            .next()
+            .await
+            .unwrap_or_else(|| Err(KlickhouseError::MissingRow))
+    }
+
+    /// Same as `query`, but returns the first row, if any, and discards the rest.
+    pub async fn query_opt<T: Row>(&self, query: &str) -> Result<Option<T>> {
+        self.query::<T>(query).await?.next().await.transpose()
+    }
+
+    /// Same as `query`, but returns the first row, if any, and discards the rest.
+    pub async fn execute(&self, query: &str) -> Result<()> {
+        let _ = self.query::<UnitValue<String>>(query).await?;
+        Ok(())
     }
 
     /// true if the Client is closed

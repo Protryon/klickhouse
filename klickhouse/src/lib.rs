@@ -15,10 +15,13 @@ mod internal_client_out;
 mod io;
 #[cfg(feature = "bb8")]
 mod manager;
+#[cfg(feature = "refinery")]
+mod migrate;
 mod progress;
 mod protocol;
 mod types;
 mod values;
+
 #[cfg(feature = "bb8")]
 pub use manager::ConnectionManager;
 

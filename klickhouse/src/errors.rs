@@ -6,6 +6,8 @@ use crate::Type;
 
 #[derive(Error, Debug)]
 pub enum KlickhouseError {
+    #[error("no rows received when expecting at least one row")]
+    MissingRow,
     #[error("missing field {0}")]
     MissingField(&'static str),
     #[error("duplicate field {0} in struct")]
