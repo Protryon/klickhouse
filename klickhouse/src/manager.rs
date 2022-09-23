@@ -1,6 +1,5 @@
 use std::net::SocketAddr;
-
-use futures::StreamExt;
+use tokio::net::ToSocketAddrs;
 
 use crate::{convert::UnitValue, Client, ClientOptions, KlickhouseError};
 
@@ -8,6 +7,18 @@ use crate::{convert::UnitValue, Client, ClientOptions, KlickhouseError};
 pub struct ConnectionManager {
     destination: Vec<SocketAddr>,
     options: ClientOptions,
+}
+
+impl ConnectionManager {
+    pub async fn new<A: ToSocketAddrs>(
+        destination: A,
+        options: ClientOptions,
+    ) -> std::io::Result<Self> {
+        Ok(Self {
+            destination: tokio::net::lookup_host(destination).await?.collect(),
+            options,
+        })
+    }
 }
 
 #[async_trait::async_trait]
@@ -22,10 +33,7 @@ impl bb8::ManageConnection for ConnectionManager {
     }
 
     async fn is_valid(&self, conn: &mut Self::Connection) -> Result<(), Self::Error> {
-        let mut stream = conn.query::<UnitValue<String>>("select '';").await?;
-        stream.next().await.ok_or_else(|| {
-            KlickhouseError::DeserializeError("invalid ping response".to_string())
-        })?;
+        let _ = conn.query_one::<UnitValue<String>>("select '';").await?;
         Ok(())
     }
 

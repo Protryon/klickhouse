@@ -1,6 +1,6 @@
 [package]
 name = "klickhouse"
-version = "0.5.2"
+version = "0.5.3"
 authors = ["Protryon <max.bruce12@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -32,7 +32,7 @@ tokio = { version = "1", features = ["full"] }
 env_logger = "0.9"
 
 [features]
-default = ["derive", "compression"]
+default = ["derive", "compression", "bb8"]
 derive = ["klickhouse_derive"]
 compression = ["lz4"]
 refinery = ["refinery-core", "time"]
