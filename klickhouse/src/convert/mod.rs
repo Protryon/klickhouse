@@ -37,3 +37,18 @@ pub trait Row: Sized {
 
     fn serialize_row(self) -> Result<Vec<(&'static str, Value)>>;
 }
+
+pub struct UnitValue<T: FromSql + ToSql>(pub T);
+
+impl<T: FromSql + ToSql> Row for UnitValue<T> {
+    fn deserialize_row(map: Vec<(&str, &Type, Value)>) -> Result<Self> {
+        if map.is_empty() {
+            return Err(KlickhouseError::MissingField("<unit>"));
+        }
+        T::from_sql(map[0].1, map[0].2).map(UnitValue)
+    }
+
+    fn serialize_row(self) -> Result<Vec<(&'static str, Value)>> {
+        Ok(vec![("_", self.0.to_sql()?)])
+    }
+}

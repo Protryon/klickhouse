@@ -410,4 +410,9 @@ impl Client {
             stream::iter(blocks)
         }))
     }
+
+    /// true if the Client is closed
+    pub fn is_closed(&self) -> bool {
+        self.sender.is_closed()
+    }
 }

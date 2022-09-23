@@ -13,10 +13,14 @@ mod errors;
 mod internal_client_in;
 mod internal_client_out;
 mod io;
+#[cfg(feature = "bb8")]
+mod manager;
 mod progress;
 mod protocol;
 mod types;
 mod values;
+#[cfg(feature = "bb8")]
+pub use manager::ConnectionManager;
 
 pub use uuid::Uuid;
 
