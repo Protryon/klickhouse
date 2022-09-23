@@ -2,7 +2,7 @@
 name = "klickhouse_derive"
 version = "0.3.0"
 authors = ["Protryon <max.bruce12@gmail.com>"]
-edition = "2018"
+edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/Protryon/klickhouse"
 description = "proc-macro crate for klickhouse"

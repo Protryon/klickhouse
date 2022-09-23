@@ -2,7 +2,7 @@
 name = "klickhouse"
 version = "0.3.0"
 authors = ["Protryon <max.bruce12@gmail.com>"]
-edition = "2018"
+edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/Protryon/klickhouse"
 description = "Klickhouse is a pure Rust SDK for working with Clickhouse with the native protocol in async environments with minimal boilerplate and maximal performance."

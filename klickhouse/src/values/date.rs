@@ -1,4 +1,6 @@
-use chrono::{Duration, Utc};
+use std::num::TryFromIntError;
+
+use chrono::{Duration, TimeZone, Utc};
 use chrono_tz::{Tz, UTC};
 
 use crate::{
@@ -71,29 +73,23 @@ impl Default for DateTime {
 
 impl From<DateTime> for chrono::DateTime<Tz> {
     fn from(date: DateTime) -> Self {
-        chrono::MIN_DATETIME.with_timezone(&date.0) + Duration::seconds(date.1 as i64)
+        date.0.timestamp(date.1 as i64, 0)
     }
 }
 
-impl From<chrono::DateTime<Tz>> for DateTime {
-    fn from(other: chrono::DateTime<Tz>) -> Self {
-        Self(
-            other.timezone(),
-            other
-                .signed_duration_since(chrono::MIN_DATETIME)
-                .num_seconds() as u32,
-        )
+impl TryFrom<chrono::DateTime<Tz>> for DateTime {
+    type Error = TryFromIntError;
+
+    fn try_from(other: chrono::DateTime<Tz>) -> Result<Self, TryFromIntError> {
+        Ok(Self(other.timezone(), other.timestamp().try_into()?))
     }
 }
 
-impl From<chrono::DateTime<chrono::Utc>> for DateTime {
-    fn from(other: chrono::DateTime<Utc>) -> Self {
-        Self(
-            chrono_tz::UTC,
-            other
-                .signed_duration_since(chrono::MIN_DATETIME)
-                .num_seconds() as u32,
-        )
+impl TryFrom<chrono::DateTime<chrono::Utc>> for DateTime {
+    type Error = TryFromIntError;
+
+    fn try_from(other: chrono::DateTime<chrono::Utc>) -> Result<Self, TryFromIntError> {
+        Ok(Self(chrono_tz::UTC, other.timestamp().try_into()?))
     }
 }
 
@@ -125,26 +121,25 @@ impl<const PRECISION: usize> Default for DateTime64<PRECISION> {
     }
 }
 
-impl<const PRECISION: usize> From<DateTime64<PRECISION>> for chrono::DateTime<Tz> {
-    fn from(date: DateTime64<PRECISION>) -> Self {
-        chrono::MIN_DATETIME.with_timezone(&date.0) + Duration::seconds(date.1 as i64)
+impl<const PRECISION: usize> TryFrom<DateTime64<PRECISION>> for chrono::DateTime<Tz> {
+    type Error = TryFromIntError;
+
+    fn try_from(date: DateTime64<PRECISION>) -> Result<Self, TryFromIntError> {
+        Ok(date.0.timestamp(date.1.try_into()?, 0))
     }
 }
+impl<const PRECISION: usize> TryFrom<chrono::DateTime<Tz>> for DateTime64<PRECISION> {
+    type Error = TryFromIntError;
 
-impl<const PRECISION: usize> From<chrono::DateTime<Tz>> for DateTime64<PRECISION> {
-    fn from(other: chrono::DateTime<Tz>) -> Self {
-        Self(
-            other.timezone(),
-            other
-                .signed_duration_since(chrono::MIN_DATETIME)
-                .num_seconds() as u64,
-        )
+    fn try_from(other: chrono::DateTime<Tz>) -> Result<Self, TryFromIntError> {
+        Ok(Self(other.timezone(), other.timestamp().try_into()?))
     }
 }
 
 #[cfg(test)]
 mod chrono_tests {
     use super::*;
+    use chrono::TimeZone;
     use chrono_tz::UTC;
 
     #[test]
@@ -162,8 +157,24 @@ mod chrono_tests {
         for i in (0..30000u32).map(|x| x * 10000) {
             let date = DateTime(UTC, i);
             let chrono_date: chrono::DateTime<Tz> = date.into();
-            let new_date = DateTime::from(chrono_date);
+            let new_date = DateTime::try_from(chrono_date).unwrap();
             assert_eq!(new_date, date);
         }
+    }
+
+    #[test]
+    fn test_consistency_with_convert_for_str() {
+        let test_date = "2022-04-22 00:00:00";
+
+        let dt = chrono::NaiveDateTime::parse_from_str(test_date, "%Y-%m-%d %H:%M:%S").unwrap();
+
+        let chrono_date =
+            chrono::DateTime::<Tz>::from_utc(dt, chrono_tz::UTC.offset_from_utc_datetime(&dt));
+
+        let date = DateTime(UTC, dt.timestamp() as u32);
+
+        let new_chrono_date: chrono::DateTime<Tz> = date.into();
+
+        assert_eq!(new_chrono_date, chrono_date);
     }
 }

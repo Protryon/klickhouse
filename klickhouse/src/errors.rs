@@ -31,4 +31,4 @@ pub enum KlickhouseError {
     Utf8(#[from] FromUtf8Error),
 }
 
-pub type Result<T> = std::result::Result<T, KlickhouseError>;
+pub type Result<T, E = KlickhouseError> = std::result::Result<T, E>;
