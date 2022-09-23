@@ -45,7 +45,8 @@ impl<T: FromSql + ToSql> Row for UnitValue<T> {
         if map.is_empty() {
             return Err(KlickhouseError::MissingField("<unit>"));
         }
-        T::from_sql(map[0].1, map[0].2).map(UnitValue)
+        let item = map.into_iter().next().unwrap();
+        T::from_sql(item.1, item.2).map(UnitValue)
     }
 
     fn serialize_row(self) -> Result<Vec<(&'static str, Value)>> {
