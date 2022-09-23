@@ -10,7 +10,7 @@ keywords = [ "clickhouse", "database", "tokio", "sql" ]
 readme = "../README.md"
 
 [dependencies]
-tokio = { version = "1.21", features = ["io-util", "net", "sync", "rt"] }
+tokio = { version = "1.21", features = ["io-util", "net", "sync", "rt", "macros"] }
 async-trait = "0.1"
 thiserror = "1.0"
 log = "0.4"
