@@ -1,6 +1,6 @@
 [package]
 name = "klickhouse"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Protryon <max.bruce12@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -14,19 +14,19 @@ tokio = { version = "1", features = ["io-util", "net", "sync", "rt"] }
 async-trait = "0.1"
 thiserror = "1.0"
 log = "0.4"
-indexmap = { version = "1.6" }
-uuid = { version = "0.8", features = ["v4"] }
+indexmap = { version = "1.9" }
+uuid = { version = "1.1", features = ["v4"] }
 chrono = "0.4"
-chrono-tz = "0.5"
+chrono-tz = "0.6"
 futures = "0.3"
 tokio-stream = "0.1"
-lz4 = { version = "1.23", optional = true }
-klickhouse_derive = { version = "=0.3.0", optional = true, path = "../klickhouse_derive" }
+lz4 = { version = "1.24", optional = true }
+klickhouse_derive = { version = "=0.4.0", optional = true, path = "../klickhouse_derive" }
 cityhash-rs = "1.0"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
-env_logger = "0.6"
+env_logger = "0.9"
 
 [features]
 default = ["derive", "compression"]
