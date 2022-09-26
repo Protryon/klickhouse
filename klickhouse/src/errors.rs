@@ -8,6 +8,10 @@ use crate::Type;
 pub enum KlickhouseError {
     #[error("no rows received when expecting at least one row")]
     MissingRow,
+    #[error("can't fetch the same column twice from RawRow")]
+    DoubleFetch,
+    #[error("column index was out of bounds or not present")]
+    OutOfBounds,
     #[error("missing field {0}")]
     MissingField(&'static str),
     #[error("duplicate field {0} in struct")]
