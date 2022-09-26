@@ -34,7 +34,7 @@ pub use uuid::Uuid;
 pub use klickhouse_derive::Row;
 
 pub use client::*;
-pub use convert::{FromSql, RawRow, Row, ToSql, UnitValue};
+pub use convert::*;
 pub use errors::*;
 pub use types::Type;
 pub use values::*;
