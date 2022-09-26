@@ -2,6 +2,7 @@ use crate::FromSql;
 use async_trait::async_trait;
 use refinery_core::traits::r#async::{AsyncMigrate, AsyncQuery, AsyncTransaction};
 use refinery_core::Migration;
+use std::borrow::Cow;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
@@ -151,7 +152,7 @@ impl Row for Migration {
         .into())
     }
 
-    fn serialize_row(self) -> Result<Vec<(&'static str, Value)>> {
+    fn serialize_row(self) -> Result<Vec<(Cow<'static, str>, Value)>> {
         unimplemented!()
     }
 }

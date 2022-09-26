@@ -368,14 +368,14 @@ impl Client {
                 })
                 .try_for_each(|x| -> Result<()> {
                     for (key, value) in x {
-                        let type_ = first_block.column_types.get(key).ok_or_else(|| {
+                        let type_ = first_block.column_types.get(&*key).ok_or_else(|| {
                             KlickhouseError::ProtocolError("missing type for data".to_string())
                         })?;
                         type_.validate_value(&value)?;
-                        if let Some(column) = block.column_data.get_mut(key) {
+                        if let Some(column) = block.column_data.get_mut(&*key) {
                             column.push(value);
                         } else {
-                            block.column_data.insert(key.to_string(), vec![value]);
+                            block.column_data.insert(key.into_owned(), vec![value]);
                         }
                     }
                     Ok(())

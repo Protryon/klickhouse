@@ -104,7 +104,7 @@ pub fn expand_derive_serialize(
                 #deserialize_body
             }
 
-            fn serialize_row(self) -> ::klickhouse::Result<Vec<(&'static str, ::klickhouse::Value)>> {
+            fn serialize_row(self) -> ::klickhouse::Result<Vec<(::std::borrow::Cow<'static, str>, ::klickhouse::Value)>> {
                 #serialize_body
             }
         }
@@ -170,12 +170,12 @@ fn serialize_struct_visitor(fields: &[Field], params: &Parameters) -> Vec<TokenS
             let ser = match field.attrs.serialize_with() {
                 Some(path) => {
                     quote! {
-                        out.push((#key_expr, #path(#field_expr)?));
+                        out.push((::std::borrow::Cow::Borrowed(#key_expr), #path(#field_expr)?));
                     }
                 },
                 None => {
                     quote! {
-                        out.push((#key_expr, <#field_ty as ::klickhouse::ToSql>::to_sql(#field_expr)?));
+                        out.push((::std::borrow::Cow::Borrowed(#key_expr), <#field_ty as ::klickhouse::ToSql>::to_sql(#field_expr)?));
                     }
                 },
             };

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::{types::Type, KlickhouseError, Result, Value};
 
 mod std_deserialize;
@@ -35,7 +37,7 @@ impl FromSql for Value {
 pub trait Row: Sized {
     fn deserialize_row(map: Vec<(&str, &Type, Value)>) -> Result<Self>;
 
-    fn serialize_row(self) -> Result<Vec<(&'static str, Value)>>;
+    fn serialize_row(self) -> Result<Vec<(Cow<'static, str>, Value)>>;
 }
 
 pub struct UnitValue<T: FromSql + ToSql>(pub T);
@@ -49,7 +51,27 @@ impl<T: FromSql + ToSql> Row for UnitValue<T> {
         T::from_sql(item.1, item.2).map(UnitValue)
     }
 
-    fn serialize_row(self) -> Result<Vec<(&'static str, Value)>> {
-        Ok(vec![("_", self.0.to_sql()?)])
+    fn serialize_row(self) -> Result<Vec<(Cow<'static, str>, Value)>> {
+        Ok(vec![(Cow::Borrowed("_"), self.0.to_sql()?)])
+    }
+}
+
+pub struct RawRow(Vec<(String, Type, Value)>);
+
+impl Row for RawRow {
+    fn deserialize_row(map: Vec<(&str, &Type, Value)>) -> Result<Self> {
+        Ok(Self(
+            map.into_iter()
+                .map(|(name, type_, value)| (name.to_string(), type_.clone(), value))
+                .collect(),
+        ))
+    }
+
+    fn serialize_row(self) -> Result<Vec<(Cow<'static, str>, Value)>> {
+        Ok(self
+            .0
+            .into_iter()
+            .map(|(name, _, value)| (Cow::Owned(name), value))
+            .collect())
     }
 }
