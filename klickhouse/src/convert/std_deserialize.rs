@@ -7,6 +7,18 @@ use indexmap::IndexMap;
 
 use super::*;
 
+impl FromSql for bool {
+    fn from_sql(type_: &Type, value: Value) -> Result<Self> {
+        if !matches!(type_, Type::UInt8) {
+            return Err(unexpected_type(type_));
+        }
+        match value {
+            Value::UInt8(x) => Ok(x != 0),
+            _ => unimplemented!(),
+        }
+    }
+}
+
 impl FromSql for u8 {
     fn from_sql(type_: &Type, value: Value) -> Result<Self> {
         if !matches!(type_, Type::UInt8) {

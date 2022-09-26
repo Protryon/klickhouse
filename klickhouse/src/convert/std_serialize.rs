@@ -10,6 +10,12 @@ impl ToSql for u8 {
     }
 }
 
+impl ToSql for bool {
+    fn to_sql(self) -> Result<Value> {
+        Ok(Value::UInt8(self as u8))
+    }
+}
+
 impl ToSql for u16 {
     fn to_sql(self) -> Result<Value> {
         Ok(Value::UInt16(self))
