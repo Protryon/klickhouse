@@ -1,6 +1,6 @@
 [package]
 name = "klickhouse"
-version = "0.5.3"
+version = "0.6.0"
 authors = ["Protryon <max.bruce12@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -26,6 +26,8 @@ cityhash-rs = "1.0"
 bb8 = { version = "0.8", optional = true }
 refinery-core = { version = "0.8", optional = true }
 time = { version = "0.3.5", features = ["parsing", "formatting"], optional = true }
+compiler-tools = "0.1.7"
+compiler-tools-derive = "0.1.7"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }

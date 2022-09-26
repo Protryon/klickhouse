@@ -23,7 +23,7 @@ use crate::{
     },
     io::{ClickhouseRead, ClickhouseWrite},
     protocol::{self, ServerPacket},
-    KlickhouseError,
+    KlickhouseError, ParsedQuery,
 };
 use crate::{convert::UnitValue, Result};
 use log::*;
@@ -218,41 +218,48 @@ impl Default for ClientOptions {
 
 impl Client {
     /// Consumes a reader and writer to connect to Klickhouse. To be used for exotic setups or TLS. Generally prefer [`Client::connect()`]
-    pub fn connect_stream(
+    pub async fn connect_stream(
         read: impl AsyncRead + Unpin + Send + Sync + 'static,
         writer: impl AsyncWrite + Unpin + Send + Sync + 'static,
         options: ClientOptions,
-    ) -> Self {
+    ) -> Result<Self> {
         Self::start(InnerClient::new(
             BufReader::new(read),
             BufWriter::new(writer),
             options,
         ))
+        .await
     }
 
     /// Connects to a specific socket address over plaintext TCP for Clickhouse.
-    pub async fn connect<A: ToSocketAddrs>(
-        destination: A,
-        options: ClientOptions,
-    ) -> std::io::Result<Self> {
+    pub async fn connect<A: ToSocketAddrs>(destination: A, options: ClientOptions) -> Result<Self> {
         let (read, writer) = TcpStream::connect(destination).await?.into_split();
-        Ok(Self::connect_stream(read, writer, options))
+        Ok(Self::connect_stream(read, writer, options).await?)
     }
 
-    fn start<R: ClickhouseRead + 'static, W: ClickhouseWrite>(inner: InnerClient<R, W>) -> Self {
+    async fn start<R: ClickhouseRead + 'static, W: ClickhouseWrite>(
+        inner: InnerClient<R, W>,
+    ) -> Result<Self> {
         let (sender, receiver) = mpsc::channel(1024);
         tokio::spawn(inner.run(receiver));
-        Client { sender }
+        let client = Client { sender };
+        client
+            .execute("SET date_time_input_format='best_effort'")
+            .await?;
+        Ok(client)
     }
 
     /// Sends a query string and read column blocks over a stream.
     /// You probably want [`Client::query()`]
-    pub async fn query_raw(&self, query: &str) -> Result<impl Stream<Item = Block>> {
+    pub async fn query_raw(
+        &self,
+        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
+    ) -> Result<impl Stream<Item = Block>> {
         let (sender, receiver) = oneshot::channel();
         self.sender
             .send(ClientRequest {
                 data: ClientRequestData::Query {
-                    query: query.to_string(),
+                    query: query.try_into()?.0,
                     response: sender,
                 },
             })
@@ -288,14 +295,14 @@ impl Client {
     /// You probably want [`Client::insert_native`].
     pub async fn insert_native_raw(
         &self,
-        query: &str,
+        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
         mut blocks: impl Stream<Item = Block> + Send + Sync + Unpin + 'static,
     ) -> Result<impl Stream<Item = Block>> {
         let (sender, receiver) = oneshot::channel();
         self.sender
             .send(ClientRequest {
                 data: ClientRequestData::Query {
-                    query: query.to_string(),
+                    query: query.try_into()?.0,
                     response: sender,
                 },
             })
@@ -324,14 +331,14 @@ impl Client {
     /// Make sure any query you send native data with has a `format native` suffix.
     pub async fn insert_native<T: Row + Send + Sync + 'static>(
         &self,
-        query: &str,
+        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
         mut blocks: impl Stream<Item = Vec<T>> + Send + Sync + Unpin + 'static,
     ) -> Result<()> {
         let (sender, receiver) = oneshot::channel();
         self.sender
             .send(ClientRequest {
                 data: ClientRequestData::Query {
-                    query: query.to_string(),
+                    query: query.try_into()?.0,
                     response: sender,
                 },
             })
@@ -389,7 +396,7 @@ impl Client {
     /// Make sure any query you send native data with has a `format native` suffix.
     pub async fn insert_native_block<T: Row + Send + Sync + 'static>(
         &self,
-        query: &str,
+        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
         blocks: Vec<T>,
     ) -> Result<()> {
         let blocks = Box::pin(async move { blocks });
@@ -399,7 +406,10 @@ impl Client {
 
     /// Runs a query against Clickhouse, returning a stream of deserialized rows.
     /// Note that no rows are returned until Clickhouse sends a full block (but it usually sends more than one block).
-    pub async fn query<T: Row>(&self, query: &str) -> Result<impl Stream<Item = Result<T>>> {
+    pub async fn query<T: Row>(
+        &self,
+        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
+    ) -> Result<impl Stream<Item = Result<T>>> {
         let raw = self.query_raw(query).await?;
         Ok(raw.flat_map(|mut block| {
             let blocks = block
@@ -412,7 +422,10 @@ impl Client {
     }
 
     /// Same as `query`, but collects all rows into a `Vec`
-    pub async fn query_collect<T: Row>(&self, query: &str) -> Result<Vec<T>> {
+    pub async fn query_collect<T: Row>(
+        &self,
+        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
+    ) -> Result<Vec<T>> {
         let mut out = vec![];
         let mut stream = self.query::<T>(query).await?;
         while let Some(next) = stream.next().await {
@@ -422,7 +435,10 @@ impl Client {
     }
 
     /// Same as `query`, but returns the first row and discards the rest.
-    pub async fn query_one<T: Row>(&self, query: &str) -> Result<T> {
+    pub async fn query_one<T: Row>(
+        &self,
+        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
+    ) -> Result<T> {
         self.query::<T>(query)
             .await?
             .next()
@@ -431,12 +447,18 @@ impl Client {
     }
 
     /// Same as `query`, but returns the first row, if any, and discards the rest.
-    pub async fn query_opt<T: Row>(&self, query: &str) -> Result<Option<T>> {
+    pub async fn query_opt<T: Row>(
+        &self,
+        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
+    ) -> Result<Option<T>> {
         self.query::<T>(query).await?.next().await.transpose()
     }
 
     /// Same as `query`, but returns the first row, if any, and discards the rest.
-    pub async fn execute(&self, query: &str) -> Result<()> {
+    pub async fn execute(
+        &self,
+        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
+    ) -> Result<()> {
         let _ = self.query::<UnitValue<String>>(query).await?;
         Ok(())
     }

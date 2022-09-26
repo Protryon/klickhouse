@@ -55,9 +55,9 @@ pub enum Type {
     Ipv6,
 
     /// Not supported
-    Enum8(Vec<(String, u8)>),
+    Enum8(Vec<(String, i8)>),
     /// Not supported
-    Enum16(Vec<(String, u16)>),
+    Enum16(Vec<(String, i16)>),
 
     LowCardinality(Box<Type>),
 

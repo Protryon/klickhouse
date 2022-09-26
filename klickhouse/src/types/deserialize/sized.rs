@@ -67,8 +67,8 @@ impl Deserializer for SizedDeserializer {
                 let raw = reader.read_u64_le().await?;
                 Value::DateTime64(*tz, *precision, raw)
             }
-            Type::Enum8(_) => Value::Enum8(reader.read_u8().await?),
-            Type::Enum16(_) => Value::Enum16(reader.read_u16_le().await?),
+            Type::Enum8(_) => Value::Enum8(reader.read_i8().await?),
+            Type::Enum16(_) => Value::Enum16(reader.read_i16_le().await?),
             _ => unimplemented!(),
         })
     }

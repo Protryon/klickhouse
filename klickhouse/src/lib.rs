@@ -19,8 +19,11 @@ mod manager;
 mod migrate;
 mod progress;
 mod protocol;
+mod query;
+mod query_parser;
 mod types;
 mod values;
+pub use query::*;
 
 #[cfg(feature = "bb8")]
 pub use manager::ConnectionManager;

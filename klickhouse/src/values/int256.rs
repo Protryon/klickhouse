@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::{
     convert::{unexpected_type, FromSql, ToSql},
     types::Type,
@@ -53,6 +55,15 @@ impl From<(u128, u128)> for i256 {
     }
 }
 
+impl fmt::Display for i256 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "0x")?;
+        for b in self.0 {
+            write!(f, "{b:02X}")?;
+        }
+        Ok(())
+    }
+}
 /// Wrapper type for Clickhouse `UInt256` type.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Default)]
 #[allow(non_camel_case_types)]
@@ -99,5 +110,15 @@ impl From<(u128, u128)> for u256 {
         buf[..16].copy_from_slice(&other.0.to_be_bytes()[..]);
         buf[16..].copy_from_slice(&other.1.to_be_bytes()[..]);
         u256(buf)
+    }
+}
+
+impl fmt::Display for u256 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "0x")?;
+        for b in self.0 {
+            write!(f, "{b:02X}")?;
+        }
+        Ok(())
     }
 }

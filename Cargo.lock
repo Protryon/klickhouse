@@ -135,6 +135,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93a719913643003b84bd13022b4b7e703c09342cd03b679c4641c7d2e50dc34d"
 
 [[package]]
+name = "compiler-tools"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ae8d475ca78f45d786aa0c47c70a05cd7420419e98ef29281aaf48987f49d65"
+dependencies = [
+ "once_cell",
+ "regex",
+ "serde",
+]
+
+[[package]]
+name = "compiler-tools-derive"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "efc08ae3c185634f8388f57387e09128f3840ef3d5b74d3a7c51d093edf77af8"
+dependencies = [
+ "indexmap",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "syn",
+]
+
+[[package]]
 name = "core-foundation-sys"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -333,13 +357,15 @@ dependencies = [
 
 [[package]]
 name = "klickhouse"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "async-trait",
  "bb8",
  "chrono",
  "chrono-tz",
  "cityhash-rs",
+ "compiler-tools",
+ "compiler-tools-derive",
  "env_logger",
  "futures",
  "indexmap",

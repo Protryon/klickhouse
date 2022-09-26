@@ -27,9 +27,7 @@ impl bb8::ManageConnection for ConnectionManager {
     type Error = KlickhouseError;
 
     async fn connect(&self) -> Result<Self::Connection, Self::Error> {
-        Client::connect(&self.destination[..], self.options.clone())
-            .await
-            .map_err(|e| KlickhouseError::Io(e))
+        Client::connect(&self.destination[..], self.options.clone()).await
     }
 
     async fn is_valid(&self, conn: &mut Self::Connection) -> Result<(), Self::Error> {

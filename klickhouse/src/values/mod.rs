@@ -1,5 +1,6 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, fmt};
 
+use chrono::{SecondsFormat, Utc};
 use chrono_tz::Tz;
 
 use crate::{
@@ -57,8 +58,8 @@ pub enum Value {
     DateTime(DateTime),
     DateTime64(Tz, usize, u64),
 
-    Enum8(u8),
-    Enum16(u16),
+    Enum8(i8),
+    Enum16(i16),
 
     Array(Vec<Value>),
 
@@ -148,6 +149,153 @@ impl Value {
             ),
             Value::Ipv4(_) => Type::Ipv4,
             Value::Ipv6(_) => Type::Ipv6,
+        }
+    }
+}
+
+fn escape_string(f: &mut fmt::Formatter<'_>, from: &str) -> fmt::Result {
+    for (i, c) in from.char_indices() {
+        let c_int = c as u32;
+        if c_int < 128 {
+            match c_int as u8 {
+                b'\\' => write!(f, "\\\\")?,
+                b'\'' => write!(f, "\\'")?,
+                0x08 => write!(f, "\\b")?,
+                0x0C => write!(f, "\\f")?,
+                b'\r' => write!(f, "\\r")?,
+                b'\n' => write!(f, "\\n")?,
+                b'\t' => write!(f, "\\t")?,
+                b'\0' => write!(f, "\\0")?,
+                0x07 => write!(f, "\\a")?,
+                0x0B => write!(f, "\\v")?,
+                _ => write!(f, "{c}")?,
+            }
+        } else {
+            for i in i..i + c.len_utf8() {
+                let byte = from.as_bytes()[i];
+                write!(f, "\\x{byte:02X}")?;
+            }
+        }
+    }
+    Ok(())
+}
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Value::Int8(x) => write!(f, "{x}"),
+            Value::Int16(x) => write!(f, "{x}"),
+            Value::Int32(x) => write!(f, "{x}"),
+            Value::Int64(x) => write!(f, "{x}"),
+            Value::Int128(x) => write!(f, "{x}"),
+            Value::Int256(x) => write!(f, "{x}"),
+            Value::UInt8(x) => write!(f, "{x}"),
+            Value::UInt16(x) => write!(f, "{x}"),
+            Value::UInt32(x) => write!(f, "{x}"),
+            Value::UInt64(x) => write!(f, "{x}"),
+            Value::UInt128(x) => write!(f, "{x}"),
+            Value::UInt256(x) => write!(f, "{x}"),
+            Value::Float32(x) => write!(f, "{x}"),
+            Value::Float64(x) => write!(f, "{x}"),
+            Value::Decimal32(precision, value) => {
+                let raw_value = value.to_string();
+                if raw_value.len() < *precision {
+                    write!(f, "{raw_value}")
+                } else {
+                    let pre = &raw_value[..raw_value.len() - precision];
+                    let fraction = &raw_value[raw_value.len() - precision..];
+                    write!(f, "{pre}.{fraction}")
+                }
+            }
+            Value::Decimal64(precision, value) => {
+                let raw_value = value.to_string();
+                if raw_value.len() < *precision {
+                    write!(f, "{raw_value}")
+                } else {
+                    let pre = &raw_value[..raw_value.len() - precision];
+                    let fraction = &raw_value[raw_value.len() - precision..];
+                    write!(f, "{pre}.{fraction}")
+                }
+            }
+            Value::Decimal128(precision, value) => {
+                let raw_value = value.to_string();
+                if raw_value.len() < *precision {
+                    write!(f, "{raw_value}")
+                } else {
+                    let pre = &raw_value[..raw_value.len() - precision];
+                    let fraction = &raw_value[raw_value.len() - precision..];
+                    write!(f, "{pre}.{fraction}")
+                }
+            }
+            Value::Decimal256(..) => {
+                unimplemented!("Decimal256 display not implemented");
+            }
+            Value::String(string) => {
+                write!(f, "'")?;
+                escape_string(f, &**string)?;
+                write!(f, "'")
+            }
+            Value::Uuid(uuid) => {
+                write!(f, "'{}'", uuid)
+            }
+            Value::Date(date) => {
+                let chrono_date: chrono::Date<Utc> = (*date).into();
+                write!(f, "'{}'", chrono_date.format("%Y-%m-%d"))
+            }
+            Value::DateTime(datetime) => {
+                let chrono_date: chrono::DateTime<Tz> =
+                    (*datetime).try_into().map_err(|_| fmt::Error)?;
+                let string = chrono_date.to_rfc3339_opts(SecondsFormat::AutoSi, true);
+                write!(f, "'")?;
+                escape_string(f, &*string)?;
+                write!(f, "'")
+            }
+            Value::DateTime64(tz, precision, _) => {
+                let chrono_date: chrono::DateTime<Tz> =
+                    FromSql::from_sql(&Type::DateTime64(*precision, *tz), self.clone())
+                        .map_err(|_| fmt::Error)?;
+                let string = chrono_date.to_rfc3339_opts(SecondsFormat::AutoSi, true);
+                write!(f, "'")?;
+                escape_string(f, &*string)?;
+                write!(f, "'")
+            }
+            Value::Enum8(x) => write!(f, "{x}"),
+            Value::Enum16(x) => write!(f, "{x}"),
+            Value::Array(array) => {
+                write!(f, "[")?;
+                if let Some(item) = array.get(0) {
+                    write!(f, "{}", item)?;
+                }
+                for item in array.iter().skip(1) {
+                    write!(f, ",{}", item)?;
+                }
+                write!(f, "]")
+            }
+            Value::Tuple(tuple) => {
+                write!(f, "(")?;
+                if let Some(item) = tuple.get(0) {
+                    write!(f, "{}", item)?;
+                }
+                for item in tuple.iter().skip(1) {
+                    write!(f, ",{}", item)?;
+                }
+                write!(f, ")")
+            }
+            Value::Null => write!(f, "NULL"),
+            Value::Map(keys, values) => {
+                assert_eq!(keys.len(), values.len());
+                write!(f, "{{")?;
+                let mut iter = keys.iter().zip(values.iter());
+                if let Some((key, value)) = iter.next() {
+                    write!(f, "{key}:{value}")?;
+                }
+                for (key, value) in iter {
+                    write!(f, ",{key}:{value}")?;
+                }
+                write!(f, "}}")
+            }
+            Value::Ipv4(ipv4) => write!(f, "'{ipv4}'"),
+            Value::Ipv6(ipv6) => write!(f, "'{ipv6}'"),
         }
     }
 }

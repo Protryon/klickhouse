@@ -481,3 +481,22 @@ fn roundtrip_map() {
         )
     );
 }
+
+#[test]
+fn test_escape() {
+    assert_eq!(Value::String("test".to_string()).to_string(), "'test'");
+    assert_eq!(Value::String("te\nst".to_string()).to_string(), "'te\\nst'");
+    assert_eq!(
+        Value::String("te\\nst".to_string()).to_string(),
+        "'te\\\\nst'"
+    );
+    assert_eq!(
+        Value::String("te\\xst".to_string()).to_string(),
+        "'te\\\\xst'"
+    );
+    assert_eq!(Value::String("te'st".to_string()).to_string(), "'te\\'st'");
+    assert_eq!(
+        Value::String("te\u{1F60A}st".to_string()).to_string(),
+        "'te\\xF0\\x9F\\x98\\x8Ast'"
+    );
+}
