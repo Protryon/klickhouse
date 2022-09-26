@@ -82,6 +82,12 @@ impl ToSql for String {
     }
 }
 
+impl<'a> ToSql for &'a str {
+    fn to_sql(self) -> Result<Value> {
+        Ok(Value::String(self.to_string()))
+    }
+}
+
 impl<T: ToSql> ToSql for Vec<T> {
     fn to_sql(self) -> Result<Value> {
         Ok(Value::Array(
@@ -148,15 +154,15 @@ impl<T: ToSql, const N: usize> ToSql for [T; N] {
     }
 }
 
-impl<'a, T: ToSql + Copy> ToSql for &'a T {
+impl<'a, T: ToSql + Clone> ToSql for &'a T {
     fn to_sql(self) -> Result<Value> {
-        (*self).to_sql()
+        self.clone().to_sql()
     }
 }
 
-impl<'a, T: ToSql + Copy> ToSql for &'a mut T {
+impl<'a, T: ToSql + Clone> ToSql for &'a mut T {
     fn to_sql(self) -> Result<Value> {
-        (*self).to_sql()
+        self.clone().to_sql()
     }
 }
 
