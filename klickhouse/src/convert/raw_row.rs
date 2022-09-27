@@ -31,10 +31,11 @@ pub trait RowIndex {
 
 impl RowIndex for usize {
     fn get<'a, I: IntoIterator<Item = &'a str>>(&self, columns: I) -> Option<usize> {
-        if columns.into_iter().count() > *self {
-            None
-        } else {
+        let count = columns.into_iter().count();
+        if count >= *self {
             Some(*self)
+        } else {
+            None
         }
     }
 }
@@ -74,7 +75,7 @@ impl RawRow {
         let (_, type_, value) = self
             .0
             .get_mut(index)
-            .ok_or_else(|| KlickhouseError::OutOfBounds)?
+            .unwrap()
             .take()
             .ok_or_else(|| KlickhouseError::DoubleFetch)?;
         T::from_sql(&type_, value)

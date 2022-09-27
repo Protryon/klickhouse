@@ -20,7 +20,7 @@ mod migrate;
 mod progress;
 mod protocol;
 mod query;
-mod query_parser;
+pub mod query_parser;
 mod types;
 mod values;
 pub use query::*;

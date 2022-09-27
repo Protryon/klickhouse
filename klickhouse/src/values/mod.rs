@@ -255,9 +255,9 @@ impl fmt::Display for Value {
                     FromSql::from_sql(&Type::DateTime64(*precision, *tz), self.clone())
                         .map_err(|_| fmt::Error)?;
                 let string = chrono_date.to_rfc3339_opts(SecondsFormat::AutoSi, true);
-                write!(f, "'")?;
+                write!(f, "parseDateTime64BestEffort('")?;
                 escape_string(f, &*string)?;
-                write!(f, "'")
+                write!(f, "', {precision})")
             }
             Value::Enum8(x) => write!(f, "{x}"),
             Value::Enum16(x) => write!(f, "{x}"),

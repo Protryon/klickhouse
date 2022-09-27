@@ -17,7 +17,7 @@ fn parse_heredoc(input: &str) -> Option<(&str, &str)> {
 
 #[token_parse]
 #[derive(PartialEq, Clone, Copy, Debug)]
-pub enum Token<'a> {
+enum Token<'a> {
     #[token(regex = "$[0-9]+")]
     ClientArgument(&'a str),
     #[token(parse_fn = "parse_heredoc")]
@@ -82,6 +82,7 @@ pub enum Token<'a> {
     Illegal(char),
 }
 
+/// Parses a query and replaces arguments with values
 pub fn parse_query_arguments(query: &str, arguments: &[Value]) -> String {
     let mut tokenizer = Tokenizer::new(query);
     let mut out = String::with_capacity(query.len() + 100);
@@ -100,8 +101,30 @@ pub fn parse_query_arguments(query: &str, arguments: &[Value]) -> String {
     out
 }
 
+/// Splits a series of semicolon-delimited queries into individual queries
+pub fn split_query_statements(query: &str) -> Vec<String> {
+    let mut tokenizer = Tokenizer::new(query);
+    let mut out = vec![String::new()];
+    while let Some(token) = tokenizer.next() {
+        match token.token {
+            Token::Semicolon => {
+                write!(out.last_mut().unwrap(), "{}", Token::Semicolon).unwrap();
+
+                out.push(String::new());
+            }
+            token => {
+                write!(out.last_mut().unwrap(), "{}", token).unwrap();
+            }
+        }
+    }
+    if out.last().unwrap().is_empty() {
+        out.pop();
+    }
+    out
+}
+
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use super::*;
     use compiler_tools::TokenParse;
 

@@ -273,31 +273,43 @@ fn deserialize_map(
         });
 
     // Match arms to extract a value for a field.
-    let value_arms = fields_names
+    let mut name_match_arms = Vec::with_capacity(fields_names.len());
+    let mut index_match_arms = Vec::with_capacity(fields_names.len());
+
+    fields_names
         .iter()
         .filter(|&&(field, _)| !field.attrs.skip_deserializing())
-        .map(|(field, name)| {
+        .enumerate()
+        .for_each(|(index, (field, name))| {
             let deser_name = field.attrs.name().name();
 
             let visit = match field.attrs.deserialize_with() {
                 None => {
                     let field_ty = field.ty;
                     let span = field.original.span();
-                    quote_spanned!(span=> <#field_ty as ::klickhouse::FromSql>::from_sql(_type_, _value)?)
+                    quote_spanned!(span=> <#field_ty as ::klickhouse::FromSql>::from_sql(_type_, _value).map_err(|e| e.with_column_name(#deser_name))?)
                 }
                 Some(path) => {
                     let span = field.original.span();
                     quote_spanned!(span=> #path(_type_, _value)?)
                 }
             };
-            quote! {
+            name_match_arms.push(quote! {
                 #deser_name => {
                     if ::std::option::Option::is_some(&#name) {
                         return ::klickhouse::Result::Err(::klickhouse::KlickhouseError::DuplicateField(#deser_name));
                     }
                     #name = ::std::option::Option::Some(#visit);
                 }
-            }
+            });
+            index_match_arms.push(quote! {
+                #index => {
+                    if ::std::option::Option::is_some(&#name) {
+                        return ::klickhouse::Result::Err(::klickhouse::KlickhouseError::DuplicateField(#deser_name));
+                    }
+                    #name = ::std::option::Option::Some(#visit);
+                }
+            });
         });
 
     // Visit ignored values to consume them
@@ -313,11 +325,18 @@ fn deserialize_map(
         }
     };
 
+    let index_match_arm = quote! {
+        match _field_index {
+            #(#index_match_arms)*
+            #ignored_arm
+        }
+    };
+
     let match_keys = quote! {
-        for (_name, _type_, _value) in map {
+        for (_field_index, (_name, _type_, _value)) in map.into_iter().enumerate() {
             match _name {
-                #(#value_arms)*
-                #ignored_arm
+                #(#name_match_arms)*
+                _ => #index_match_arm,
             }
         }
     };

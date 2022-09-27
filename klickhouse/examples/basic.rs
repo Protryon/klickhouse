@@ -18,9 +18,27 @@ pub struct MyUserData {
 
 #[tokio::main]
 async fn main() {
-    let client = Client::connect("127.0.0.1:9000", ClientOptions::default())
-        .await
-        .unwrap();
+    env_logger::Builder::new()
+        .parse_env(env_logger::Env::default().default_filter_or("info"))
+        .init();
+    let client = Client::connect(
+        "54.202.35.255:9000",
+        ClientOptions {
+            username: "root".to_string(),
+            password: "UPkaZzAeSJYIL557".to_string(),
+            default_database: "infra_data".to_string(),
+        },
+    )
+    .await
+    .unwrap();
+    /*
+    host: 54.202.35.255
+    port: 9000
+    name: infra_data
+    user: root
+    password: UPkaZzAeSJYIL557
+
+          */
 
     let mut row = MyUserData::default();
     row.id = Uuid::new_v4();
@@ -28,7 +46,7 @@ async fn main() {
     row.created_at = Utc::now().try_into().unwrap();
 
     client
-        .insert_native_block("insert into my_user_data format native", vec![row])
+        .insert_native_block("INSERT INTO my_user_data FORMAT native", vec![row])
         .await
         .unwrap();
 

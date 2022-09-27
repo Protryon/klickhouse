@@ -1,4 +1,4 @@
-use crate::FromSql;
+use crate::{query_parser, FromSql};
 use async_trait::async_trait;
 use refinery_core::traits::r#async::{AsyncMigrate, AsyncQuery, AsyncTransaction};
 use refinery_core::Migration;
@@ -163,7 +163,9 @@ impl AsyncTransaction for Client {
 
     async fn execute(&mut self, queries: &[&str]) -> Result<usize, Self::Error> {
         for query in queries {
-            Client::execute(self, *query).await?;
+            for query in query_parser::split_query_statements(query) {
+                Client::execute(self, query).await?;
+            }
         }
         Ok(queries.len())
     }
@@ -179,4 +181,14 @@ impl AsyncQuery<Vec<Migration>> for Client {
     }
 }
 
-impl AsyncMigrate for Client {}
+impl AsyncMigrate for Client {
+    fn assert_migrations_table_query(migration_table_name: &str) -> String {
+        format!(
+            "CREATE TABLE IF NOT EXISTS {migration_table_name}(
+            version INT,
+            name VARCHAR(255),
+            applied_on VARCHAR(255),
+            checksum VARCHAR(255)) Engine=MergeTree() ORDER BY version;"
+        )
+    }
+}

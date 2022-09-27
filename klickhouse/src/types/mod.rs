@@ -418,7 +418,7 @@ impl FromStr for Type {
             "Int64" => Type::Int64,
             "Int128" => Type::Int128,
             "Int256" => Type::Int256,
-            "UInt8" => Type::UInt8,
+            "Bool" | "UInt8" => Type::UInt8,
             "UInt16" => Type::UInt16,
             "UInt32" => Type::UInt32,
             "UInt64" => Type::UInt64,
@@ -929,34 +929,19 @@ impl Type {
                         | Type::UInt64
                         | Type::UInt128
                         | Type::UInt256
+                        | Type::LowCardinality(_)
+                        | Type::Uuid
+                        | Type::Date
+                        | Type::DateTime(_)
+                        | Type::DateTime64(_, _)
+                        | Type::Enum8(_)
+                        | Type::Enum16(_)
                 ) {
                     return Err(KlickhouseError::TypeParseError(format!(
-                        "key in map must be String, FixedString(n), or integer"
+                        "key in map must be String, Integer, LowCardinality, FixedString, UUID, Date, DateTime, Date32, Enum"
                     )));
                 }
                 key.validate(dimensions + 1)?;
-                if !matches!(
-                    &**value,
-                    Type::String
-                        | Type::FixedString(_)
-                        | Type::Int8
-                        | Type::Int16
-                        | Type::Int32
-                        | Type::Int64
-                        | Type::Int128
-                        | Type::Int256
-                        | Type::UInt8
-                        | Type::UInt16
-                        | Type::UInt32
-                        | Type::UInt64
-                        | Type::UInt128
-                        | Type::UInt256
-                        | Type::Array(_)
-                ) {
-                    return Err(KlickhouseError::TypeParseError(format!(
-                        "value in map must be String, FixedString(n), integer, or array"
-                    )));
-                }
                 value.validate(dimensions + 1)?;
             }
             _ => (),

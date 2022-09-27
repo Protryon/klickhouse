@@ -32,7 +32,7 @@ struct InnerClient<R: ClickhouseRead, W: ClickhouseWrite> {
     input: InternalClientIn<R>,
     output: InternalClientOut<W>,
     options: ClientOptions,
-    pending_queries: VecDeque<mpsc::Sender<Block>>,
+    pending_queries: VecDeque<mpsc::Sender<Result<Block>>>,
 }
 
 impl<R: ClickhouseRead, W: ClickhouseWrite> InnerClient<R, W> {
@@ -109,7 +109,7 @@ impl<R: ClickhouseRead, W: ClickhouseWrite> InnerClient<R, W> {
             }
             ServerPacket::Data(block) => {
                 if let Some(current) = self.pending_queries.front() {
-                    current.send(block.block).await.ok();
+                    current.send(Ok(block.block)).await.ok();
                 } else {
                     return Err(KlickhouseError::ProtocolError(
                         "received data block, but no pending queries".to_string(),
@@ -117,7 +117,11 @@ impl<R: ClickhouseRead, W: ClickhouseWrite> InnerClient<R, W> {
                 }
             }
             ServerPacket::Exception(e) => {
-                return Err(e.emit());
+                if let Some(current) = self.pending_queries.front() {
+                    current.send(Err(e.emit())).await.ok();
+                } else {
+                    return Err(e.emit());
+                }
             }
             ServerPacket::Progress(_) => {}
             ServerPacket::Pong => {}
@@ -180,7 +184,7 @@ impl<R: ClickhouseRead, W: ClickhouseWrite> InnerClient<R, W> {
 enum ClientRequestData {
     Query {
         query: String,
-        response: oneshot::Sender<mpsc::Receiver<Block>>,
+        response: oneshot::Sender<mpsc::Receiver<Result<Block>>>,
     },
     SendData {
         block: Block,
@@ -254,7 +258,7 @@ impl Client {
     pub async fn query_raw(
         &self,
         query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
-    ) -> Result<impl Stream<Item = Block>> {
+    ) -> Result<impl Stream<Item = Result<Block>>> {
         let (sender, receiver) = oneshot::channel();
         self.sender
             .send(ClientRequest {
@@ -297,7 +301,7 @@ impl Client {
         &self,
         query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
         mut blocks: impl Stream<Item = Block> + Send + Sync + Unpin + 'static,
-    ) -> Result<impl Stream<Item = Block>> {
+    ) -> Result<impl Stream<Item = Result<Block>>> {
         let (sender, receiver) = oneshot::channel();
         self.sender
             .send(ClientRequest {
@@ -338,7 +342,7 @@ impl Client {
         self.sender
             .send(ClientRequest {
                 data: ClientRequestData::Query {
-                    query: query.try_into()?.0,
+                    query: query.try_into()?.0.trim().to_string(),
                     response: sender,
                 },
             })
@@ -349,7 +353,7 @@ impl Client {
         })?;
         let first_block = receiver.recv().await.ok_or_else(|| {
             KlickhouseError::ProtocolError("missing header block from server".to_string())
-        })?;
+        })??;
         while let Some(rows) = blocks.next().await {
             let mut block = Block {
                 info: BlockInfo::default(),
@@ -369,7 +373,9 @@ impl Client {
                 .try_for_each(|x| -> Result<()> {
                     for (key, value) in x {
                         let type_ = first_block.column_types.get(&*key).ok_or_else(|| {
-                            KlickhouseError::ProtocolError("missing type for data".to_string())
+                            KlickhouseError::ProtocolError(format!(
+                                "missing type for data, column: {key}"
+                            ))
                         })?;
                         type_.validate_value(&value)?;
                         if let Some(column) = block.column_data.get_mut(&*key) {
@@ -411,13 +417,15 @@ impl Client {
         query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
     ) -> Result<impl Stream<Item = Result<T>>> {
         let raw = self.query_raw(query).await?;
-        Ok(raw.flat_map(|mut block| {
-            let blocks = block
-                .take_iter_rows()
-                .filter(|x| !x.is_empty())
-                .map(|m| T::deserialize_row(m))
-                .collect::<Vec<_>>();
-            stream::iter(blocks)
+        Ok(raw.flat_map(|block| match block {
+            Ok(mut block) => stream::iter(
+                block
+                    .take_iter_rows()
+                    .filter(|x| !x.is_empty())
+                    .map(|m| T::deserialize_row(m))
+                    .collect::<Vec<_>>(),
+            ),
+            Err(e) => stream::iter(vec![Err(e)]),
         }))
     }
 

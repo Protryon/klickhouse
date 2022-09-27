@@ -1,5 +1,6 @@
 use crate::{KlickhouseError, Result, ToSql, Value};
 
+#[derive(Debug, Clone)]
 pub struct ParsedQuery(pub(crate) String);
 
 impl TryInto<ParsedQuery> for String {
@@ -26,6 +27,7 @@ impl<'a> TryInto<ParsedQuery> for &'a String {
     }
 }
 
+#[derive(Clone)]
 pub struct QueryBuilder<'a> {
     base: &'a str,
     arguments: Vec<Result<Value>>,

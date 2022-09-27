@@ -139,8 +139,8 @@ impl ToSql for chrono::DateTime<Utc> {
     fn to_sql(self) -> Result<Value> {
         Ok(Value::DateTime64(
             chrono_tz::UTC,
-            9,
-            self.timestamp_nanos().try_into().map_err(|e| {
+            6,
+            self.timestamp_micros().try_into().map_err(|e| {
                 KlickhouseError::DeserializeError(format!("failed to convert DateTime64: {:?}", e))
             })?,
         ))
@@ -194,8 +194,8 @@ impl ToSql for chrono::DateTime<Tz> {
     fn to_sql(self) -> Result<Value> {
         Ok(Value::DateTime64(
             self.timezone(),
-            9,
-            self.timestamp_nanos().try_into().map_err(|e| {
+            6,
+            self.timestamp_micros().try_into().map_err(|e| {
                 KlickhouseError::DeserializeError(format!("failed to convert DateTime64: {:?}", e))
             })?,
         ))
