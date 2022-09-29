@@ -195,14 +195,17 @@ impl Block {
         Ok(block)
     }
 
-    pub async fn write<W: ClickhouseWrite>(&self, writer: &mut W, revision: u64) -> Result<()> {
+    pub async fn write<W: ClickhouseWrite>(mut self, writer: &mut W, revision: u64) -> Result<()> {
         if revision > 0 {
             self.info.write(writer).await?;
         }
         let joined = self
             .column_types
-            .iter()
-            .flat_map(|(key, type_)| Some((key, (type_, self.column_data.get(key)?))))
+            .into_iter()
+            .flat_map(|(key, type_)| {
+                let values = self.column_data.remove(&key)?;
+                Some((key, (type_, values)))
+            })
             .collect::<Vec<_>>();
         writer.write_var_uint(joined.len() as u64).await?;
         writer.write_var_uint(self.rows).await?;
@@ -219,9 +222,7 @@ impl Block {
             if self.rows > 0 {
                 let mut state = SerializerState {};
                 type_.serialize_prefix(writer, &mut state).await?;
-                type_
-                    .serialize_column(&data[..], writer, &mut state)
-                    .await?;
+                type_.serialize_column(data, writer, &mut state).await?;
             }
         }
         Ok(())

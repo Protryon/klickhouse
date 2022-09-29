@@ -78,7 +78,7 @@ impl<R: ClickhouseRead, W: ClickhouseWrite> InnerClient<R, W> {
                 self.pending_queries.push_back(sender);
                 self.output
                     .send_data(
-                        &Block {
+                        Block {
                             info: BlockInfo::default(),
                             rows: 0,
                             column_types: IndexMap::new(),
@@ -92,7 +92,7 @@ impl<R: ClickhouseRead, W: ClickhouseWrite> InnerClient<R, W> {
             }
             ClientRequestData::SendData { block, response } => {
                 self.output
-                    .send_data(&block, CompressionMethod::default(), "", false)
+                    .send_data(block, CompressionMethod::default(), "", false)
                     .await?;
                 response.send(()).ok();
             }

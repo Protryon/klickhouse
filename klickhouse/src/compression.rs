@@ -1,7 +1,7 @@
 use crate::block::Block;
 use crate::{KlickhouseError, Result};
 
-pub async fn compress_block(block: &Block, revision: u64) -> Result<(Vec<u8>, usize)> {
+pub async fn compress_block(block: Block, revision: u64) -> Result<(Vec<u8>, usize)> {
     let mut raw = vec![];
     block.write(&mut raw, revision).await?;
     let raw_len = raw.len();

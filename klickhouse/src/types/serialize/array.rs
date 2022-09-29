@@ -11,15 +11,15 @@ struct Array2Serializer;
 impl Array2Serializer {
     async fn write<W: ClickhouseWrite>(
         type_: &Type,
-        values: &[Value],
+        values: Vec<Value>,
         writer: &mut W,
         state: &mut SerializerState,
     ) -> Result<()> {
         match type_ {
             Type::Array(inner) => {
                 let mut offset = 0;
-                for value in values {
-                    let inner = value.unwrap_array();
+                for value in &values {
+                    let inner = value.unwrap_array_ref();
                     offset += inner.len();
                     writer.write_u64_le(offset as u64).await?;
                 }
@@ -52,19 +52,17 @@ impl Serializer for ArraySerializer {
 
     async fn write<W: ClickhouseWrite>(
         type_: &Type,
-        value: &Value,
+        value: Value,
         writer: &mut W,
         state: &mut SerializerState,
     ) -> Result<()> {
-        match (type_, value.justify_null(type_).as_ref()) {
+        match (type_, value.justify_null(type_)) {
             (Type::Array(inner_type), Value::Array(inner)) => {
                 writer.write_u64_le(inner.len() as u64).await?;
                 if let Type::Array(_) = &**inner_type {
-                    return Array2Serializer::write(&**inner_type, &inner[..], writer, state).await;
+                    return Array2Serializer::write(&**inner_type, inner, writer, state).await;
                 }
-                inner_type
-                    .serialize_column(&inner[..], writer, state)
-                    .await?;
+                inner_type.serialize_column(inner, writer, state).await?;
             }
             _ => unimplemented!(),
         }

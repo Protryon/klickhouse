@@ -165,7 +165,7 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
     }
 
     #[cfg(feature = "compression")]
-    async fn compress_data(&mut self, byte: u8, block: &Block) -> Result<()> {
+    async fn compress_data(&mut self, byte: u8, block: Block) -> Result<()> {
         let (out, decompressed_size) =
             crate::compression::compress_block(block, self.server_hello.revision_version).await?;
         let mut new_out = Vec::with_capacity(out.len() + 5);
@@ -190,7 +190,7 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
 
     pub async fn send_data(
         &mut self,
-        block: &Block,
+        block: Block,
         compression: CompressionMethod,
         name: &str,
         scalar: bool,

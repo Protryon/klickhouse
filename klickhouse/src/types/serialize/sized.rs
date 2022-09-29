@@ -15,11 +15,11 @@ fn swap_endian_256(mut input: [u8; 32]) -> [u8; 32] {
 impl Serializer for SizedSerializer {
     async fn write<W: ClickhouseWrite>(
         type_: &Type,
-        value: &Value,
+        value: Value,
         writer: &mut W,
         _state: &mut SerializerState,
     ) -> Result<()> {
-        match value.justify_null(type_).as_ref() {
+        match value.justify_null_ref(type_).as_ref() {
             Value::Int8(x) => writer.write_i8(*x).await?,
             Value::Int16(x) => writer.write_i16_le(*x).await?,
             Value::Int32(x) => writer.write_i32_le(*x).await?,

@@ -22,7 +22,7 @@ impl Serializer for LowCardinalitySerializer {
 
     async fn write_n<W: ClickhouseWrite>(
         type_: &Type,
-        values: &[Value],
+        values: Vec<Value>,
         writer: &mut W,
         state: &mut SerializerState,
     ) -> Result<()> {
@@ -43,7 +43,7 @@ impl Serializer for LowCardinalitySerializer {
         if is_nullable {
             keys.insert(&nulled);
         }
-        for value in values {
+        for value in &values {
             keys.insert(value);
         }
 
@@ -62,22 +62,21 @@ impl Serializer for LowCardinalitySerializer {
 
         writer.write_u64_le(keys.len() as u64).await?;
 
-        //todo: optimize away cloning here
-        let keys_arr = keys.iter().copied().cloned().collect::<Vec<_>>();
+        let mut keys_arr = keys.iter().copied().cloned();
+        if is_nullable {
+            let _ = keys_arr.next();
+        }
+        let keys_arr = keys_arr.collect::<Vec<_>>();
         if is_nullable {
             let nulled = inner_type.default_value();
-            inner_type.serialize(&nulled, writer, state).await?;
-            inner_type
-                .serialize_column(&keys_arr[1..], writer, state)
-                .await?;
+            inner_type.serialize(nulled, writer, state).await?;
+            inner_type.serialize_column(keys_arr, writer, state).await?;
         } else {
-            inner_type
-                .serialize_column(&keys_arr[..], writer, state)
-                .await?;
+            inner_type.serialize_column(keys_arr, writer, state).await?;
         }
 
         writer.write_u64_le(values.len() as u64).await?;
-        for value in values {
+        for value in &values {
             let index = keys.get_index_of(value).unwrap();
             if keys.len() > u32::MAX as usize {
                 writer.write_u64_le(index as u64).await?;
@@ -94,7 +93,7 @@ impl Serializer for LowCardinalitySerializer {
 
     async fn write<W: ClickhouseWrite>(
         _type_: &Type,
-        _value: &Value,
+        _value: Value,
         _writer: &mut W,
         _state: &mut SerializerState,
     ) -> Result<()> {

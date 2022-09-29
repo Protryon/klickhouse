@@ -12,6 +12,7 @@ mod tests;
 use crate::{
     i256,
     io::{ClickhouseRead, ClickhouseWrite},
+    protocol::MAX_STRING_SIZE,
     u256,
     values::Value,
     Date, DateTime, Ipv4, Ipv6, KlickhouseError, Result,
@@ -664,7 +665,7 @@ impl Type {
 
     pub(crate) async fn serialize_column<W: ClickhouseWrite>(
         &self,
-        values: &[Value],
+        values: Vec<Value>,
         writer: &mut W,
         state: &mut SerializerState,
     ) -> Result<()> {
@@ -719,7 +720,7 @@ impl Type {
 
     pub(crate) async fn serialize<W: ClickhouseWrite>(
         &self,
-        value: &Value,
+        value: Value,
         writer: &mut W,
         state: &mut SerializerState,
     ) -> Result<()> {
@@ -1045,7 +1046,14 @@ pub trait Deserializer {
         n: usize,
         state: &mut DeserializerState,
     ) -> Result<Vec<Value>> {
+        if n > MAX_STRING_SIZE {
+            return Err(KlickhouseError::ProtocolError(format!(
+                "read_n response size too large. {} > {}",
+                n, MAX_STRING_SIZE
+            )));
+        }
         let mut out = Vec::with_capacity(n);
+
         for _ in 0..n {
             out.push(Self::read(type_, reader, state).await?);
         }
@@ -1074,14 +1082,14 @@ pub trait Serializer {
 
     async fn write<W: ClickhouseWrite>(
         type_: &Type,
-        value: &Value,
+        value: Value,
         writer: &mut W,
         state: &mut SerializerState,
     ) -> Result<()>;
 
     async fn write_n<W: ClickhouseWrite>(
         type_: &Type,
-        values: &[Value],
+        values: Vec<Value>,
         writer: &mut W,
         state: &mut SerializerState,
     ) -> Result<()> {

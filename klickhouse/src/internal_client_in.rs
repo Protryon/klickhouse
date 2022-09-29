@@ -253,6 +253,12 @@ impl<R: ClickhouseRead> InternalClientIn<R> {
             }
             ServerPacketId::PartUUIDs => {
                 let len = self.reader.read_var_uint().await?;
+                if len as usize > MAX_STRING_SIZE {
+                    return Err(KlickhouseError::ProtocolError(format!(
+                        "PartUUIDs response size too large. {} > {}",
+                        len, MAX_STRING_SIZE
+                    )));
+                }
                 let mut out = Vec::with_capacity(len as usize);
                 let mut bytes = [0u8; 16];
                 for _ in 0..len {

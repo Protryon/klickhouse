@@ -85,14 +85,29 @@ impl Value {
         }
     }
 
-    pub(crate) fn unwrap_array(&self) -> &[Value] {
+    pub(crate) fn unwrap_array_ref(&self) -> &[Value] {
         match self {
             Value::Array(a) => &a[..],
             _ => unimplemented!(),
         }
     }
 
-    pub(crate) fn justify_null<'a>(&'a self, type_: &Type) -> Cow<'a, Value> {
+    pub(crate) fn unwrap_array(self) -> Vec<Value> {
+        match self {
+            Value::Array(a) => a,
+            _ => unimplemented!(),
+        }
+    }
+
+    pub(crate) fn justify_null(self, type_: &Type) -> Value {
+        if self == Value::Null {
+            type_.default_value()
+        } else {
+            self
+        }
+    }
+
+    pub(crate) fn justify_null_ref<'a>(&'a self, type_: &Type) -> Cow<'a, Value> {
         if self == &Value::Null {
             Cow::Owned(type_.default_value())
         } else {

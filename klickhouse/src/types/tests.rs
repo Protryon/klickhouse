@@ -18,9 +18,12 @@ async fn roundtrip_values(type_: &Type, values: &[Value]) -> Result<Vec<Value>> 
     let mut state = SerializerState {};
     type_.serialize_prefix(&mut output, &mut state).await?;
     type_
-        .serialize_column(values, &mut output, &mut state)
+        .serialize_column(values.to_vec(), &mut output, &mut state)
         .await?;
-    // println!("{:?}", output);
+    for x in &output {
+        print!("{x:02X}");
+    }
+    println!();
     let mut input = Cursor::new(output);
     let mut state = DeserializerState {};
     type_.deserialize_prefix(&mut input, &mut state).await?;

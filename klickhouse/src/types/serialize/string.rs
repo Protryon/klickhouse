@@ -10,11 +10,11 @@ pub struct StringSerializer;
 impl Serializer for StringSerializer {
     async fn write<W: ClickhouseWrite>(
         type_: &Type,
-        value: &Value,
+        value: Value,
         writer: &mut W,
         _state: &mut SerializerState,
     ) -> Result<()> {
-        match value.justify_null(type_).as_ref() {
+        match value.justify_null_ref(type_).as_ref() {
             Value::String(x) => {
                 if let Type::FixedString(s) = type_ {
                     if x.len() >= *s {

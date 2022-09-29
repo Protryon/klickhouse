@@ -24,13 +24,13 @@ impl Serializer for TupleSerializer {
 
     async fn write<W: ClickhouseWrite>(
         type_: &Type,
-        value: &Value,
+        value: Value,
         writer: &mut W,
         state: &mut SerializerState,
     ) -> Result<()> {
         match (type_, value) {
             (Type::Tuple(types), Value::Tuple(values)) => {
-                for (inner_type, value) in types.iter().zip(values.iter()) {
+                for (inner_type, value) in types.iter().zip(values.into_iter()) {
                     inner_type.serialize(value, writer, state).await?;
                 }
             }
