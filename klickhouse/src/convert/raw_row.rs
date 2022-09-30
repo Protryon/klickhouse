@@ -1,9 +1,10 @@
 use std::borrow::Cow;
 
-use crate::{FromSql, KlickhouseError, Result, Row, Type, Value};
+use crate::{FromSql, KlickhouseError, Result, Row, ToSql, Type, Value};
 
 /// A row of raw data returned from the database by a query.
-#[derive(Debug, Clone)]
+/// Or an unstructured runtime-defined row to upload to the server.
+#[derive(Debug, Default, Clone)]
 pub struct RawRow(Vec<Option<(String, Type, Value)>>);
 
 impl Row for RawRow {
@@ -87,5 +88,47 @@ impl RawRow {
     /// Panics if the index is out of bounds or if the value cannot be converted to the specified type.
     pub fn get<I: RowIndex, T: FromSql>(&mut self, index: I) -> T {
         self.try_get(index).expect("failed to convert column")
+    }
+
+    /// Sets or inserts a column value with a given name. `type_` is inferred if `None`. Index is defined on insertion order.
+    pub fn try_set_typed(
+        &mut self,
+        name: impl ToString,
+        type_: Option<Type>,
+        value: impl ToSql,
+    ) -> Result<()> {
+        let name = name.to_string();
+        let value = value.to_sql()?;
+        let type_ = type_.unwrap_or_else(|| value.guess_type());
+
+        let current_position = self
+            .0
+            .iter()
+            .map(|x| x.as_ref().map(|x| &*x.0).unwrap_or(""))
+            .position(|x| x == &*name);
+
+        if let Some(current_position) = current_position {
+            self.0[current_position].as_mut().unwrap().1 = type_;
+            self.0[current_position].as_mut().unwrap().2 = value;
+        } else {
+            self.0.push(Some((name, type_, value)));
+        }
+        Ok(())
+    }
+
+    /// Same as `try_set_typed`, but always infers the type
+    pub fn try_set(&mut self, name: impl ToString, value: impl ToSql) -> Result<()> {
+        self.try_set_typed(name, None, value)
+    }
+
+    /// Same as `try_set`, but panics on type conversion failure.
+    pub fn set(&mut self, name: impl ToString, value: impl ToSql) {
+        self.try_set(name, value).expect("failed to convert column");
+    }
+
+    /// Same as `try_set_typed`, but panics on type conversion failure.
+    pub fn set_typed(&mut self, name: impl ToString, type_: Option<Type>, value: impl ToSql) {
+        self.try_set_typed(name, type_, value)
+            .expect("failed to convert column");
     }
 }
