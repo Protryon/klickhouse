@@ -3,6 +3,7 @@ use crate::{FromSql, KlickhouseError, Result, ToSql, Type, Value};
 use super::unexpected_type;
 
 /// A `Vec` wrapper that is encoded as a tuple in SQL as opposed to a Vec
+#[derive(Clone, Debug, Default)]
 pub struct VecTuple<T>(pub Vec<T>);
 
 impl<T: ToSql> ToSql for VecTuple<T> {

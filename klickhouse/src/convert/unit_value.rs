@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use crate::{FromSql, KlickhouseError, Result, Row, ToSql, Type, Value};
 
 /// A single column row
+#[derive(Clone, Debug, Default)]
 pub struct UnitValue<T: FromSql + ToSql>(pub T);
 
 impl<T: FromSql + ToSql> Row for UnitValue<T> {

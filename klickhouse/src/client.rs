@@ -355,6 +355,9 @@ impl Client {
             KlickhouseError::ProtocolError("missing header block from server".to_string())
         })??;
         while let Some(rows) = blocks.next().await {
+            if rows.is_empty() {
+                continue;
+            }
             let mut block = Block {
                 info: BlockInfo::default(),
                 rows: rows.len() as u64,
