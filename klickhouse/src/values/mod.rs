@@ -99,11 +99,10 @@ impl Value {
         }
     }
 
-    pub(crate) fn justify_null(self, type_: &Type) -> Value {
-        if self == Value::Null {
-            type_.default_value()
-        } else {
-            self
+    pub(crate) fn unwrap_tuple(self) -> Vec<Value> {
+        match self {
+            Value::Tuple(a) => a,
+            _ => unimplemented!(),
         }
     }
 

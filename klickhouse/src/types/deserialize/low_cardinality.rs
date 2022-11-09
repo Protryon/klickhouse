@@ -25,7 +25,7 @@ impl Deserializer for LowCardinalityDeserializer {
         Ok(())
     }
 
-    async fn read_n<R: ClickhouseRead>(
+    async fn read<R: ClickhouseRead>(
         type_: &Type,
         reader: &mut R,
         rows: usize,
@@ -186,13 +186,5 @@ impl Deserializer for LowCardinalityDeserializer {
             }
             _ => unimplemented!(),
         })
-    }
-
-    async fn read<R: ClickhouseRead>(
-        _type_: &Type,
-        _reader: &mut R,
-        _state: &mut DeserializerState,
-    ) -> Result<Value> {
-        unimplemented!()
     }
 }

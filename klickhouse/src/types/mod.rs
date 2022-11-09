@@ -568,6 +568,13 @@ impl Type {
         state: &mut DeserializerState,
     ) -> Result<Vec<Value>> {
         use deserialize::*;
+        if rows > MAX_STRING_SIZE {
+            return Err(KlickhouseError::ProtocolError(format!(
+                "deserialize response size too large. {} > {}",
+                rows, MAX_STRING_SIZE
+            )));
+        }
+
         Ok(match self {
             Type::Int8
             | Type::Int16
@@ -594,71 +601,20 @@ impl Type {
             | Type::Ipv4
             | Type::Ipv6
             | Type::Enum8(_)
-            | Type::Enum16(_) => {
-                sized::SizedDeserializer::read_n(self, reader, rows, state).await?
-            }
+            | Type::Enum16(_) => sized::SizedDeserializer::read(self, reader, rows, state).await?,
 
             Type::String | Type::FixedString(_) => {
-                string::StringDeserializer::read_n(self, reader, rows, state).await?
+                string::StringDeserializer::read(self, reader, rows, state).await?
             }
 
-            Type::Array(_) => array::ArrayDeserializer::read_n(self, reader, rows, state).await?,
-            Type::Tuple(_) => tuple::TupleDeserializer::read_n(self, reader, rows, state).await?,
+            Type::Array(_) => array::ArrayDeserializer::read(self, reader, rows, state).await?,
+            Type::Tuple(_) => tuple::TupleDeserializer::read(self, reader, rows, state).await?,
             Type::Nullable(_) => {
-                nullable::NullableDeserializer::read_n(self, reader, rows, state).await?
+                nullable::NullableDeserializer::read(self, reader, rows, state).await?
             }
-            Type::Map(_, _) => map::MapDeserializer::read_n(self, reader, rows, state).await?,
+            Type::Map(_, _) => map::MapDeserializer::read(self, reader, rows, state).await?,
             Type::LowCardinality(_) => {
-                low_cardinality::LowCardinalityDeserializer::read_n(self, reader, rows, state)
-                    .await?
-            }
-        })
-    }
-
-    pub(crate) async fn deserialize<R: ClickhouseRead>(
-        &self,
-        reader: &mut R,
-        state: &mut DeserializerState,
-    ) -> Result<Value> {
-        use deserialize::*;
-        Ok(match self {
-            Type::Int8
-            | Type::Int16
-            | Type::Int32
-            | Type::Int64
-            | Type::Int128
-            | Type::Int256
-            | Type::UInt8
-            | Type::UInt16
-            | Type::UInt32
-            | Type::UInt64
-            | Type::UInt128
-            | Type::UInt256
-            | Type::Float32
-            | Type::Float64
-            | Type::Decimal32(_)
-            | Type::Decimal64(_)
-            | Type::Decimal128(_)
-            | Type::Decimal256(_)
-            | Type::Uuid
-            | Type::Date
-            | Type::DateTime(_)
-            | Type::DateTime64(_, _)
-            | Type::Ipv4
-            | Type::Ipv6
-            | Type::Enum8(_)
-            | Type::Enum16(_) => sized::SizedDeserializer::read(self, reader, state).await?,
-
-            Type::String | Type::FixedString(_) => {
-                string::StringDeserializer::read(self, reader, state).await?
-            }
-
-            Type::Array(_) => array::ArrayDeserializer::read(self, reader, state).await?,
-            Type::Tuple(_) => tuple::TupleDeserializer::read(self, reader, state).await?,
-            Type::Nullable(_) => nullable::NullableDeserializer::read(self, reader, state).await?,
-            Type::Map(_, _) => map::MapDeserializer::read(self, reader, state).await?,
-            Type::LowCardinality(_) => {
-                low_cardinality::LowCardinalityDeserializer::read(self, reader, state).await?
+                low_cardinality::LowCardinalityDeserializer::read(self, reader, rows, state).await?
             }
         })
     }
@@ -696,75 +652,21 @@ impl Type {
             | Type::Ipv4
             | Type::Ipv6
             | Type::Enum8(_)
-            | Type::Enum16(_) => {
-                sized::SizedSerializer::write_n(self, values, writer, state).await?
-            }
+            | Type::Enum16(_) => sized::SizedSerializer::write(self, values, writer, state).await?,
 
             Type::String | Type::FixedString(_) => {
-                string::StringSerializer::write_n(self, values, writer, state).await?
+                string::StringSerializer::write(self, values, writer, state).await?
             }
 
-            Type::Array(_) => array::ArraySerializer::write_n(self, values, writer, state).await?,
-            Type::Tuple(_) => tuple::TupleSerializer::write_n(self, values, writer, state).await?,
+            Type::Array(_) => array::ArraySerializer::write(self, values, writer, state).await?,
+            Type::Tuple(_) => tuple::TupleSerializer::write(self, values, writer, state).await?,
             Type::Nullable(_) => {
-                nullable::NullableSerializer::write_n(self, values, writer, state).await?
+                nullable::NullableSerializer::write(self, values, writer, state).await?
             }
-            Type::Map(_, _) => map::MapSerializer::write_n(self, values, writer, state).await?,
+            Type::Map(_, _) => map::MapSerializer::write(self, values, writer, state).await?,
             Type::LowCardinality(_) => {
-                low_cardinality::LowCardinalitySerializer::write_n(self, values, writer, state)
+                low_cardinality::LowCardinalitySerializer::write(self, values, writer, state)
                     .await?
-            }
-        }
-        Ok(())
-    }
-
-    pub(crate) async fn serialize<W: ClickhouseWrite>(
-        &self,
-        value: Value,
-        writer: &mut W,
-        state: &mut SerializerState,
-    ) -> Result<()> {
-        use serialize::*;
-        match self {
-            Type::Int8
-            | Type::Int16
-            | Type::Int32
-            | Type::Int64
-            | Type::Int128
-            | Type::Int256
-            | Type::UInt8
-            | Type::UInt16
-            | Type::UInt32
-            | Type::UInt64
-            | Type::UInt128
-            | Type::UInt256
-            | Type::Float32
-            | Type::Float64
-            | Type::Decimal32(_)
-            | Type::Decimal64(_)
-            | Type::Decimal128(_)
-            | Type::Decimal256(_)
-            | Type::Uuid
-            | Type::Date
-            | Type::DateTime(_)
-            | Type::DateTime64(_, _)
-            | Type::Ipv4
-            | Type::Ipv6
-            | Type::Enum8(_)
-            | Type::Enum16(_) => sized::SizedSerializer::write(self, value, writer, state).await?,
-
-            Type::String | Type::FixedString(_) => {
-                string::StringSerializer::write(self, value, writer, state).await?
-            }
-
-            Type::Array(_) => array::ArraySerializer::write(self, value, writer, state).await?,
-            Type::Tuple(_) => tuple::TupleSerializer::write(self, value, writer, state).await?,
-            Type::Nullable(_) => {
-                nullable::NullableSerializer::write(self, value, writer, state).await?
-            }
-            Type::Map(_, _) => map::MapSerializer::write(self, value, writer, state).await?,
-            Type::LowCardinality(_) => {
-                low_cardinality::LowCardinalitySerializer::write(self, value, writer, state).await?
             }
         }
         Ok(())
@@ -964,6 +866,8 @@ impl Type {
     fn inner_validate_value(&self, value: &Value) -> bool {
         match (self, value) {
             (Type::Int8, Value::Int8(_))
+            //FIXME: this is for compatibility with bools in CH < 22
+            | (Type::Int8, Value::UInt8(_))
             | (Type::Int16, Value::Int16(_))
             | (Type::Int32, Value::Int32(_))
             | (Type::Int64, Value::Int64(_))
@@ -1037,28 +941,9 @@ pub trait Deserializer {
     async fn read<R: ClickhouseRead>(
         type_: &Type,
         reader: &mut R,
+        rows: usize,
         state: &mut DeserializerState,
-    ) -> Result<Value>;
-
-    async fn read_n<R: ClickhouseRead>(
-        type_: &Type,
-        reader: &mut R,
-        n: usize,
-        state: &mut DeserializerState,
-    ) -> Result<Vec<Value>> {
-        if n > MAX_STRING_SIZE {
-            return Err(KlickhouseError::ProtocolError(format!(
-                "read_n response size too large. {} > {}",
-                n, MAX_STRING_SIZE
-            )));
-        }
-        let mut out = Vec::with_capacity(n);
-
-        for _ in 0..n {
-            out.push(Self::read(type_, reader, state).await?);
-        }
-        Ok(out)
-    }
+    ) -> Result<Vec<Value>>;
 }
 
 #[async_trait::async_trait]
@@ -1082,20 +967,8 @@ pub trait Serializer {
 
     async fn write<W: ClickhouseWrite>(
         type_: &Type,
-        value: Value,
-        writer: &mut W,
-        state: &mut SerializerState,
-    ) -> Result<()>;
-
-    async fn write_n<W: ClickhouseWrite>(
-        type_: &Type,
         values: Vec<Value>,
         writer: &mut W,
         state: &mut SerializerState,
-    ) -> Result<()> {
-        for value in values {
-            Self::write(type_, value, writer, state).await?;
-        }
-        Ok(())
-    }
+    ) -> Result<()>;
 }

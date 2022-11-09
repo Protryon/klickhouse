@@ -24,17 +24,26 @@ impl Serializer for TupleSerializer {
 
     async fn write<W: ClickhouseWrite>(
         type_: &Type,
-        value: Value,
+        values: Vec<Value>,
         writer: &mut W,
         state: &mut SerializerState,
     ) -> Result<()> {
-        match (type_, value) {
-            (Type::Tuple(types), Value::Tuple(values)) => {
-                for (inner_type, value) in types.iter().zip(values.into_iter()) {
-                    inner_type.serialize(value, writer, state).await?;
-                }
+        let inner_types = if let Type::Tuple(inner_types) = &type_ {
+            inner_types
+        } else {
+            unimplemented!();
+        };
+
+        let mut columns = vec![Vec::with_capacity(values.len()); inner_types.len()];
+
+        for value in values {
+            let tuple = value.unwrap_tuple();
+            for (i, value) in tuple.into_iter().enumerate() {
+                columns[i].push(value);
             }
-            _ => unimplemented!(),
+        }
+        for (inner_type, column) in inner_types.iter().zip(columns.into_iter()) {
+            inner_type.serialize_column(column, writer, state).await?;
         }
         Ok(())
     }

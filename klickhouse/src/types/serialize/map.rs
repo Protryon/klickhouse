@@ -26,7 +26,7 @@ impl Serializer for MapSerializer {
         Ok(())
     }
 
-    async fn write_n<W: ClickhouseWrite>(
+    async fn write<W: ClickhouseWrite>(
         type_: &Type,
         values: Vec<Value>,
         writer: &mut W,
@@ -58,14 +58,5 @@ impl Serializer for MapSerializer {
             .serialize_column(total_values, writer, state)
             .await?;
         Ok(())
-    }
-
-    async fn write<W: ClickhouseWrite>(
-        type_: &Type,
-        value: Value,
-        writer: &mut W,
-        state: &mut SerializerState,
-    ) -> Result<()> {
-        Self::write_n(type_, vec![value], writer, state).await
     }
 }

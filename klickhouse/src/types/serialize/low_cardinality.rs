@@ -20,7 +20,7 @@ impl Serializer for LowCardinalitySerializer {
         Ok(())
     }
 
-    async fn write_n<W: ClickhouseWrite>(
+    async fn write<W: ClickhouseWrite>(
         type_: &Type,
         values: Vec<Value>,
         writer: &mut W,
@@ -62,18 +62,9 @@ impl Serializer for LowCardinalitySerializer {
 
         writer.write_u64_le(keys.len() as u64).await?;
 
-        let mut keys_arr = keys.iter().copied().cloned();
-        if is_nullable {
-            let _ = keys_arr.next();
-        }
-        let keys_arr = keys_arr.collect::<Vec<_>>();
-        if is_nullable {
-            let nulled = inner_type.default_value();
-            inner_type.serialize(nulled, writer, state).await?;
-            inner_type.serialize_column(keys_arr, writer, state).await?;
-        } else {
-            inner_type.serialize_column(keys_arr, writer, state).await?;
-        }
+        inner_type
+            .serialize_column(keys.iter().copied().cloned().collect(), writer, state)
+            .await?;
 
         writer.write_u64_le(values.len() as u64).await?;
         for value in &values {
@@ -89,14 +80,5 @@ impl Serializer for LowCardinalitySerializer {
             };
         }
         Ok(())
-    }
-
-    async fn write<W: ClickhouseWrite>(
-        _type_: &Type,
-        _value: Value,
-        _writer: &mut W,
-        _state: &mut SerializerState,
-    ) -> Result<()> {
-        unimplemented!()
     }
 }

@@ -9,7 +9,7 @@ pub struct NullableSerializer;
 impl Serializer for NullableSerializer {
     async fn write<W: ClickhouseWrite>(
         type_: &Type,
-        value: Value,
+        values: Vec<Value>,
         writer: &mut W,
         state: &mut SerializerState,
     ) -> Result<()> {
@@ -19,35 +19,12 @@ impl Serializer for NullableSerializer {
             unimplemented!()
         };
 
-        match value {
-            Value::Null => {
-                writer.write_u8(1).await?;
-                inner_type
-                    .serialize(inner_type.default_value(), writer, state)
-                    .await?;
-            }
-            x => {
-                writer.write_u8(0).await?;
-                inner_type.serialize(x, writer, state).await?;
-            }
-        }
-        Ok(())
-    }
-
-    async fn write_n<W: ClickhouseWrite>(
-        type_: &Type,
-        values: Vec<Value>,
-        writer: &mut W,
-        state: &mut SerializerState,
-    ) -> Result<()> {
         for value in &values {
             let mask = if value == &Value::Null { 1u8 } else { 0u8 };
             writer.write_u8(mask).await?;
         }
-        type_
-            .strip_null()
-            .serialize_column(values, writer, state)
-            .await?;
+
+        inner_type.serialize_column(values, writer, state).await?;
         Ok(())
     }
 }

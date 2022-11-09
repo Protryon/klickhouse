@@ -12,19 +12,30 @@ impl Deserializer for StringDeserializer {
     async fn read<R: ClickhouseRead>(
         type_: &Type,
         reader: &mut R,
+        rows: usize,
         _state: &mut DeserializerState,
-    ) -> Result<Value> {
-        Ok(match type_ {
-            Type::String => Value::String(reader.read_string().await?),
+    ) -> Result<Vec<Value>> {
+        match type_ {
+            Type::String => {
+                let mut out = Vec::with_capacity(rows);
+                for _ in 0..rows {
+                    out.push(Value::String(reader.read_string().await?));
+                }
+                Ok(out)
+            }
             Type::FixedString(n) => {
-                let mut buf = Vec::with_capacity(*n);
-                unsafe { buf.set_len(*n) };
-                reader.read_exact(&mut buf[..]).await?;
-                let first_null = buf.iter().position(|x| *x == 0).unwrap_or(buf.len());
-                buf.truncate(first_null);
-                Value::String(String::from_utf8(buf)?)
+                let mut out = Vec::with_capacity(rows);
+                for _ in 0..rows {
+                    let mut buf = Vec::with_capacity(*n);
+                    unsafe { buf.set_len(*n) };
+                    reader.read_exact(&mut buf[..]).await?;
+                    let first_null = buf.iter().position(|x| *x == 0).unwrap_or(buf.len());
+                    buf.truncate(first_null);
+                    out.push(Value::String(String::from_utf8(buf)?));
+                }
+                Ok(out)
             }
             _ => unimplemented!(),
-        })
+        }
     }
 }

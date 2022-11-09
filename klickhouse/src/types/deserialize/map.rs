@@ -31,26 +31,16 @@ impl Deserializer for MapDeserializer {
     async fn read<R: ClickhouseRead>(
         type_: &Type,
         reader: &mut R,
-        state: &mut DeserializerState,
-    ) -> Result<Value> {
-        Self::read_n(type_, reader, 1, state)
-            .await
-            .map(|x| x.into_iter().next().unwrap())
-    }
-
-    async fn read_n<R: ClickhouseRead>(
-        type_: &Type,
-        reader: &mut R,
-        n: usize,
+        rows: usize,
         state: &mut DeserializerState,
     ) -> Result<Vec<Value>> {
-        if n > MAX_STRING_SIZE {
+        if rows > MAX_STRING_SIZE {
             return Err(KlickhouseError::ProtocolError(format!(
                 "read_n response size too large for map. {} > {}",
-                n, MAX_STRING_SIZE
+                rows, MAX_STRING_SIZE
             )));
         }
-        if n == 0 {
+        if rows == 0 {
             return Ok(vec![]);
         }
 
@@ -59,8 +49,8 @@ impl Deserializer for MapDeserializer {
             _ => unimplemented!(),
         };
 
-        let mut offsets: Vec<u64> = Vec::with_capacity(n);
-        for _ in 0..n {
+        let mut offsets: Vec<u64> = Vec::with_capacity(rows);
+        for _ in 0..rows {
             offsets.push(reader.read_u64_le().await?);
         }
 
@@ -77,7 +67,7 @@ impl Deserializer for MapDeserializer {
 
         let mut keys = keys.into_iter();
         let mut values = values.into_iter();
-        let mut out = Vec::with_capacity(n);
+        let mut out = Vec::with_capacity(rows);
         let mut last_offset = 0u64;
         for offset in offsets {
             let mut key_out = vec![];

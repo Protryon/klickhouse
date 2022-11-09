@@ -25,32 +25,12 @@ impl Deserializer for NullableDeserializer {
     async fn read<R: ClickhouseRead>(
         type_: &Type,
         reader: &mut R,
-        state: &mut DeserializerState,
-    ) -> Result<Value> {
-        Ok(match type_ {
-            Type::Nullable(inner) => {
-                let is_present = reader.read_u8().await? == 0;
-                //todo: eat bytes but discard better
-                let value = inner.deserialize(reader, state).await?;
-                if is_present {
-                    value
-                } else {
-                    Value::Null
-                }
-            }
-            _ => unimplemented!(),
-        })
-    }
-
-    async fn read_n<R: ClickhouseRead>(
-        type_: &Type,
-        reader: &mut R,
-        n: usize,
+        rows: usize,
         state: &mut DeserializerState,
     ) -> Result<Vec<Value>> {
-        let mut mask = vec![false; n];
+        let mut mask = vec![false; rows];
         #[allow(clippy::needless_range_loop)]
-        for i in 0..n {
+        for i in 0..rows {
             let octet = reader.read_u8().await?;
             if octet == 0 {
                 mask[i] = true;
@@ -58,7 +38,7 @@ impl Deserializer for NullableDeserializer {
         }
         let mut out = type_
             .strip_null()
-            .deserialize_column(reader, n, state)
+            .deserialize_column(reader, rows, state)
             .await?;
         for (i, mask) in mask.iter().enumerate() {
             if !*mask {

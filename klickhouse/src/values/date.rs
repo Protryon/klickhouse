@@ -316,7 +316,7 @@ mod chrono_tests {
 
     #[test]
     fn test_datetime64_precision2() {
-        for i in (0..300u64).map(|x| x * 10000) {
+        for i in (0..300u64).map(|x| x * 1000000) {
             let chrono_time = Utc.timestamp(i as i64, i as u32);
             let date = chrono_time.to_sql().unwrap();
             let out_time: chrono::DateTime<Utc> =

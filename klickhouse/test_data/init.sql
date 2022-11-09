@@ -37,3 +37,27 @@ create table test_types (
     d_ip4 IPv4,
     d_ip6 IPv6
 ) Engine=Memory;
+
+
+CREATE TABLE test_serialize (
+    d_uuid UUID,
+    d_date DateTime64(6),
+    d_u64 UInt64,
+    d_i32 Int32,
+    d_i16 Int16,
+    d_map_null_string Map(String, Nullable(String)),
+    d_bool Bool,
+    d_string String,
+    nest Nested
+    (
+        nest_string String,
+        nest_u64 Nullable(UInt64),
+        nest_null_string Nullable(String),
+        nest_i16 Int16
+    ),
+    d_map_u64 Map(String, UInt64),
+    d_map_string Map(String, String),
+    d_null_string Nullable(String),
+    d_vec Array(String),
+    d_vec2 Array(Nullable(String))
+) ENGINE = Memory;
