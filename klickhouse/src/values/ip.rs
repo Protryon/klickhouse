@@ -78,7 +78,7 @@ impl Default for Ipv6 {
 }
 
 impl ToSql for Ipv4 {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Ipv4(self))
     }
 }
@@ -96,7 +96,7 @@ impl FromSql for Ipv4 {
 }
 
 impl ToSql for Ipv6 {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Ipv6(self))
     }
 }

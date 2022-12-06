@@ -7,11 +7,12 @@ use super::unexpected_type;
 pub struct VecTuple<T>(pub Vec<T>);
 
 impl<T: ToSql> ToSql for VecTuple<T> {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Tuple(
             self.0
                 .into_iter()
-                .map(|x| x.to_sql())
+                .enumerate()
+                .map(|(i, x)| x.to_sql(type_hint.and_then(|x| x.untuple()?.get(i))))
                 .collect::<Result<Vec<_>>>()?,
         ))
     }

@@ -5,145 +5,149 @@ use indexmap::IndexMap;
 use super::*;
 
 impl ToSql for u8 {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::UInt8(self))
     }
 }
 
 impl ToSql for bool {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::UInt8(self as u8))
     }
 }
 
 impl ToSql for u16 {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::UInt16(self))
     }
 }
 
 impl ToSql for u32 {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::UInt32(self))
     }
 }
 
 impl ToSql for u64 {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::UInt64(self))
     }
 }
 
 impl ToSql for u128 {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::UInt128(self))
     }
 }
 
 impl ToSql for i8 {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Int8(self))
     }
 }
 
 impl ToSql for i16 {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Int16(self))
     }
 }
 
 impl ToSql for i32 {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Int32(self))
     }
 }
 
 impl ToSql for i64 {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Int64(self))
     }
 }
 
 impl ToSql for i128 {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Int128(self))
     }
 }
 
 impl ToSql for f32 {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Float32(self.to_bits()))
     }
 }
 
 impl ToSql for f64 {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Float64(self.to_bits()))
     }
 }
 
 impl ToSql for String {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::String(self))
     }
 }
 
 impl<'a> ToSql for &'a str {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::String(self.to_string()))
     }
 }
 
 impl<T: ToSql> ToSql for Vec<T> {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
+        let type_hint = type_hint.and_then(|x| x.unarray());
         Ok(Value::Array(
             self.into_iter()
-                .map(|x| x.to_sql())
+                .map(|x| x.to_sql(type_hint))
                 .collect::<Result<Vec<_>>>()?,
         ))
     }
 }
 
 impl<T: ToSql, Y: ToSql> ToSql for HashMap<T, Y> {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
         let mut keys = Vec::with_capacity(self.len());
         let mut values = Vec::with_capacity(self.len());
+        let type_hint = type_hint.and_then(|x| x.unmap());
         for (key, value) in self {
-            keys.push(key.to_sql()?);
-            values.push(value.to_sql()?);
+            keys.push(key.to_sql(type_hint.map(|x| x.0))?);
+            values.push(value.to_sql(type_hint.map(|x| x.1))?);
         }
         Ok(Value::Map(keys, values))
     }
 }
 
 impl<T: ToSql, Y: ToSql> ToSql for BTreeMap<T, Y> {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
         let mut keys = Vec::with_capacity(self.len());
         let mut values = Vec::with_capacity(self.len());
+        let type_hint = type_hint.and_then(|x| x.unmap());
         for (key, value) in self {
-            keys.push(key.to_sql()?);
-            values.push(value.to_sql()?);
+            keys.push(key.to_sql(type_hint.map(|x| x.0))?);
+            values.push(value.to_sql(type_hint.map(|x| x.1))?);
         }
         Ok(Value::Map(keys, values))
     }
 }
 
 impl<T: ToSql, Y: ToSql> ToSql for IndexMap<T, Y> {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
         let mut keys = Vec::with_capacity(self.len());
         let mut values = Vec::with_capacity(self.len());
+        let type_hint = type_hint.and_then(|x| x.unmap());
         for (key, value) in self {
-            keys.push(key.to_sql()?);
-            values.push(value.to_sql()?);
+            keys.push(key.to_sql(type_hint.map(|x| x.0))?);
+            values.push(value.to_sql(type_hint.map(|x| x.1))?);
         }
         Ok(Value::Map(keys, values))
     }
 }
 
 impl<T: ToSql> ToSql for Option<T> {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
         match self {
-            Some(x) => Ok(x.to_sql()?),
+            Some(x) => Ok(x.to_sql(type_hint.and_then(|x| x.unnull()))?),
             None => Ok(Value::Null),
         }
     }
@@ -151,30 +155,31 @@ impl<T: ToSql> ToSql for Option<T> {
 
 #[cfg(const_generics)]
 impl<T: ToSql, const N: usize> ToSql for [T; N] {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
+        let type_hint = type_hint.and_then(|x| x.unarray());
         Ok(Value::Array(
             IntoIterator::into_iter(self)
-                .map(|x| x.to_sql())
+                .map(|x| x.to_sql(type_hint))
                 .collect::<Result<Vec<_>>>()?,
         ))
     }
 }
 
 impl<'a, T: ToSql + Clone> ToSql for &'a T {
-    fn to_sql(self) -> Result<Value> {
-        self.clone().to_sql()
+    fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
+        self.clone().to_sql(type_hint)
     }
 }
 
 impl<'a, T: ToSql + Clone> ToSql for &'a mut T {
-    fn to_sql(self) -> Result<Value> {
-        self.clone().to_sql()
+    fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
+        self.clone().to_sql(type_hint)
     }
 }
 
 impl<T: ToSql> ToSql for Box<T> {
-    fn to_sql(self) -> Result<Value> {
-        (*self).to_sql()
+    fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
+        (*self).to_sql(type_hint)
     }
 }
 
@@ -182,10 +187,12 @@ macro_rules! tuple_impls {
     ($($len:expr => ($($n:tt $name:ident)+))+) => {
         $(
             impl<$($name: ToSql),+> ToSql for ($($name,)+) {
-                fn to_sql(self) -> Result<Value> {
+                fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
+                    let type_hint = type_hint.and_then(|x| x.untuple());
+
                     Ok(Value::Tuple(vec![
                         $(
-                            self.$n.to_sql()?,
+                            self.$n.to_sql(type_hint.and_then(|x| x.get($n)))?,
                         )+
                     ]))
                 }

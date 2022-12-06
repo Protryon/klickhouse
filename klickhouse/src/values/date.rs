@@ -14,7 +14,7 @@ use crate::{
 pub struct Date(pub u16);
 
 impl ToSql for Date {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Date(self))
     }
 }
@@ -52,7 +52,7 @@ impl From<chrono::Date<Utc>> for Date {
 pub struct DateTime(pub Tz, pub u32);
 
 impl ToSql for DateTime {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::DateTime(self))
     }
 }
@@ -112,7 +112,7 @@ impl TryFrom<chrono::DateTime<Utc>> for DateTime {
 pub struct DateTime64<const PRECISION: usize>(pub Tz, pub u64);
 
 impl<const PRECISION: usize> ToSql for DateTime64<PRECISION> {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::DateTime64(self.0, PRECISION, self.1))
     }
 }
@@ -136,7 +136,7 @@ impl<const PRECISION: usize> Default for DateTime64<PRECISION> {
 }
 
 impl ToSql for chrono::DateTime<Utc> {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::DateTime64(
             chrono_tz::UTC,
             6,
@@ -191,7 +191,7 @@ impl<const PRECISION: usize> TryFrom<DateTime64<PRECISION>> for chrono::DateTime
 }
 
 impl ToSql for chrono::DateTime<Tz> {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::DateTime64(
             self.timezone(),
             6,
@@ -305,7 +305,7 @@ mod chrono_tests {
     fn test_datetime64_precision() {
         for i in (0..30000u64).map(|x| x * 10000) {
             let date = DateTime64::<6>(UTC, i);
-            let date_value = date.to_sql().unwrap();
+            let date_value = date.to_sql(None).unwrap();
             assert_eq!(date_value, Value::DateTime64(UTC, 6, i));
             let chrono_date: chrono::DateTime<Utc> =
                 FromSql::from_sql(&Type::DateTime64(6, UTC), date_value).unwrap();
@@ -318,7 +318,7 @@ mod chrono_tests {
     fn test_datetime64_precision2() {
         for i in (0..300u64).map(|x| x * 1000000) {
             let chrono_time = Utc.timestamp(i as i64, i as u32);
-            let date = chrono_time.to_sql().unwrap();
+            let date = chrono_time.to_sql(None).unwrap();
             let out_time: chrono::DateTime<Utc> =
                 FromSql::from_sql(&Type::DateTime64(9, UTC), date.clone()).unwrap();
             assert_eq!(chrono_time, out_time);

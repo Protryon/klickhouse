@@ -81,6 +81,13 @@ impl Type {
         }
     }
 
+    pub fn unarray(&self) -> Option<&Type> {
+        match self {
+            Type::Array(x) => Some(&**x),
+            _ => None,
+        }
+    }
+
     pub fn unwrap_map(&self) -> (&Type, &Type) {
         match self {
             Type::Map(key, value) => (&**key, &**value),
@@ -88,10 +95,31 @@ impl Type {
         }
     }
 
+    pub fn unmap(&self) -> Option<(&Type, &Type)> {
+        match self {
+            Type::Map(key, value) => Some((&**key, &**value)),
+            _ => None,
+        }
+    }
+
     pub fn unwrap_tuple(&self) -> &[Type] {
         match self {
             Type::Tuple(x) => &x[..],
             _ => unimplemented!(),
+        }
+    }
+
+    pub fn untuple(&self) -> Option<&[Type]> {
+        match self {
+            Type::Tuple(x) => Some(&x[..]),
+            _ => None,
+        }
+    }
+
+    pub fn unnull(&self) -> Option<&Type> {
+        match self {
+            Type::Nullable(x) => Some(&**x),
+            _ => None,
         }
     }
 

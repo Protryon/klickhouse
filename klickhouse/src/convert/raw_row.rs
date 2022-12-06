@@ -16,7 +16,7 @@ impl Row for RawRow {
         ))
     }
 
-    fn serialize_row(self) -> Result<Vec<(Cow<'static, str>, Value)>> {
+    fn serialize_row(self, _type_hints: &[&Type]) -> Result<Vec<(Cow<'static, str>, Value)>> {
         Ok(self
             .0
             .into_iter()
@@ -98,7 +98,7 @@ impl RawRow {
         value: impl ToSql,
     ) -> Result<()> {
         let name = name.to_string();
-        let value = value.to_sql()?;
+        let value = value.to_sql(type_.as_ref())?;
         let type_ = type_.unwrap_or_else(|| value.guess_type());
 
         let current_position = self

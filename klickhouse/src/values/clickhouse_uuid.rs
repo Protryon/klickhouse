@@ -7,7 +7,7 @@ use crate::{
 use crate::{convert::ToSql, Value};
 
 impl ToSql for Uuid {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Uuid(self))
     }
 }

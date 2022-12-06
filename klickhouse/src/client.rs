@@ -364,8 +364,9 @@ impl Client {
                 column_types: first_block.column_types.clone(),
                 column_data: IndexMap::new(),
             };
+            let types = first_block.column_types.values().collect::<Vec<_>>();
             rows.into_iter()
-                .map(|x| x.serialize_row())
+                .map(|x| x.serialize_row(&types[..]))
                 .filter_map(|x| match x {
                     Err(e) => {
                         error!("serialization error during insert (SKIPPED ROWS!): {:?}", e);

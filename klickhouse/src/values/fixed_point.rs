@@ -24,7 +24,7 @@ impl<const PRECISION: u64> FixedPoint32<PRECISION> {
 }
 
 impl<const PRECISION: u64> ToSql for FixedPoint32<PRECISION> {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Decimal32(PRECISION as usize, self.0))
     }
 }
@@ -52,7 +52,7 @@ impl<const PRECISION: u64> From<FixedPoint32<PRECISION>> for f64 {
 pub struct FixedPoint64<const PRECISION: u64>(pub i64);
 
 impl<const PRECISION: u64> ToSql for FixedPoint64<PRECISION> {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Decimal64(PRECISION as usize, self.0))
     }
 }
@@ -94,7 +94,7 @@ impl<const PRECISION: u64> From<FixedPoint64<PRECISION>> for f64 {
 pub struct FixedPoint128<const PRECISION: u64>(pub i128);
 
 impl<const PRECISION: u64> ToSql for FixedPoint128<PRECISION> {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Decimal128(PRECISION as usize, self.0))
     }
 }
@@ -136,7 +136,7 @@ impl<const PRECISION: u64> From<FixedPoint128<PRECISION>> for f64 {
 pub struct FixedPoint256<const PRECISION: u64>(pub i256);
 
 impl<const PRECISION: u64> ToSql for FixedPoint256<PRECISION> {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Decimal256(PRECISION as usize, self.0))
     }
 }

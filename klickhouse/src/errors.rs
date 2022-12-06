@@ -22,6 +22,8 @@ pub enum KlickhouseError {
     TypeParseError(String),
     #[error("deserialize error: {0}")]
     DeserializeError(String),
+    #[error("serialize error: {0}")]
+    SerializeError(String),
     #[error("deserialize error for column {0}: {1}")]
     DeserializeErrorWithColumn(&'static str, String),
     #[error("server exception: {code} {name}: {message}\n{stack_trace}")]
@@ -66,6 +68,7 @@ impl Clone for KlickhouseError {
             Self::ProtocolError(arg0) => Self::ProtocolError(arg0.clone()),
             Self::TypeParseError(arg0) => Self::TypeParseError(arg0.clone()),
             Self::DeserializeError(arg0) => Self::DeserializeError(arg0.clone()),
+            Self::SerializeError(arg0) => Self::SerializeError(arg0.clone()),
             Self::DeserializeErrorWithColumn(arg0, arg1) => {
                 Self::DeserializeErrorWithColumn(arg0.clone(), arg1.clone())
             }

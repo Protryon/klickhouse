@@ -104,7 +104,7 @@ pub fn expand_derive_serialize(
                 #deserialize_body
             }
 
-            fn serialize_row(self) -> ::klickhouse::Result<Vec<(::std::borrow::Cow<'static, str>, ::klickhouse::Value)>> {
+            fn serialize_row(self, type_hints: &[&::klickhouse::Type]) -> ::klickhouse::Result<Vec<(::std::borrow::Cow<'static, str>, ::klickhouse::Value)>> {
                 #serialize_body
             }
         }
@@ -154,7 +154,8 @@ fn serialize_struct_visitor(fields: &[Field], params: &Parameters) -> Vec<TokenS
     fields
         .iter()
         .filter(|&field| !field.attrs.skip_serializing())
-        .map(|field| {
+        .enumerate()
+        .map(|(i, field)| {
             let member = &field.member;
 
             let field_expr = get_member(params, member);
@@ -175,7 +176,7 @@ fn serialize_struct_visitor(fields: &[Field], params: &Parameters) -> Vec<TokenS
                 },
                 None => {
                     quote! {
-                        out.push((::std::borrow::Cow::Borrowed(#key_expr), <#field_ty as ::klickhouse::ToSql>::to_sql(#field_expr)?));
+                        out.push((::std::borrow::Cow::Borrowed(#key_expr), <#field_ty as ::klickhouse::ToSql>::to_sql(#field_expr, type_hints.get(#i).copied())?));
                     }
                 },
             };

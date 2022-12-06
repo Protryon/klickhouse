@@ -13,11 +13,11 @@ pub use vec_tuple::*;
 
 /// A type that can be converted to a raw Clickhouse SQL value.
 pub trait ToSql {
-    fn to_sql(self) -> Result<Value>;
+    fn to_sql(self, type_hint: Option<&Type>) -> Result<Value>;
 }
 
 impl ToSql for Value {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint_: Option<&Type>) -> Result<Value> {
         Ok(self)
     }
 }
@@ -43,5 +43,5 @@ impl FromSql for Value {
 pub trait Row: Sized {
     fn deserialize_row(map: Vec<(&str, &Type, Value)>) -> Result<Self>;
 
-    fn serialize_row(self) -> Result<Vec<(Cow<'static, str>, Value)>>;
+    fn serialize_row(self, type_hints: &[&Type]) -> Result<Vec<(Cow<'static, str>, Value)>>;
 }

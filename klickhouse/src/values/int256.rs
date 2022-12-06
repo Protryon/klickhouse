@@ -18,7 +18,7 @@ impl From<i256> for u256 {
 }
 
 impl ToSql for i256 {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Int256(self))
     }
 }
@@ -70,7 +70,7 @@ impl fmt::Display for i256 {
 pub struct u256(pub [u8; 32]);
 
 impl ToSql for u256 {
-    fn to_sql(self) -> Result<Value> {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::UInt256(self))
     }
 }

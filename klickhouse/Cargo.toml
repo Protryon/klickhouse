@@ -29,6 +29,7 @@ refinery-core = { version = "=0.8.6", optional = true }
 time = { version = "0.3.5", features = ["parsing", "formatting"], optional = true }
 compiler-tools = "0.1.7"
 compiler-tools-derive = "0.1.7"
+rust_decimal = { version = "1.27", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }

@@ -42,12 +42,13 @@ impl<'a> QueryBuilder<'a> {
     }
 
     pub fn arg(mut self, arg: impl ToSql) -> Self {
-        self.arguments.push(arg.to_sql());
+        self.arguments.push(arg.to_sql(None));
         self
     }
 
     pub fn args<A: ToSql>(mut self, args: impl IntoIterator<Item = A>) -> Self {
-        self.arguments.extend(args.into_iter().map(ToSql::to_sql));
+        self.arguments
+            .extend(args.into_iter().map(|x| x.to_sql(None)));
         self
     }
 }

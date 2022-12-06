@@ -11,6 +11,8 @@ use crate::{
 
 mod clickhouse_uuid;
 mod date;
+#[cfg(feature = "rust_decimal")]
+mod decimal;
 mod fixed_point;
 mod int256;
 mod ip;
@@ -63,7 +65,6 @@ pub enum Value {
 
     Array(Vec<Value>),
 
-    // Nested(IndexMap<String, Value>),
     Tuple(Vec<Value>),
 
     Null,
@@ -121,7 +122,7 @@ impl Value {
 
     /// Converts a [`T`] type to a [`Value`] by calling [`T::to_sql`].
     pub fn from_value<T: ToSql>(value: T) -> Result<Self> {
-        value.to_sql()
+        value.to_sql(None)
     }
 
     /// Guesses a [`Type`] from the value, may not correspond to actual column type in Clickhouse
