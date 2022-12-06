@@ -58,8 +58,6 @@ impl<T: AsyncRead + Unpin + Send + Sync> ClickhouseRead for T {
         self.read_exact(buf_mut).await?;
         unsafe { buf.set_len(len as usize) };
 
-        self.read_exact(&mut buf[..]).await?;
-
         Ok(buf)
     }
 }
