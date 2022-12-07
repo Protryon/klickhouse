@@ -330,11 +330,11 @@ pub struct Field {
     name: Name,
     skip_serializing: bool,
     skip_deserializing: bool,
-    skip_serializing_if: Option<syn::ExprPath>,
     default: Default,
     serialize_with: Option<syn::ExprPath>,
     deserialize_with: Option<syn::ExprPath>,
     bound: Option<Vec<syn::WherePredicate>>,
+    nested: bool,
 }
 
 #[allow(clippy::enum_variant_names)]
@@ -357,9 +357,9 @@ impl Field {
         container_default: &Default,
     ) -> Self {
         let mut rename = Attr::none(cx, RENAME);
+        let mut nested = BoolAttr::none(cx, NESTED);
         let mut skip_serializing = BoolAttr::none(cx, SKIP_SERIALIZING);
         let mut skip_deserializing = BoolAttr::none(cx, SKIP_DESERIALIZING);
-        let mut skip_serializing_if = Attr::none(cx, SKIP_SERIALIZING_IF);
         let mut default = Attr::none(cx, DEFAULT);
         let mut serialize_with = Attr::none(cx, SERIALIZE_WITH);
         let mut deserialize_with = Attr::none(cx, DESERIALIZE_WITH);
@@ -401,6 +401,11 @@ impl Field {
                     skip_serializing.set_true(word);
                 }
 
+                // Parse `#[klickhouse(nested)]`
+                Meta(Path(word)) if word == NESTED => {
+                    nested.set_true(word);
+                }
+
                 // Parse `#[klickhouse(skip_deserializing)]`
                 Meta(Path(word)) if word == SKIP_DESERIALIZING => {
                     skip_deserializing.set_true(word);
@@ -410,13 +415,6 @@ impl Field {
                 Meta(Path(word)) if word == SKIP => {
                     skip_serializing.set_true(word);
                     skip_deserializing.set_true(word);
-                }
-
-                // Parse `#[klickhouse(skip_serializing_if = "...")]`
-                Meta(NameValue(m)) if m.path == SKIP_SERIALIZING_IF => {
-                    if let Ok(path) = parse_lit_into_expr_path(cx, SKIP_SERIALIZING_IF, &m.lit) {
-                        skip_serializing_if.set(&m.path, path);
-                    }
                 }
 
                 // Parse `#[klickhouse(serialize_with = "...")]`
@@ -489,11 +487,11 @@ impl Field {
             name: Name::from_attrs(ident, rename),
             skip_serializing: skip_serializing.get(),
             skip_deserializing: skip_deserializing.get(),
-            skip_serializing_if: skip_serializing_if.get(),
             default: default.get().unwrap_or(Default::None),
             serialize_with: serialize_with.get(),
             deserialize_with: deserialize_with.get(),
             bound: bound.get(),
+            nested: nested.get(),
         }
     }
 
@@ -507,16 +505,16 @@ impl Field {
         }
     }
 
+    pub fn nested(&self) -> bool {
+        self.nested
+    }
+
     pub fn skip_serializing(&self) -> bool {
         self.skip_serializing
     }
 
     pub fn skip_deserializing(&self) -> bool {
         self.skip_deserializing
-    }
-
-    pub fn skip_serializing_if(&self) -> Option<&syn::ExprPath> {
-        self.skip_serializing_if.as_ref()
     }
 
     pub fn default(&self) -> &Default {

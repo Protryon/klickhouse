@@ -30,6 +30,20 @@ pub struct TestSerialize {
     d_vec2: Vec<Option<String>>,
 }
 
+#[derive(klickhouse::Row, Debug, Default)]
+pub struct Nest {
+    nest_string: String,
+    nest_u64: Option<u64>,
+    nest_null_string: Option<String>,
+    nest_i16: i16,
+}
+
+#[derive(klickhouse::Row, Debug, Default)]
+pub struct TestSerializeNested {
+    #[klickhouse(nested)]
+    nest: Vec<Nest>,
+}
+
 #[tokio::test]
 async fn test_client() {
     env_logger::builder()
@@ -100,5 +114,38 @@ async fn test_client() {
         .unwrap()
     {
         println!("row {row:#?}");
+    }
+
+    let nested = TestSerializeNested {
+        nest: vec![
+            Nest {
+                nest_string: "nest1".to_string(),
+                nest_u64: Some(1),
+                nest_null_string: None,
+                nest_i16: 32,
+            },
+            Nest {
+                nest_string: "nest2".to_string(),
+                nest_u64: Some(2),
+                nest_null_string: None,
+                nest_i16: 64,
+            },
+        ],
+    };
+
+    client.execute("TRUNCATE test_serialize").await.unwrap();
+
+    client
+        .insert_native_block("insert into test_serialize format native", vec![nested])
+        .await
+        .unwrap();
+    println!("reinserting");
+
+    for row in client
+        .query_collect::<RawRow>("select * from test_serialize")
+        .await
+        .unwrap()
+    {
+        println!("row_nested {row:#?}");
     }
 }

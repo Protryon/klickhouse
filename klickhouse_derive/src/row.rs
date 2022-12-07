@@ -5,7 +5,7 @@ use crate::receiver::replace_receiver;
 use crate::{attr, bound, dummy};
 use proc_macro2::{Span, TokenStream};
 use syn::spanned::Spanned;
-use syn::{self, Ident, Member};
+use syn::{self, Ident, Member, Type, PathArguments, GenericArgument};
 
 macro_rules! quote_block {
     ($($tt:tt)*) => {
@@ -95,6 +95,7 @@ pub fn expand_derive_serialize(
     let (impl_generics, ty_generics, where_clause) = params.generics.split_for_impl();
     let serialize_body = Stmts(serialize_body(&cont, &params));
     let deserialize_body = Stmts(deserialize_body(&cont, &params));
+    let serialize_length_body = Stmts(serialize_length_body(&cont, &params));
 
     let impl_block = quote! {
         use ::klickhouse::{ToSql as _, FromSql as _};
@@ -107,6 +108,10 @@ pub fn expand_derive_serialize(
             fn serialize_row(self, type_hints: &[&::klickhouse::Type]) -> ::klickhouse::Result<Vec<(::std::borrow::Cow<'static, str>, ::klickhouse::Value)>> {
                 #serialize_body
             }
+
+            fn serialize_length() -> ::std::option::Option<usize> {
+                #serialize_length_body
+            }
         }
     };
 
@@ -118,6 +123,52 @@ fn serialize_body(cont: &Container, params: &Parameters) -> Fragment {
         serialize_into(params, type_into)
     } else {
         serialize_struct(params, &cont.data[..], &cont.attrs)
+    }
+}
+
+fn unwrap_vec_type(type_: &Type) -> Option<&Type> {
+    match type_ {
+        Type::Path(type_) => {
+            if type_.qself.is_some() || type_.path.leading_colon.is_some() || type_.path.segments.len() != 1 {
+                return None;
+            }
+            let segment = &type_.path.segments[0];
+            if &*segment.ident.to_string() != "Vec" {
+                return None;
+            }
+            match &segment.arguments {
+                PathArguments::AngleBracketed(a) => {
+                    if a.args.len() != 1 {
+                        return None;
+                    }
+                    let arg = &a.args[0];
+                    match arg {
+                        GenericArgument::Type(t) => Some(t),
+                        _ => None,
+                    }
+                }
+                _ => None
+            }
+        },
+        _ => None,
+    }
+}
+
+
+fn serialize_length_body(cont: &Container, _params: &Parameters) -> Fragment {
+    if let Some(_type_into) = cont.attrs.type_into() {
+        Fragment::Expr(quote! { None })
+    } else {
+        let base_length = cont.data
+            .iter()
+            .filter(|&field| !field.attrs.skip_serializing() && !field.attrs.nested())
+            .count();
+        let mut total = quote! { #base_length };
+        for field in cont.data.iter().filter(|&field| !field.attrs.skip_serializing() && field.attrs.nested()) {
+            let field_ty = unwrap_vec_type(&field.ty).expect("invalid non-Vec nested type");
+            total = quote! { #total + <#field_ty as ::klickhouse::Row>::serialize_length()? }
+        }
+        Fragment::Expr(quote! { Some(#total) })
     }
 }
 
@@ -145,6 +196,7 @@ fn serialize_struct_as_struct(
 
     quote_block! {
         let mut out = vec![];
+        let mut field_index: usize = 0;
         #(#serialize_fields)*
         Ok(out)
     }
@@ -154,41 +206,54 @@ fn serialize_struct_visitor(fields: &[Field], params: &Parameters) -> Vec<TokenS
     fields
         .iter()
         .filter(|&field| !field.attrs.skip_serializing())
-        .enumerate()
-        .map(|(i, field)| {
+        .map(|field| {
             let member = &field.member;
 
             let field_expr = get_member(params, member);
 
             let key_expr = field.attrs.name().name();
 
-            let skip = field
-                .attrs
-                .skip_serializing_if()
-                .map(|path| quote!(#path(&#field_expr)));
-
-            let field_ty = field.ty;
-            let ser = match field.attrs.serialize_with() {
+            let field_ty = &field.ty;
+            match field.attrs.serialize_with() {
                 Some(path) => {
                     quote! {
                         out.push((::std::borrow::Cow::Borrowed(#key_expr), #path(#field_expr)?));
                     }
                 },
                 None => {
-                    quote! {
-                        out.push((::std::borrow::Cow::Borrowed(#key_expr), <#field_ty as ::klickhouse::ToSql>::to_sql(#field_expr, type_hints.get(#i).copied())?));
+                    if field.attrs.nested() {
+                        let field_ty = unwrap_vec_type(&field.ty).expect("invalid non-Vec nested type");
+                        quote! {
+                            {
+                                let inner_length = <#field_ty as ::klickhouse::Row>::serialize_length().expect("nested structure must have known length");
+                                let type_hints = type_hints.get(field_index..field_index + inner_length).unwrap_or_default().into_iter().map(|x| x.unarray()).collect::<::std::option::Option<::std::vec::Vec<_>>>().unwrap_or_default();
+                                field_index += inner_length;
+                                let mut outputs: ::std::vec::Vec<(::std::option::Option<::std::borrow::Cow<str>>, ::std::vec::Vec<::klickhouse::Value>)> = ::std::vec::Vec::with_capacity(inner_length);
+                                for _ in 0..inner_length {
+                                    outputs.push((None, ::std::vec::Vec::new()));
+                                }
+                                for row in #field_expr.into_iter() {
+                                    let columns = <#field_ty as ::klickhouse::Row>::serialize_row(row, &type_hints[..])?;
+                                    assert_eq!(columns.len(), inner_length);
+                                    for (i, (name, value)) in columns.into_iter().enumerate() {
+                                        if outputs[i].0.is_none()  {
+                                            outputs[i].0 = Some(format!("{}.{}", #key_expr, name).into());
+                                        }
+                                        outputs[i].1.push(value);
+                                    }
+                                }
+                                for (name, values) in outputs {
+                                    out.push((name.unwrap_or_default(), ::klickhouse::Value::Array(values)));
+                                }
+                            }
+                        }
+                    } else {
+                        quote! {
+                            out.push((::std::borrow::Cow::Borrowed(#key_expr), <#field_ty as ::klickhouse::ToSql>::to_sql(#field_expr, type_hints.get(field_index).copied())?));
+                            field_index += 1;
+                        }
                     }
                 },
-            };
-
-            if let Some(skip) = skip {
-                quote! {
-                    if !#skip {
-                        #ser
-                    }
-                }
-            } else {
-                ser
             }
         })
         .collect()

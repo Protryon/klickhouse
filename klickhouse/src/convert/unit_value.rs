@@ -21,4 +21,8 @@ impl<T: FromSql + ToSql> Row for UnitValue<T> {
             self.0.to_sql(type_hints.get(0).copied())?,
         )])
     }
+
+    fn serialize_length() -> Option<usize> {
+        Some(1)
+    }
 }

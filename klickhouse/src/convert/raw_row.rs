@@ -24,6 +24,10 @@ impl Row for RawRow {
             .map(|(name, _, value)| (Cow::Owned(name), value))
             .collect())
     }
+
+    fn serialize_length() -> Option<usize> {
+        None
+    }
 }
 
 pub trait RowIndex {
