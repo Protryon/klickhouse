@@ -44,6 +44,16 @@ pub struct TestSerializeNested {
     nest: Vec<Nest>,
 }
 
+// used to test compilation with multiple nested entries
+#[allow(unused)]
+#[derive(klickhouse::Row, Debug, Default)]
+struct TestSerializeNested2 {
+    #[klickhouse(nested)]
+    nest: Vec<Nest>,
+    #[klickhouse(nested)]
+    nest2: Vec<Nest>,
+}
+
 #[tokio::test]
 async fn test_client() {
     env_logger::builder()

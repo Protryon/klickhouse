@@ -177,7 +177,7 @@ fn serialize_length_body(cont: &Container, _params: &Parameters) -> Fragment {
             .filter(|&field| !field.attrs.skip_serializing() && field.attrs.nested())
         {
             let field_ty = unwrap_vec_type(&field.ty).expect("invalid non-Vec nested type");
-            total = quote! { match <#field_ty as ::klickhouse::Row>::COLUMN_COUNT { Some(x) => #total + x, None => return None, } }
+            total = quote! { match <#field_ty as ::klickhouse::Row>::COLUMN_COUNT { Some(x) => (#total) + x, None => return None, } }
         }
         Fragment::Expr(quote! { Some(#total) })
     }
