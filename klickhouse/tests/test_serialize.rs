@@ -145,11 +145,15 @@ async fn test_client() {
 
     client.execute("TRUNCATE test_serialize").await.unwrap();
 
+    println!("reinserting");
     client
-        .insert_native_block("insert into test_serialize format native", vec![nested])
+        .insert_native_block(
+            "insert into test_serialize format native",
+            vec![nested, TestSerializeNested::default()],
+        )
         .await
         .unwrap();
-    println!("reinserting");
+    println!("reinserted");
 
     for row in client
         .query_collect::<TestSerializeNested>("select nest.nest_string, nest.nest_u64, nest.nest_null_string, nest.nest_i16 from test_serialize")

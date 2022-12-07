@@ -44,6 +44,9 @@ pub trait Row: Sized {
     /// If `Some`, `serialize_row` and `deserialize_row` MUST return this number of columns
     const COLUMN_COUNT: Option<usize>;
 
+    /// If `Some`, `serialize_row` and `deserialize_row` MUST have these names
+    fn column_names() -> Option<Vec<Cow<'static, str>>>;
+
     fn deserialize_row(map: Vec<(&str, &Type, Value)>) -> Result<Self>;
 
     fn serialize_row(self, type_hints: &[&Type]) -> Result<Vec<(Cow<'static, str>, Value)>>;

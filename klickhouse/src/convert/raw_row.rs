@@ -10,6 +10,10 @@ pub struct RawRow(Vec<Option<(String, Type, Value)>>);
 impl Row for RawRow {
     const COLUMN_COUNT: Option<usize> = None;
 
+    fn column_names() -> Option<Vec<Cow<'static, str>>> {
+        None
+    }
+
     fn deserialize_row(map: Vec<(&str, &Type, Value)>) -> Result<Self> {
         Ok(Self(
             map.into_iter()

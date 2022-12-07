@@ -96,6 +96,7 @@ pub fn expand_derive_serialize(
     let serialize_body = Stmts(serialize_body(&cont, &params));
     let deserialize_body = Stmts(deserialize_body(&cont, &params));
     let serialize_length_body = Stmts(serialize_length_body(&cont, &params));
+    let column_names_body = Stmts(column_names_body(&cont, &params));
     let const_column_count_fn = format_ident!("__{ident}_column_count_klickhouse");
 
     let impl_block = quote! {
@@ -108,6 +109,10 @@ pub fn expand_derive_serialize(
         #[automatically_derived]
         impl #impl_generics ::klickhouse::Row for #ident #ty_generics #where_clause {
             const COLUMN_COUNT: ::std::option::Option<usize> = #const_column_count_fn();
+                    
+            fn column_names() -> Option<Vec<::std::borrow::Cow<'static, str>>> {
+                #column_names_body
+            }
 
             fn deserialize_row(map: Vec<(&str, &::klickhouse::Type, ::klickhouse::Value)>) -> ::klickhouse::Result<Self> {
                 #deserialize_body
@@ -177,9 +182,31 @@ fn serialize_length_body(cont: &Container, _params: &Parameters) -> Fragment {
             .filter(|&field| !field.attrs.skip_serializing() && field.attrs.nested())
         {
             let field_ty = unwrap_vec_type(&field.ty).expect("invalid non-Vec nested type");
-            total = quote! { match <#field_ty as ::klickhouse::Row>::COLUMN_COUNT { Some(x) => (#total) + x, None => return None, } }
+            total = quote! { match <#field_ty as ::klickhouse::Row>::COLUMN_COUNT { Some(x) => (#total) + x, None => return None, } };
         }
         Fragment::Expr(quote! { Some(#total) })
+    }
+}
+
+fn column_names_body(cont: &Container, _params: &Parameters) -> Fragment {
+    if let Some(_type_into) = cont.attrs.type_into() {
+        Fragment::Expr(quote! { None })
+    } else {
+        let name_sources = cont.data.iter().filter(|&field| !field.attrs.skip_serializing())
+            .map(|field| {
+                let name = field.attrs.name().name();
+                if field.attrs.nested() {
+                    let field_ty = unwrap_vec_type(&field.ty).expect("invalid non-Vec nested type");
+                    quote! { out.extend(<#field_ty as ::klickhouse::Row>::column_names()?.into_iter().map(|x| ::std::borrow::Cow::Owned(format!("{}.{}", #name, x)))); }
+                } else {
+                    quote! { out.push(::std::borrow::Cow::Borrowed(#name)); }
+                }
+            }).collect::<Vec<_>>();
+        Fragment::Block(quote! {
+            let mut out = ::std::vec::Vec::new();
+            #(#name_sources)*
+            Some(out)
+        })
     }
 }
 
@@ -253,8 +280,18 @@ fn serialize_struct_visitor(fields: &[Field], params: &Parameters) -> Vec<TokenS
                                         outputs[i].1.push(value);
                                     }
                                 }
-                                for (name, values) in outputs {
-                                    out.push((name.unwrap_or_default(), ::klickhouse::Value::Array(values)));
+                                let mut column_names = ::std::option::Option::None;
+                                for (i, (name, values)) in outputs.into_iter().enumerate() {
+                                    let name = match name {
+                                        Some(name) => name,
+                                        None => {
+                                            if column_names.is_none() {
+                                                column_names = Some(<#field_ty as ::klickhouse::Row>::column_names().expect("column_names required for empty nested serialization"));
+                                            }
+                                            format!("{}.{}", #key_expr, column_names.as_ref().unwrap().get(i).expect("missing column_name for nested struct")).into()
+                                        }
+                                    };
+                                    out.push((name, ::klickhouse::Value::Array(values)));
                                 }
                             }
                         }

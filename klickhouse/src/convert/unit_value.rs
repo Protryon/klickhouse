@@ -9,6 +9,10 @@ pub struct UnitValue<T: FromSql + ToSql>(pub T);
 impl<T: FromSql + ToSql> Row for UnitValue<T> {
     const COLUMN_COUNT: Option<usize> = Some(1);
 
+    fn column_names() -> Option<Vec<Cow<'static, str>>> {
+        None
+    }
+
     fn deserialize_row(map: Vec<(&str, &Type, Value)>) -> Result<Self> {
         if map.is_empty() {
             return Err(KlickhouseError::MissingField("<unit>"));
