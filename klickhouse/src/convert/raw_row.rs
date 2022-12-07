@@ -8,6 +8,8 @@ use crate::{FromSql, KlickhouseError, Result, Row, ToSql, Type, Value};
 pub struct RawRow(Vec<Option<(String, Type, Value)>>);
 
 impl Row for RawRow {
+    const COLUMN_COUNT: Option<usize> = None;
+
     fn deserialize_row(map: Vec<(&str, &Type, Value)>) -> Result<Self> {
         Ok(Self(
             map.into_iter()
@@ -23,10 +25,6 @@ impl Row for RawRow {
             .map(|x| x.expect("cannot serialize a Row which has been retrieved from"))
             .map(|(name, _, value)| (Cow::Owned(name), value))
             .collect())
-    }
-
-    fn serialize_length() -> Option<usize> {
-        None
     }
 }
 

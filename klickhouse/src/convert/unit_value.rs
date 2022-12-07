@@ -7,6 +7,8 @@ use crate::{FromSql, KlickhouseError, Result, Row, ToSql, Type, Value};
 pub struct UnitValue<T: FromSql + ToSql>(pub T);
 
 impl<T: FromSql + ToSql> Row for UnitValue<T> {
+    const COLUMN_COUNT: Option<usize> = Some(1);
+
     fn deserialize_row(map: Vec<(&str, &Type, Value)>) -> Result<Self> {
         if map.is_empty() {
             return Err(KlickhouseError::MissingField("<unit>"));
@@ -20,9 +22,5 @@ impl<T: FromSql + ToSql> Row for UnitValue<T> {
             Cow::Borrowed("_"),
             self.0.to_sql(type_hints.get(0).copied())?,
         )])
-    }
-
-    fn serialize_length() -> Option<usize> {
-        Some(1)
     }
 }

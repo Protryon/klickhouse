@@ -96,21 +96,25 @@ pub fn expand_derive_serialize(
     let serialize_body = Stmts(serialize_body(&cont, &params));
     let deserialize_body = Stmts(deserialize_body(&cont, &params));
     let serialize_length_body = Stmts(serialize_length_body(&cont, &params));
+    let const_column_count_fn = format_ident!("__{ident}_column_count_klickhouse");
 
     let impl_block = quote! {
+        #[doc(hidden)]
+        const fn #const_column_count_fn() -> ::std::option::Option<usize> {
+            #serialize_length_body
+        }
+
         use ::klickhouse::{ToSql as _, FromSql as _};
         #[automatically_derived]
         impl #impl_generics ::klickhouse::Row for #ident #ty_generics #where_clause {
+            const COLUMN_COUNT: ::std::option::Option<usize> = #const_column_count_fn();
+
             fn deserialize_row(map: Vec<(&str, &::klickhouse::Type, ::klickhouse::Value)>) -> ::klickhouse::Result<Self> {
                 #deserialize_body
             }
 
             fn serialize_row(self, type_hints: &[&::klickhouse::Type]) -> ::klickhouse::Result<Vec<(::std::borrow::Cow<'static, str>, ::klickhouse::Value)>> {
                 #serialize_body
-            }
-
-            fn serialize_length() -> ::std::option::Option<usize> {
-                #serialize_length_body
             }
         }
     };
@@ -173,7 +177,7 @@ fn serialize_length_body(cont: &Container, _params: &Parameters) -> Fragment {
             .filter(|&field| !field.attrs.skip_serializing() && field.attrs.nested())
         {
             let field_ty = unwrap_vec_type(&field.ty).expect("invalid non-Vec nested type");
-            total = quote! { #total + <#field_ty as ::klickhouse::Row>::serialize_length()? }
+            total = quote! { match <#field_ty as ::klickhouse::Row>::COLUMN_COUNT { Some(x) => #total + x, None => return None, } }
         }
         Fragment::Expr(quote! { Some(#total) })
     }
@@ -232,7 +236,7 @@ fn serialize_struct_visitor(fields: &[Field], params: &Parameters) -> Vec<TokenS
                         let field_ty = unwrap_vec_type(&field.ty).expect("invalid non-Vec nested type");
                         quote! {
                             {
-                                let inner_length = <#field_ty as ::klickhouse::Row>::serialize_length().expect("nested structure must have known length");
+                                let inner_length = <#field_ty as ::klickhouse::Row>::COLUMN_COUNT.expect("nested structure must have known length");
                                 let type_hints = type_hints.get(field_index..(field_index + inner_length)).unwrap_or_default().into_iter().map(|x| x.unarray()).collect::<::std::option::Option<::std::vec::Vec<_>>>().unwrap_or_default();
                                 field_index += inner_length;
                                 let mut outputs: ::std::vec::Vec<(::std::option::Option<::std::borrow::Cow<str>>, ::std::vec::Vec<::klickhouse::Value>)> = ::std::vec::Vec::with_capacity(inner_length);
@@ -371,7 +375,7 @@ fn deserialize_map(
                 current_index = quote! { #current_index + #size_field };
 
                 nested_temp_decls.push(quote_spanned! { span=>
-                    let #size_field = <#field_ty as ::klickhouse::Row>::serialize_length().expect("nested structure must have known length");
+                    let #size_field = <#field_ty as ::klickhouse::Row>::COLUMN_COUNT.expect("nested structure must have known length");
                     let mut #deser_name_ext: Vec<(&str, &::klickhouse::Type)> = Vec::with_capacity(#size_field);
                     let mut #deser_name_ext_iter: Vec<::std::vec::IntoIter<::klickhouse::Value>> = Vec::with_capacity(#size_field);
                     let mut #deser_name_ext_len: usize = 0;

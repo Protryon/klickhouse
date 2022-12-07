@@ -65,6 +65,8 @@ impl Into<Migration> for MigrationInner {
 }
 
 impl Row for Migration {
+    const COLUMN_COUNT: Option<usize> = Some(4);
+
     fn deserialize_row(map: Vec<(&str, &Type, Value)>) -> Result<Self> {
         if map.len() != 4 {
             return Err(KlickhouseError::DeserializeError(

@@ -41,10 +41,10 @@ impl FromSql for Value {
 /// Generally this is not implemented manually, but using `klickhouse_derive::Row`.
 /// I.e. `#[derive(klickhouse::Row)]`.
 pub trait Row: Sized {
+    /// If `Some`, `serialize_row` and `deserialize_row` MUST return this number of columns
+    const COLUMN_COUNT: Option<usize>;
+
     fn deserialize_row(map: Vec<(&str, &Type, Value)>) -> Result<Self>;
 
     fn serialize_row(self, type_hints: &[&Type]) -> Result<Vec<(Cow<'static, str>, Value)>>;
-
-    /// If `Some`, `serialize_row` MUST return this number of columns
-    fn serialize_length() -> Option<usize>;
 }
