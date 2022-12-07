@@ -142,7 +142,7 @@ async fn test_client() {
     println!("reinserting");
 
     for row in client
-        .query_collect::<RawRow>("select * from test_serialize")
+        .query_collect::<TestSerializeNested>("select nest.nest_string, nest.nest_u64, nest.nest_null_string, nest.nest_i16 from test_serialize")
         .await
         .unwrap()
     {

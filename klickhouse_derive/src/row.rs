@@ -5,7 +5,7 @@ use crate::receiver::replace_receiver;
 use crate::{attr, bound, dummy};
 use proc_macro2::{Span, TokenStream};
 use syn::spanned::Spanned;
-use syn::{self, Ident, Member, Type, PathArguments, GenericArgument};
+use syn::{self, GenericArgument, Ident, Member, PathArguments, Type};
 
 macro_rules! quote_block {
     ($($tt:tt)*) => {
@@ -129,7 +129,10 @@ fn serialize_body(cont: &Container, params: &Parameters) -> Fragment {
 fn unwrap_vec_type(type_: &Type) -> Option<&Type> {
     match type_ {
         Type::Path(type_) => {
-            if type_.qself.is_some() || type_.path.leading_colon.is_some() || type_.path.segments.len() != 1 {
+            if type_.qself.is_some()
+                || type_.path.leading_colon.is_some()
+                || type_.path.segments.len() != 1
+            {
                 return None;
             }
             let segment = &type_.path.segments[0];
@@ -147,24 +150,28 @@ fn unwrap_vec_type(type_: &Type) -> Option<&Type> {
                         _ => None,
                     }
                 }
-                _ => None
+                _ => None,
             }
-        },
+        }
         _ => None,
     }
 }
-
 
 fn serialize_length_body(cont: &Container, _params: &Parameters) -> Fragment {
     if let Some(_type_into) = cont.attrs.type_into() {
         Fragment::Expr(quote! { None })
     } else {
-        let base_length = cont.data
+        let base_length = cont
+            .data
             .iter()
             .filter(|&field| !field.attrs.skip_serializing() && !field.attrs.nested())
             .count();
         let mut total = quote! { #base_length };
-        for field in cont.data.iter().filter(|&field| !field.attrs.skip_serializing() && field.attrs.nested()) {
+        for field in cont
+            .data
+            .iter()
+            .filter(|&field| !field.attrs.skip_serializing() && field.attrs.nested())
+        {
             let field_ty = unwrap_vec_type(&field.ty).expect("invalid non-Vec nested type");
             total = quote! { #total + <#field_ty as ::klickhouse::Row>::serialize_length()? }
         }
@@ -226,7 +233,7 @@ fn serialize_struct_visitor(fields: &[Field], params: &Parameters) -> Vec<TokenS
                         quote! {
                             {
                                 let inner_length = <#field_ty as ::klickhouse::Row>::serialize_length().expect("nested structure must have known length");
-                                let type_hints = type_hints.get(field_index..field_index + inner_length).unwrap_or_default().into_iter().map(|x| x.unarray()).collect::<::std::option::Option<::std::vec::Vec<_>>>().unwrap_or_default();
+                                let type_hints = type_hints.get(field_index..(field_index + inner_length)).unwrap_or_default().into_iter().map(|x| x.unarray()).collect::<::std::option::Option<::std::vec::Vec<_>>>().unwrap_or_default();
                                 field_index += inner_length;
                                 let mut outputs: ::std::vec::Vec<(::std::option::Option<::std::borrow::Cow<str>>, ::std::vec::Vec<::klickhouse::Value>)> = ::std::vec::Vec::with_capacity(inner_length);
                                 for _ in 0..inner_length {
@@ -342,12 +349,83 @@ fn deserialize_map(
     let mut name_match_arms = Vec::with_capacity(fields_names.len());
     let mut index_match_arms = Vec::with_capacity(fields_names.len());
 
+    let mut nested_temp_decls = vec![];
+    let mut nested_rectify = vec![];
+
+    let mut current_index = quote! { 0usize };
     fields_names
         .iter()
         .filter(|&&(field, _)| !field.attrs.skip_deserializing())
-        .enumerate()
-        .for_each(|(index, (field, name))| {
+        .for_each(|(field, name)| {
             let deser_name = field.attrs.name().name();
+            let local_index = current_index.clone();
+            let span = field.original.span();
+
+            if field.attrs.nested() {
+                let deser_name_dotted = format!("{deser_name}.");
+                let deser_name_ext = format_ident!("__ext_{deser_name}");
+                let deser_name_ext_iter = format_ident!("__ext_{deser_name}_iter");
+                let deser_name_ext_len = format_ident!("__ext_{deser_name}_len");
+                let field_ty = unwrap_vec_type(&field.ty).expect("invalid non-Vec nested type");
+                let size_field = format_ident!("__{deser_name}_size");
+                current_index = quote! { #current_index + #size_field };
+
+                nested_temp_decls.push(quote_spanned! { span=>
+                    let #size_field = <#field_ty as ::klickhouse::Row>::serialize_length().expect("nested structure must have known length");
+                    let mut #deser_name_ext: Vec<(&str, &::klickhouse::Type)> = Vec::with_capacity(#size_field);
+                    let mut #deser_name_ext_iter: Vec<::std::vec::IntoIter<::klickhouse::Value>> = Vec::with_capacity(#size_field);
+                    let mut #deser_name_ext_len: usize = 0;
+                });
+                name_match_arms.push(quote_spanned! { span=>
+                    full_name if full_name.starts_with(#deser_name_dotted) => {
+                        let values = _value.unarray().ok_or_else(|| ::klickhouse::KlickhouseError::UnexpectedTypeWithColumn(::std::borrow::Cow::Owned(full_name.to_string()), _type_.clone()))?;
+                        if #deser_name_ext.is_empty() {
+                            #deser_name_ext_len = values.len();
+                        } else {
+                            if #deser_name_ext_len != values.len() {
+                                return ::klickhouse::Result::Err(::klickhouse::KlickhouseError::DeserializeError(format!("invalid length for nested columns, mismatches previous column {}: {} != {}", _name, #deser_name_ext_len, values.len())));
+                            }
+                        }
+                        #deser_name_ext.push((full_name.strip_prefix(#deser_name_dotted).unwrap(), _type_.unarray().ok_or_else(|| ::klickhouse::KlickhouseError::UnexpectedTypeWithColumn(::std::borrow::Cow::Owned(full_name.to_string()), _type_.clone()))?));
+                        #deser_name_ext_iter.push(values.into_iter());
+                    }
+                });
+                index_match_arms.push(quote_spanned! { span=>
+                    x if x >= (#local_index) && x < (#current_index) => {
+                        let values = _value.unarray().ok_or_else(|| ::klickhouse::KlickhouseError::UnexpectedTypeWithColumn(::std::borrow::Cow::Owned(_name.to_string()), _type_.clone()))?;
+                        if #deser_name_ext.is_empty() {
+                            #deser_name_ext_len = values.len();
+                        } else {
+                            if #deser_name_ext_len != values.len() {
+                                return ::klickhouse::Result::Err(::klickhouse::KlickhouseError::DeserializeError(format!("invalid length for nested columns, mismatches previous column {}: {} != {}", _name, #deser_name_ext_len, values.len())));
+                            }
+                        }
+                        #deser_name_ext.push((_name, _type_.unarray().ok_or_else(|| ::klickhouse::KlickhouseError::UnexpectedTypeWithColumn(::std::borrow::Cow::Owned(_name.to_string()), _type_.clone()))?));
+                        #deser_name_ext_iter.push(values.into_iter());
+                    }
+                });
+                nested_rectify.push(quote_spanned! { span=>
+                    {
+                        #name = ::std::option::Option::Some(::std::vec::Vec::with_capacity(#deser_name_ext_len));
+                        'outer: loop {
+                            let mut temp = ::std::vec::Vec::with_capacity(#size_field);
+                            for (name, type_) in #deser_name_ext.iter() {
+                                temp.push((*name, *type_, ::klickhouse::Value::Null));
+                            }
+                            for (i, value) in #deser_name_ext_iter.iter_mut().enumerate() {
+                                match value.next() {
+                                    None => break 'outer,
+                                    Some(x) => temp[i].2 = x,
+                                }
+                            }
+                            #name.as_mut().unwrap().push(<#field_ty as ::klickhouse::Row>::deserialize_row(temp)?);
+                        }
+                    }
+                });
+                return;
+            } else {
+                current_index = quote! { #current_index + 1usize };
+            }
 
             let visit = match field.attrs.deserialize_with() {
                 None => {
@@ -360,7 +438,7 @@ fn deserialize_map(
                     quote_spanned!(span=> #path(_type_, _value)?)
                 }
             };
-            name_match_arms.push(quote! {
+            name_match_arms.push(quote_spanned! { span=>
                 #deser_name => {
                     if ::std::option::Option::is_some(&#name) {
                         return ::klickhouse::Result::Err(::klickhouse::KlickhouseError::DuplicateField(#deser_name));
@@ -368,9 +446,9 @@ fn deserialize_map(
                     #name = ::std::option::Option::Some(#visit);
                 }
             });
-            index_match_arms.push(quote! {
-                #index => {
-                    if ::std::option::Option::is_some(&#name) {
+            index_match_arms.push(quote_spanned! { span=>
+                x if x == (#local_index) => {
+                        if ::std::option::Option::is_some(&#name) {
                         return ::klickhouse::Result::Err(::klickhouse::KlickhouseError::DuplicateField(#deser_name));
                     }
                     #name = ::std::option::Option::Some(#visit);
@@ -399,6 +477,7 @@ fn deserialize_map(
     };
 
     let match_keys = quote! {
+        #[allow(unused_comparisons)]
         for (_field_index, (_name, _type_, _value)) in map.into_iter().enumerate() {
             match _name {
                 #(#name_match_arms)*
@@ -449,8 +528,11 @@ fn deserialize_map(
 
     quote_block! {
         #(#let_values)*
+        #(#nested_temp_decls)*
 
         #match_keys
+
+        #(#nested_rectify)*
 
         #let_default
 

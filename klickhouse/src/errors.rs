@@ -1,4 +1,4 @@
-use std::string::FromUtf8Error;
+use std::{borrow::Cow, string::FromUtf8Error};
 
 use thiserror::Error;
 
@@ -36,7 +36,7 @@ pub enum KlickhouseError {
     #[error("unexpected type: {0}")]
     UnexpectedType(Type),
     #[error("unexpected type for column {0}: {1}")]
-    UnexpectedTypeWithColumn(&'static str, Type),
+    UnexpectedTypeWithColumn(Cow<'static, str>, Type),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("utf-8 conversion error: {0}")]
@@ -50,7 +50,7 @@ impl KlickhouseError {
                 KlickhouseError::DeserializeErrorWithColumn(name, e)
             }
             KlickhouseError::UnexpectedType(e) => {
-                KlickhouseError::UnexpectedTypeWithColumn(name, e)
+                KlickhouseError::UnexpectedTypeWithColumn(Cow::Borrowed(name), e)
             }
             x => x,
         }

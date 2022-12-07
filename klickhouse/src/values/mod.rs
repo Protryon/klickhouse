@@ -86,24 +86,31 @@ impl Value {
         }
     }
 
-    pub(crate) fn unwrap_array_ref(&self) -> &[Value] {
+    pub fn unwrap_array_ref(&self) -> &[Value] {
         match self {
             Value::Array(a) => &a[..],
             _ => unimplemented!(),
         }
     }
 
-    pub(crate) fn unwrap_array(self) -> Vec<Value> {
+    pub fn unwrap_array(self) -> Vec<Value> {
         match self {
             Value::Array(a) => a,
             _ => unimplemented!(),
         }
     }
 
-    pub(crate) fn unwrap_tuple(self) -> Vec<Value> {
+    pub fn unwrap_tuple(self) -> Vec<Value> {
         match self {
             Value::Tuple(a) => a,
             _ => unimplemented!(),
+        }
+    }
+
+    pub fn unarray(self) -> Option<Vec<Value>> {
+        match self {
+            Value::Array(a) => Some(a),
+            _ => None,
         }
     }
 
