@@ -67,6 +67,15 @@ impl Into<Migration> for MigrationInner {
 impl Row for Migration {
     const COLUMN_COUNT: Option<usize> = Some(4);
 
+    fn column_names() -> Option<Vec<Cow<'static, str>>> {
+        Some(vec![
+            "version".into(),
+            "name".into(),
+            "applied_on".into(),
+            "checksum".into(),
+        ])
+    }
+
     fn deserialize_row(map: Vec<(&str, &Type, Value)>) -> Result<Self> {
         if map.len() != 4 {
             return Err(KlickhouseError::DeserializeError(
