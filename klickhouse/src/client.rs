@@ -23,9 +23,8 @@ use crate::{
     },
     io::{ClickhouseRead, ClickhouseWrite},
     protocol::{self, ServerPacket},
-    KlickhouseError, ParsedQuery,
+    KlickhouseError, ParsedQuery, RawRow, Result,
 };
-use crate::{convert::UnitValue, Result};
 use log::*;
 
 struct InnerClient<R: ClickhouseRead, W: ClickhouseWrite> {
@@ -466,12 +465,26 @@ impl Client {
         self.query::<T>(query).await?.next().await.transpose()
     }
 
-    /// Same as `query`, but returns the first row, if any, and discards the rest.
+    /// Same as `query`, but discards all returns blocks. Waits until the first block returns from the server to check for errors.
+    /// Waiting for the first response block or EOS also prevents the server from aborting the query potentially due to client disconnection.
     pub async fn execute(
         &self,
         query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
     ) -> Result<()> {
-        let _ = self.query::<UnitValue<String>>(query).await?;
+        let mut stream = self.query::<RawRow>(query).await?;
+        match stream.next().await {
+            None => Ok(()),
+            Some(Ok(_)) => Ok(()),
+            Some(Err(e)) => Err(e),
+        }
+    }
+
+    /// Same as `execute`, but doesn't wait for a server response. The query could get aborted if the connection is closed quickly.
+    pub async fn execute_now(
+        &self,
+        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
+    ) -> Result<()> {
+        let _ = self.query::<RawRow>(query).await?;
         Ok(())
     }
 

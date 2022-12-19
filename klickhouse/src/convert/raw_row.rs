@@ -53,7 +53,7 @@ impl RowIndex for str {
     }
 }
 
-impl<'b, T: RowIndex> RowIndex for &'b T {
+impl<'b, T: RowIndex + ?Sized> RowIndex for &'b T {
     fn get<'a, I: IntoIterator<Item = &'a str>>(&self, columns: I) -> Option<usize> {
         (*self).get(columns)
     }

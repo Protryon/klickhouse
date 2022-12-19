@@ -36,5 +36,5 @@ pub use klickhouse_derive::Row;
 pub use client::*;
 pub use convert::*;
 pub use errors::*;
-pub use types::Type;
+pub use types::{Type, Tz};
 pub use values::*;

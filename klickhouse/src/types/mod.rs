@@ -1,6 +1,6 @@
 use std::{fmt::Display, str::FromStr};
 
-use chrono_tz::Tz;
+pub use chrono_tz::Tz;
 use uuid::Uuid;
 
 mod deserialize;

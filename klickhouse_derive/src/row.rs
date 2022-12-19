@@ -109,7 +109,7 @@ pub fn expand_derive_serialize(
         #[automatically_derived]
         impl #impl_generics ::klickhouse::Row for #ident #ty_generics #where_clause {
             const COLUMN_COUNT: ::std::option::Option<usize> = #const_column_count_fn();
-                    
+
             fn column_names() -> Option<Vec<::std::borrow::Cow<'static, str>>> {
                 #column_names_body
             }
