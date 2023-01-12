@@ -458,7 +458,7 @@ dependencies = [
 
 [[package]]
 name = "klickhouse"
-version = "0.8.3"
+version = "0.8.4"
 dependencies = [
  "async-trait",
  "bb8",

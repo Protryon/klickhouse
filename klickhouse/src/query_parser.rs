@@ -117,10 +117,10 @@ pub fn split_query_statements(query: &str) -> Vec<String> {
             }
         }
     }
-    if out.last().unwrap().is_empty() {
-        out.pop();
-    }
-    out
+    out.into_iter()
+        .map(|x| x.trim().to_string())
+        .filter(|x| !x.is_empty())
+        .collect()
 }
 
 #[cfg(test)]
@@ -238,5 +238,16 @@ mod tests {
             ),
             "SELECT a, b FROM x WHERE x.y = 'te\\'st' AND x.z = $0"
         );
+    }
+
+    #[test]
+    fn split_tests() {
+        assert_eq!(split_query_statements("X;B",), vec!["X;", "B"]);
+        assert_eq!(split_query_statements("X;B;",), vec!["X;", "B;"]);
+        assert_eq!(split_query_statements("X;B;\n",), vec!["X;", "B;"]);
+        assert_eq!(split_query_statements("X;B;\n\n\n",), vec!["X;", "B;"]);
+        assert_eq!(split_query_statements("X;\n\n\n",), vec!["X;"]);
+        assert_eq!(split_query_statements("X\n\n\n",), vec!["X"]);
+        assert_eq!(split_query_statements("",), Vec::<&str>::new());
     }
 }
