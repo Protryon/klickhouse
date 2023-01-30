@@ -20,6 +20,7 @@ chrono = "0.4"
 chrono-tz = "0.8"
 futures = "0.3"
 tokio-stream = "0.1"
+libc = "0.2"
 lz4 = { version = "1.24", optional = true }
 klickhouse_derive = { version = "=0.8.2", optional = true, path = "../klickhouse_derive" }
 cityhash-rs = "1.0"

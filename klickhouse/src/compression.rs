@@ -23,8 +23,8 @@ pub async fn compress_block(block: Block, revision: u64) -> Result<(Vec<u8>, usi
     let mut compressed = Vec::<u8>::with_capacity(raw.len() + (raw.len() / 255) + 16 + 1);
     let out_len = unsafe {
         lz4::liblz4::LZ4_compress_default(
-            raw.as_ptr() as *const i8,
-            compressed.as_mut_ptr() as *mut i8,
+            raw.as_ptr() as *const libc::c_char,
+            compressed.as_mut_ptr() as *mut libc::c_char,
             raw.len() as i32,
             compressed.capacity() as i32,
         )
@@ -47,8 +47,8 @@ pub fn decompress_block(data: &[u8], decompressed_size: u32) -> Result<Vec<u8>> 
 
     let out_len = unsafe {
         lz4::liblz4::LZ4_decompress_safe(
-            data.as_ptr() as *const i8,
-            output.as_mut_ptr() as *mut i8,
+            data.as_ptr() as *const libc::c_char,
+            output.as_mut_ptr() as *mut libc::c_char,
             data.len() as i32,
             output.capacity() as i32,
         )
