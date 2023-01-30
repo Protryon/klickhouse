@@ -254,7 +254,7 @@ impl fmt::Display for Value {
             }
             Value::String(string) => {
                 write!(f, "'")?;
-                escape_string(f, &**string)?;
+                escape_string(f, string)?;
                 write!(f, "'")
             }
             Value::Uuid(uuid) => {
@@ -269,7 +269,7 @@ impl fmt::Display for Value {
                     (*datetime).try_into().map_err(|_| fmt::Error)?;
                 let string = chrono_date.to_rfc3339_opts(SecondsFormat::AutoSi, true);
                 write!(f, "'")?;
-                escape_string(f, &*string)?;
+                escape_string(f, &string)?;
                 write!(f, "'")
             }
             Value::DateTime64(tz, precision, _) => {
@@ -278,7 +278,7 @@ impl fmt::Display for Value {
                         .map_err(|_| fmt::Error)?;
                 let string = chrono_date.to_rfc3339_opts(SecondsFormat::AutoSi, true);
                 write!(f, "parseDateTime64BestEffort('")?;
-                escape_string(f, &*string)?;
+                escape_string(f, &string)?;
                 write!(f, "', {precision})")
             }
             Value::Enum8(x) => write!(f, "{x}"),

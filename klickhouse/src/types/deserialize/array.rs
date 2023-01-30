@@ -40,7 +40,7 @@ impl Deserializer for ArrayDeserializer {
             .deserialize_column(reader, offsets[offsets.len() - 1] as usize, state)
             .await?
             .into_iter();
-        let mut out = Vec::with_capacity(rows as usize);
+        let mut out = Vec::with_capacity(rows);
         let mut read_offset = 0u64;
         for offset in offsets {
             let len = offset - read_offset;

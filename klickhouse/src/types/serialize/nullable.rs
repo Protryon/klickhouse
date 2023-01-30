@@ -21,7 +21,7 @@ impl Serializer for NullableSerializer {
 
         let mask = values
             .iter()
-            .map(|value| if value == &Value::Null { 1u8 } else { 0u8 })
+            .map(|value| u8::from(value == &Value::Null))
             .collect::<Vec<u8>>();
         writer.write_all(&mask).await?;
 

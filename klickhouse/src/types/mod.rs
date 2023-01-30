@@ -76,7 +76,7 @@ pub enum Type {
 impl Type {
     pub fn unwrap_array(&self) -> &Type {
         match self {
-            Type::Array(x) => &**x,
+            Type::Array(x) => x,
             _ => unimplemented!(),
         }
     }
@@ -125,7 +125,7 @@ impl Type {
 
     pub fn strip_null(&self) -> &Type {
         match self {
-            Type::Nullable(x) => &**x,
+            Type::Nullable(x) => x,
             _ => self,
         }
     }
@@ -175,7 +175,7 @@ impl Type {
 
     pub fn strip_low_cardinality(&self) -> &Type {
         match self {
-            Type::LowCardinality(x) => &**x,
+            Type::LowCardinality(x) => x,
             _ => self,
         }
     }
@@ -518,8 +518,8 @@ impl Display for Type {
                     .collect::<Vec<_>>()
                     .join(",")
             ),
-            Type::LowCardinality(inner) => write!(f, "LowCardinality({})", inner.to_string()),
-            Type::Array(inner) => write!(f, "Array({})", inner.to_string()),
+            Type::LowCardinality(inner) => write!(f, "LowCardinality({})", inner),
+            Type::Array(inner) => write!(f, "Array({})", inner),
             // Type::Nested(items) => format!("Nested({})", items.iter().map(|(key, value)| format!("{} {}", key, value.to_string())).collect::<Vec<_>>().join(",")),
             Type::Tuple(items) => write!(
                 f,
@@ -530,8 +530,8 @@ impl Display for Type {
                     .collect::<Vec<_>>()
                     .join(",")
             ),
-            Type::Nullable(inner) => write!(f, "Nullable({})", inner.to_string()),
-            Type::Map(key, value) => write!(f, "Map({},{})", key.to_string(), value.to_string()),
+            Type::Nullable(inner) => write!(f, "Nullable({})", inner),
+            Type::Map(key, value) => write!(f, "Map({},{})", key, value),
         }
     }
 }
@@ -810,9 +810,9 @@ impl Type {
             },
             Type::Array(inner) => {
                 if dimensions >= 2 {
-                    return Err(KlickhouseError::TypeParseError(format!(
-                        "too many dimensions (limited to 2D structure)"
-                    )));
+                    return Err(KlickhouseError::TypeParseError(
+                        "too many dimensions (limited to 2D structure)".to_string(),
+                    ));
                 }
                 inner.validate(dimensions + 1)?;
             }
@@ -840,9 +840,9 @@ impl Type {
             }
             Type::Map(key, value) => {
                 if dimensions >= 2 {
-                    return Err(KlickhouseError::TypeParseError(format!(
-                        "too many dimensions (limited to 2D structure)"
-                    )));
+                    return Err(KlickhouseError::TypeParseError(
+                        "too many dimensions (limited to 2D structure)".to_string(),
+                    ));
                 }
                 if !matches!(
                     &**key,
@@ -868,9 +868,7 @@ impl Type {
                         | Type::Enum8(_)
                         | Type::Enum16(_)
                 ) {
-                    return Err(KlickhouseError::TypeParseError(format!(
-                        "key in map must be String, Integer, LowCardinality, FixedString, UUID, Date, DateTime, Date32, Enum"
-                    )));
+                    return Err(KlickhouseError::TypeParseError("key in map must be String, Integer, LowCardinality, FixedString, UUID, Date, DateTime, Date32, Enum".to_string()));
                 }
                 key.validate(dimensions + 1)?;
                 value.validate(dimensions + 1)?;

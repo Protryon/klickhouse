@@ -109,12 +109,12 @@ fn roundtrip_i256() {
 #[test]
 fn roundtrip_f32() {
     const FLOATS: &[f32] = &[
-        (1.0 as f32),
-        (0.0 as f32),
-        (100.0 as f32),
-        (100000.0 as f32),
-        (1000000.0 as f32),
-        (-1000000.0 as f32),
+        1.0_f32,
+        0.0_f32,
+        100.0_f32,
+        100000.0_f32,
+        1000000.0_f32,
+        -1000000.0_f32,
         f32::NAN,
         f32::INFINITY,
         f32::NEG_INFINITY,
@@ -128,12 +128,12 @@ fn roundtrip_f32() {
 #[test]
 fn roundtrip_f64() {
     const FLOATS: &[f64] = &[
-        (1.0 as f64),
-        (0.0 as f64),
-        (100.0 as f64),
-        (100000.0 as f64),
-        (1000000.0 as f64),
-        (-1000000.0 as f64),
+        1.0_f64,
+        0.0_f64,
+        100.0_f64,
+        100000.0_f64,
+        1000000.0_f64,
+        -1000000.0_f64,
         f64::NAN,
         f64::INFINITY,
         f64::NEG_INFINITY,

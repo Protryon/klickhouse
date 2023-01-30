@@ -78,13 +78,13 @@ impl RawRow {
                     .iter()
                     .map(|x| x.as_ref().map(|x| &*x.0).unwrap_or("")),
             )
-            .ok_or_else(|| KlickhouseError::OutOfBounds)?;
+            .ok_or(KlickhouseError::OutOfBounds)?;
         let (_, type_, value) = self
             .0
             .get_mut(index)
             .unwrap()
             .take()
-            .ok_or_else(|| KlickhouseError::DoubleFetch)?;
+            .ok_or(KlickhouseError::DoubleFetch)?;
         T::from_sql(&type_, value)
     }
 

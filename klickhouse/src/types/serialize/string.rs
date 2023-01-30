@@ -28,7 +28,7 @@ impl Serializer for StringSerializer {
                             }
                         }
                     } else {
-                        writer.write_string(&**x).await?;
+                        writer.write_string(x).await?;
                     }
                 }
                 _ => unimplemented!(),

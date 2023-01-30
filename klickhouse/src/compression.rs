@@ -93,8 +93,8 @@ async fn read_compressed_blob(
     let mut compressed = vec![0u8; compressed_size as usize];
     reader.read_exact(&mut compressed[9..]).await?;
     compressed[0] = type_byte;
-    (&mut compressed[1..5]).copy_from_slice(&compressed_size.to_le_bytes()[..]);
-    (&mut compressed[5..9]).copy_from_slice(&decompressed_size.to_le_bytes()[..]);
+    compressed[1..5].copy_from_slice(&compressed_size.to_le_bytes()[..]);
+    compressed[5..9].copy_from_slice(&decompressed_size.to_le_bytes()[..]);
     let calc_checksum = cityhash_rs::cityhash_102_128(&compressed[..]);
     if calc_checksum != checksum {
         return Err(KlickhouseError::ProtocolError(format!(

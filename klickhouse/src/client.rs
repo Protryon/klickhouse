@@ -68,7 +68,7 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
                         },
                         stage: QueryProcessingStage::Complete,
                         compression: CompressionMethod::default(),
-                        query: &*query,
+                        query: &query,
                     })
                     .await?;
 
@@ -237,7 +237,7 @@ impl Client {
     /// Connects to a specific socket address over plaintext TCP for Clickhouse.
     pub async fn connect<A: ToSocketAddrs>(destination: A, options: ClientOptions) -> Result<Self> {
         let (read, writer) = TcpStream::connect(destination).await?.into_split();
-        Ok(Self::connect_stream(read, writer, options).await?)
+        Self::connect_stream(read, writer, options).await
     }
 
     async fn start<R: ClickhouseRead + 'static, W: ClickhouseWrite>(

@@ -63,14 +63,14 @@ impl Clone for KlickhouseError {
             Self::MissingRow => Self::MissingRow,
             Self::DoubleFetch => Self::DoubleFetch,
             Self::OutOfBounds => Self::OutOfBounds,
-            Self::MissingField(arg0) => Self::MissingField(arg0.clone()),
-            Self::DuplicateField(arg0) => Self::DuplicateField(arg0.clone()),
+            Self::MissingField(arg0) => Self::MissingField(&(*arg0).clone()),
+            Self::DuplicateField(arg0) => Self::DuplicateField(&(*arg0).clone()),
             Self::ProtocolError(arg0) => Self::ProtocolError(arg0.clone()),
             Self::TypeParseError(arg0) => Self::TypeParseError(arg0.clone()),
             Self::DeserializeError(arg0) => Self::DeserializeError(arg0.clone()),
             Self::SerializeError(arg0) => Self::SerializeError(arg0.clone()),
             Self::DeserializeErrorWithColumn(arg0, arg1) => {
-                Self::DeserializeErrorWithColumn(arg0.clone(), arg1.clone())
+                Self::DeserializeErrorWithColumn(&(*arg0).clone(), arg1.clone())
             }
             Self::ServerException {
                 code,
@@ -78,7 +78,7 @@ impl Clone for KlickhouseError {
                 message,
                 stack_trace,
             } => Self::ServerException {
-                code: code.clone(),
+                code: *code,
                 name: name.clone(),
                 message: message.clone(),
                 stack_trace: stack_trace.clone(),

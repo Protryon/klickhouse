@@ -178,7 +178,7 @@ impl Block {
         for _ in 0..columns {
             let name = reader.read_string().await?;
             let type_name = reader.read_string().await?;
-            let type_ = Type::from_str(&*type_name)?;
+            let type_ = Type::from_str(&type_name)?;
             block.column_types.insert(name.clone(), type_.clone());
             let mut state = DeserializerState {};
             let row_data = if rows > 0 {
@@ -210,8 +210,8 @@ impl Block {
         writer.write_var_uint(joined.len() as u64).await?;
         writer.write_var_uint(self.rows).await?;
         for (name, (type_, data)) in joined {
-            writer.write_string(&*name).await?;
-            writer.write_string(&*type_.to_string()).await?;
+            writer.write_string(&name).await?;
+            writer.write_string(&type_.to_string()).await?;
             if data.len() != self.rows as usize {
                 return Err(KlickhouseError::ProtocolError(format!(
                     "row and column length mismatch. {} != {}",

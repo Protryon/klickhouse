@@ -228,7 +228,7 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
             .write_var_uint(protocol::ClientPacketId::Hello as u64)
             .await?;
         self.writer
-            .write_string(&*format!(
+            .write_string(&format!(
                 "ClickHouse Rust-Klickhouse {}",
                 env!("CARGO_PKG_VERSION")
             ))

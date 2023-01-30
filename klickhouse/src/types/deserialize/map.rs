@@ -18,8 +18,8 @@ impl Deserializer for MapDeserializer {
         match type_ {
             Type::Map(key, value) => {
                 let nested = Type::Array(Box::new(Type::Tuple(vec![
-                    (&**key).clone(),
-                    (&**value).clone(),
+                    (**key).clone(),
+                    (**value).clone(),
                 ])));
                 nested.deserialize_prefix(reader, state).await?;
             }
