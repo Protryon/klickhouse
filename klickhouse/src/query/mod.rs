@@ -1,7 +1,15 @@
+use std::fmt;
+
 use crate::{KlickhouseError, Result, ToSql, Value};
 
 #[derive(Debug, Clone)]
 pub struct ParsedQuery(pub(crate) String);
+
+impl fmt::Display for ParsedQuery {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl TryInto<ParsedQuery> for String {
     type Error = KlickhouseError;
@@ -50,6 +58,10 @@ impl<'a> QueryBuilder<'a> {
         self.arguments
             .extend(args.into_iter().map(|x| x.to_sql(None)));
         self
+    }
+
+    pub fn finalize(self) -> Result<ParsedQuery> {
+        self.try_into()
     }
 }
 

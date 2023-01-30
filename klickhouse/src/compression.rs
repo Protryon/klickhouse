@@ -14,11 +14,6 @@ use crate::{KlickhouseError, Result};
 pub async fn compress_block(block: Block, revision: u64) -> Result<(Vec<u8>, usize)> {
     let mut raw = vec![];
     block.write(&mut raw, revision).await?;
-    // print!("raw block out: ");
-    // for b in &raw {
-    //     print!("{b:02X}");
-    // }
-    // println!();
     let raw_len = raw.len();
     let mut compressed = Vec::<u8>::with_capacity(raw.len() + (raw.len() / 255) + 16 + 1);
     let out_len = unsafe {

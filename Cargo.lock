@@ -471,6 +471,7 @@ dependencies = [
  "futures",
  "indexmap",
  "klickhouse_derive",
+ "libc",
  "log",
  "lz4",
  "refinery-core",
