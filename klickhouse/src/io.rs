@@ -72,7 +72,7 @@ impl<T: AsyncRead + Unpin + Send + Sync> ClickhouseRead for T {
 pub trait ClickhouseWrite: AsyncWrite + Unpin + Send + Sync + 'static {
     async fn write_var_uint(&mut self, value: u64) -> Result<()>;
 
-    async fn write_string(&mut self, mut value: &str) -> Result<()>;
+    async fn write_string(&mut self, value: &str) -> Result<()>;
 }
 
 #[async_trait::async_trait]
