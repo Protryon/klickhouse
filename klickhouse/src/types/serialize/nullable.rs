@@ -19,10 +19,11 @@ impl Serializer for NullableSerializer {
             unimplemented!()
         };
 
-        for value in &values {
-            let mask = if value == &Value::Null { 1u8 } else { 0u8 };
-            writer.write_u8(mask).await?;
-        }
+        let mask = values
+            .iter()
+            .map(|value| if value == &Value::Null { 1u8 } else { 0u8 })
+            .collect::<Vec<u8>>();
+        writer.write_all(&mask).await?;
 
         inner_type.serialize_column(values, writer, state).await?;
         Ok(())

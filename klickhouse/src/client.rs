@@ -34,7 +34,7 @@ struct InnerClient<R: ClickhouseRead, W: ClickhouseWrite> {
     pending_queries: VecDeque<mpsc::Sender<Result<Block>>>,
 }
 
-impl<R: ClickhouseRead, W: ClickhouseWrite> InnerClient<R, W> {
+impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
     pub fn new(reader: R, writer: W, options: ClientOptions) -> Self {
         Self {
             input: InternalClientIn::new(reader),

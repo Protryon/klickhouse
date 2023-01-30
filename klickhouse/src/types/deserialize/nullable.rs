@@ -28,20 +28,16 @@ impl Deserializer for NullableDeserializer {
         rows: usize,
         state: &mut DeserializerState,
     ) -> Result<Vec<Value>> {
-        let mut mask = vec![false; rows];
-        #[allow(clippy::needless_range_loop)]
-        for i in 0..rows {
-            let octet = reader.read_u8().await?;
-            if octet == 0 {
-                mask[i] = true;
-            }
-        }
+        // if mask[i] == 0, item is present
+        let mut mask = vec![0u8; rows];
+        reader.read_exact(&mut mask).await?;
+
         let mut out = type_
             .strip_null()
             .deserialize_column(reader, rows, state)
             .await?;
         for (i, mask) in mask.iter().enumerate() {
-            if !*mask {
+            if *mask != 0 {
                 out[i] = Value::Null;
             }
         }

@@ -35,6 +35,9 @@ impl<T: AsyncRead + Unpin + Send + Sync> ClickhouseRead for T {
                 len, MAX_STRING_SIZE
             )));
         }
+        if len == 0 {
+            return Ok(String::new());
+        }
         let mut buf = Vec::with_capacity(len as usize);
 
         let buf_mut = unsafe { std::slice::from_raw_parts_mut(buf.as_mut_ptr(), len as usize) };
@@ -51,6 +54,9 @@ impl<T: AsyncRead + Unpin + Send + Sync> ClickhouseRead for T {
                 "binary blob too large: {} > {}",
                 len, MAX_STRING_SIZE
             )));
+        }
+        if len == 0 {
+            return Ok(Vec::new());
         }
         let mut buf = Vec::with_capacity(len as usize);
 
