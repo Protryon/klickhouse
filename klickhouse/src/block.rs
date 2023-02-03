@@ -37,7 +37,7 @@ impl BlockInfo {
                     new.is_overflows = reader.read_u8().await? != 0;
                 }
                 2 => {
-                    new.bucket_num = reader.read_i32().await?;
+                    new.bucket_num = reader.read_i32_le().await?;
                 }
                 field_num => {
                     return Err(KlickhouseError::ProtocolError(format!(
@@ -56,7 +56,7 @@ impl BlockInfo {
             .write_u8(if self.is_overflows { 1 } else { 2 })
             .await?;
         writer.write_var_uint(2).await?;
-        writer.write_i32(self.bucket_num).await?;
+        writer.write_i32_le(self.bucket_num).await?;
         writer.write_var_uint(0).await?;
         Ok(())
     }

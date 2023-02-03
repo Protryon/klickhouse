@@ -35,7 +35,7 @@ impl<R: ClickhouseRead + 'static> InternalClientIn<R> {
     }
 
     async fn read_exception(&mut self) -> Result<ServerException> {
-        let code = self.reader.read_i32().await?;
+        let code = self.reader.read_i32_le().await?;
         let name = self.reader.read_string().await?;
         let message = self.reader.read_string().await?;
         let stack_trace = self.reader.read_string().await?;
