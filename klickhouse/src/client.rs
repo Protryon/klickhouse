@@ -31,7 +31,13 @@ struct InnerClient<R: ClickhouseRead, W: ClickhouseWrite> {
     input: InternalClientIn<R>,
     output: InternalClientOut<W>,
     options: ClientOptions,
-    pending_queries: VecDeque<mpsc::Sender<Result<Block>>>,
+    pending_queries: VecDeque<PendingQuery>,
+    executing_query: Option<mpsc::Sender<Result<Block>>>,
+}
+
+struct PendingQuery {
+    query: String,
+    response: oneshot::Sender<mpsc::Receiver<Result<Block>>>,
 }
 
 impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
@@ -41,53 +47,64 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
             output: InternalClientOut::new(writer),
             options,
             pending_queries: VecDeque::new(),
+            executing_query: None,
         }
+    }
+
+    async fn dispatch_query(&mut self, query: PendingQuery) -> Result<()> {
+        self.output
+            .send_query(Query {
+                id: "",
+                info: ClientInfo {
+                    kind: QueryKind::InitialQuery,
+                    initial_user: "",
+                    initial_query_id: "",
+                    initial_address: "0.0.0.0:0",
+                    os_user: "",
+                    client_hostname: "localhost",
+                    client_name: "ClickHouseclient",
+                    client_version_major: crate::VERSION_MAJOR,
+                    client_version_minor: crate::VERSION_MINOR,
+                    client_tcp_protocol_version: protocol::DBMS_TCP_PROTOCOL_VERSION,
+                    quota_key: "",
+                    distributed_depth: 1,
+                    client_version_patch: 1,
+                    open_telemetry: None,
+                },
+                stage: QueryProcessingStage::Complete,
+                compression: CompressionMethod::default(),
+                query: &query.query,
+            })
+            .await?;
+
+        let (sender, receiver) = mpsc::channel(32);
+        query.response.send(receiver).ok();
+        self.executing_query = Some(sender);
+        self.output
+            .send_data(
+                Block {
+                    info: BlockInfo::default(),
+                    rows: 0,
+                    column_types: IndexMap::new(),
+                    column_data: IndexMap::new(),
+                },
+                CompressionMethod::default(),
+                "",
+                false,
+            )
+            .await?;
+        Ok(())
     }
 
     async fn handle_request(&mut self, request: ClientRequest) -> Result<()> {
         match request.data {
             ClientRequestData::Query { query, response } => {
-                self.output
-                    .send_query(Query {
-                        id: "",
-                        info: ClientInfo {
-                            kind: QueryKind::InitialQuery,
-                            initial_user: "",
-                            initial_query_id: "",
-                            initial_address: "0.0.0.0:0",
-                            os_user: "",
-                            client_hostname: "localhost",
-                            client_name: "ClickHouseclient",
-                            client_version_major: crate::VERSION_MAJOR,
-                            client_version_minor: crate::VERSION_MINOR,
-                            client_tcp_protocol_version: protocol::DBMS_TCP_PROTOCOL_VERSION,
-                            quota_key: "",
-                            distributed_depth: 1,
-                            client_version_patch: 1,
-                            open_telemetry: None,
-                        },
-                        stage: QueryProcessingStage::Complete,
-                        compression: CompressionMethod::default(),
-                        query: &query,
-                    })
-                    .await?;
-
-                let (sender, receiver) = mpsc::channel(32);
-                response.send(receiver).ok();
-                self.pending_queries.push_back(sender);
-                self.output
-                    .send_data(
-                        Block {
-                            info: BlockInfo::default(),
-                            rows: 0,
-                            column_types: IndexMap::new(),
-                            column_data: IndexMap::new(),
-                        },
-                        CompressionMethod::default(),
-                        "",
-                        false,
-                    )
-                    .await?;
+                let query = PendingQuery { query, response };
+                if self.pending_queries.is_empty() && self.executing_query.is_none() {
+                    self.dispatch_query(query).await?;
+                } else {
+                    self.pending_queries.push_back(query);
+                }
             }
             ClientRequestData::SendData { block, response } => {
                 self.output
@@ -107,7 +124,7 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
                 ))
             }
             ServerPacket::Data(block) => {
-                if let Some(current) = self.pending_queries.front() {
+                if let Some(current) = self.executing_query.as_ref() {
                     current.send(Ok(block.block)).await.ok();
                 } else {
                     return Err(KlickhouseError::ProtocolError(
@@ -116,7 +133,7 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
                 }
             }
             ServerPacket::Exception(e) => {
-                if let Some(current) = self.pending_queries.front() {
+                if let Some(current) = self.executing_query.as_ref() {
                     current.send(Err(e.emit())).await.ok();
                 } else {
                     return Err(e.emit());
@@ -125,12 +142,13 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
             ServerPacket::Progress(_) => {}
             ServerPacket::Pong => {}
             ServerPacket::EndOfStream => {
-                if self.pending_queries.pop_front().is_some() {
-                    // drop sender
-                } else {
+                if self.executing_query.take().is_none() {
                     return Err(KlickhouseError::ProtocolError(
-                        "received end of stream, but no pending queries".to_string(),
+                        "received end of stream, but no executing query".to_string(),
                     ));
+                }
+                if let Some(query) = self.pending_queries.pop_front() {
+                    self.dispatch_query(query).await?;
                 }
             }
             ServerPacket::ProfileInfo(_) => {}
@@ -472,11 +490,10 @@ impl Client {
         query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
     ) -> Result<()> {
         let mut stream = self.query::<RawRow>(query).await?;
-        match stream.next().await {
-            None => Ok(()),
-            Some(Ok(_)) => Ok(()),
-            Some(Err(e)) => Err(e),
+        while let Some(next) = stream.next().await {
+            next?;
         }
+        Ok(())
     }
 
     /// Same as `execute`, but doesn't wait for a server response. The query could get aborted if the connection is closed quickly.
