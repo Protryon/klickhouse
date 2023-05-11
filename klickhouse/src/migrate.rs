@@ -286,7 +286,7 @@ impl<T: ClusterName> AsyncMigrate for ClusterMigration<T> {
                 applied_on VARCHAR(255),
                 checksum VARCHAR(255)
             ) Engine=MergeTree() ORDER BY version;
-            CREATE TABLE
+            CREATE TABLE IF NOT EXISTS
                 {migration_table_name}
             ON CLUSTER {0}
             AS {migration_table_name}_local ENGINE = Distributed({0}, {1}, {migration_table_name}_local, rand());
