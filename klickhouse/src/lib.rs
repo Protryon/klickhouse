@@ -17,6 +17,8 @@ mod io;
 mod manager;
 #[cfg(feature = "refinery")]
 mod migrate;
+#[cfg(feature = "refinery")]
+pub use migrate::*;
 mod progress;
 mod protocol;
 mod query;
@@ -38,3 +40,5 @@ pub use convert::*;
 pub use errors::*;
 pub use types::{Type, Tz};
 pub use values::*;
+mod lock;
+pub use lock::ClickhouseLock;

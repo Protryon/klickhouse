@@ -133,8 +133,11 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
                 }
             }
             ServerPacket::Exception(e) => {
-                if let Some(current) = self.executing_query.as_ref() {
+                if let Some(current) = self.executing_query.take() {
                     current.send(Err(e.emit())).await.ok();
+                    if let Some(query) = self.pending_queries.pop_front() {
+                        self.dispatch_query(query).await?;
+                    }
                 } else {
                     return Err(e.emit());
                 }
