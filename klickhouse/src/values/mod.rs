@@ -9,6 +9,7 @@ use crate::{
     Result,
 };
 
+mod bytes;
 mod clickhouse_uuid;
 mod date;
 #[cfg(feature = "rust_decimal")]
@@ -17,6 +18,7 @@ mod fixed_point;
 mod int256;
 mod ip;
 
+pub use bytes::*;
 pub use date::*;
 pub use fixed_point::*;
 pub use int256::*;
@@ -28,7 +30,7 @@ mod tests;
 /// A raw Clickhouse value.
 /// Types are not strictly/completely preserved (i.e. types `String` and `FixedString` both are value `String`).
 /// Use this if you want dynamically typed queries.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Value {
     Int8(i8),
     Int16(i16),
@@ -52,7 +54,7 @@ pub enum Value {
     Decimal128(usize, i128),
     Decimal256(usize, i256),
 
-    String(String),
+    String(Vec<u8>),
 
     Uuid(::uuid::Uuid),
 
@@ -76,6 +78,10 @@ pub enum Value {
 }
 
 impl Value {
+    pub fn string(value: impl Into<String>) -> Self {
+        Value::String(value.into().into_bytes())
+    }
+
     pub(crate) fn index_value(&self) -> usize {
         match self {
             Value::UInt8(x) => *x as usize,
@@ -175,11 +181,11 @@ impl Value {
     }
 }
 
-fn escape_string(f: &mut fmt::Formatter<'_>, from: &str) -> fmt::Result {
-    for (i, c) in from.char_indices() {
-        let c_int = c as u32;
-        if c_int < 128 {
-            match c_int as u8 {
+fn escape_string(f: &mut fmt::Formatter<'_>, from: impl AsRef<[u8]>) -> fmt::Result {
+    let from = from.as_ref();
+    for byte in from.iter().copied() {
+        if byte < 128 {
+            match byte {
                 b'\\' => write!(f, "\\\\")?,
                 b'\'' => write!(f, "\\'")?,
                 0x08 => write!(f, "\\b")?,
@@ -190,16 +196,19 @@ fn escape_string(f: &mut fmt::Formatter<'_>, from: &str) -> fmt::Result {
                 b'\0' => write!(f, "\\0")?,
                 0x07 => write!(f, "\\a")?,
                 0x0B => write!(f, "\\v")?,
-                _ => write!(f, "{c}")?,
+                _ => write!(f, "{}", Into::<char>::into(byte))?,
             }
         } else {
-            for i in i..i + c.len_utf8() {
-                let byte = from.as_bytes()[i];
-                write!(f, "\\x{byte:02X}")?;
-            }
+            write!(f, "\\x{byte:02X}")?;
         }
     }
     Ok(())
+}
+
+impl fmt::Debug for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <Self as fmt::Display>::fmt(self, f)
+    }
 }
 
 impl fmt::Display for Value {

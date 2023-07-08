@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::Utc;
-use klickhouse::{Client, ClientOptions, DateTime64, RawRow, Uuid};
+use klickhouse::{Bytes, Client, ClientOptions, DateTime64, RawRow, Uuid};
 
 #[derive(klickhouse::Row, Debug, Default)]
 pub struct TestSerialize {
@@ -28,6 +28,15 @@ pub struct TestSerialize {
     d_null_string: Option<String>,
     d_vec: Vec<String>,
     d_vec2: Vec<Option<String>>,
+
+    raw_bytes: Vec<u8>,
+    raw_bytes2: Bytes,
+    raw_bytes_fixed: Vec<u8>,
+    raw_bytes_fixed2: Bytes,
+    raw_bytes_arr: Vec<u8>,
+    raw_bytes_arr2: Bytes,
+    raw_bytes_arrs: Vec<u8>,
+    raw_bytes_arrs2: Bytes,
 }
 
 #[derive(klickhouse::Row, Debug, Default)]
@@ -63,7 +72,47 @@ async fn test_client() {
         .await
         .unwrap();
 
-    client.execute("truncate test_serialize").await.unwrap();
+    client
+        .execute("drop table if exists test_serialize")
+        .await
+        .unwrap();
+    client
+        .execute(
+            r"
+    CREATE TABLE test_serialize (
+        d_uuid UUID,
+        d_date DateTime64(6),
+        d_u64 UInt64,
+        d_i32 Int32,
+        d_i16 Int16,
+        d_map_null_string Map(String, Nullable(String)),
+        d_bool Bool,
+        d_string String,
+        nest Nested
+        (
+            nest_string String,
+            nest_u64 Nullable(UInt64),
+            nest_null_string Nullable(String),
+            nest_i16 Int16
+        ),
+        d_map_u64 Map(String, UInt64),
+        d_map_string Map(String, String),
+        d_null_string Nullable(String),
+        d_vec Array(String),
+        d_vec2 Array(Nullable(String)),
+        raw_bytes String,
+        raw_bytes2 String,
+        raw_bytes_fixed FixedString(8),
+        raw_bytes_fixed2 FixedString(8),
+        raw_bytes_arr Array(UInt8),
+        raw_bytes_arr2 Array(UInt8),
+        raw_bytes_arrs Array(Int8),
+        raw_bytes_arrs2 Array(Int8)
+    ) ENGINE = Memory;
+    ",
+        )
+        .await
+        .unwrap();
 
     println!("begin insert");
 
@@ -106,6 +155,14 @@ async fn test_client() {
         item.d_vec2.push(Some(format!("test{}", -(i as isize))));
         item.d_vec2
             .push(Some(format!("test{}", -(i as isize) - 10)));
+        item.raw_bytes = vec![b'B', 0, 255, 128, 127, b'A'];
+        item.raw_bytes2 = b"test_bytes".to_vec().into();
+        item.raw_bytes_fixed = item.raw_bytes.clone();
+        item.raw_bytes_fixed2 = item.raw_bytes2.clone();
+        item.raw_bytes_arr = item.raw_bytes.clone();
+        item.raw_bytes_arr2 = item.raw_bytes2.clone();
+        item.raw_bytes_arrs = item.raw_bytes.clone();
+        item.raw_bytes_arrs2 = item.raw_bytes2.clone();
         items.push(item);
     }
 

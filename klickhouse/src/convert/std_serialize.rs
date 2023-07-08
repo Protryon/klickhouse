@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    any::TypeId,
+    collections::{BTreeMap, HashMap},
+};
 
 use indexmap::IndexMap;
 
@@ -84,19 +87,28 @@ impl ToSql for f64 {
 
 impl ToSql for String {
     fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
-        Ok(Value::String(self))
+        Ok(Value::String(self.into_bytes()))
     }
 }
 
 impl<'a> ToSql for &'a str {
     fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
-        Ok(Value::String(self.to_string()))
+        Ok(Value::String(self.as_bytes().to_vec()))
     }
 }
 
-impl<T: ToSql> ToSql for Vec<T> {
+impl<T: ToSql + 'static> ToSql for Vec<T> {
     fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
         let type_hint = type_hint.and_then(|x| x.unarray());
+        if matches!(type_hint, Some(Type::String) | Some(Type::FixedString(_))) {
+            let type_id = TypeId::of::<T>();
+            if type_id == TypeId::of::<u8>() || type_id == TypeId::of::<i8>() {
+                assert_eq!(std::mem::size_of::<T>(), 1);
+                return Ok(Value::String(unsafe {
+                    std::mem::transmute::<Vec<T>, Vec<u8>>(self)
+                }));
+            }
+        }
         Ok(Value::Array(
             self.into_iter()
                 .map(|x| x.to_sql(type_hint))

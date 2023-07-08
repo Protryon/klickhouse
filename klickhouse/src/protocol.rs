@@ -171,25 +171,13 @@ pub enum ServerPacket {
     ReadTaskRequest,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 #[allow(unused)]
 pub enum CompressionMethod {
+    #[cfg_attr(not(feature = "compression"), default)]
     None,
+    #[cfg_attr(feature = "compression", default)]
     LZ4,
-}
-
-#[cfg(feature = "compression")]
-impl Default for CompressionMethod {
-    fn default() -> Self {
-        CompressionMethod::LZ4
-    }
-}
-
-#[cfg(not(feature = "compression"))]
-impl Default for CompressionMethod {
-    fn default() -> Self {
-        CompressionMethod::None
-    }
 }
 
 impl CompressionMethod {

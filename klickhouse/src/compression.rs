@@ -106,13 +106,15 @@ async fn read_compressed_blob(
     Ok(raw_block)
 }
 
+type BlockReadingFuture<R> =
+    Pin<Box<dyn Future<Output = Result<(Vec<u8>, &'static mut R)>> + Send + Sync>>;
+
 pub struct DecompressionReader<'a, R: ClickhouseRead + 'static> {
     mode: CompressionMethod,
     inner: Option<&'a mut R>,
     decompressed: Vec<u8>,
     position: usize,
-    block_reading_future:
-        Option<Pin<Box<dyn Future<Output = Result<(Vec<u8>, &'static mut R)>> + Send + Sync>>>,
+    block_reading_future: Option<BlockReadingFuture<R>>,
 }
 
 impl<'a, R: ClickhouseRead + 'static> DecompressionReader<'a, R> {

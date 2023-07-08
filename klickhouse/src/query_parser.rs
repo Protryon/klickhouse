@@ -213,28 +213,28 @@ mod tests {
         assert_eq!(
             parse_query_arguments(
                 "SELECT a, b FROM x WHERE x.y = $1 AND x.z = $2",
-                &[Value::String("te'st".to_string()), Value::UInt32(3232)]
+                &[Value::string("te'st"), Value::UInt32(3232)]
             ),
             "SELECT a, b FROM x WHERE x.y = 'te\\'st' AND x.z = 3232"
         );
         assert_eq!(
             parse_query_arguments(
                 "SELECT a, b FROM x WHERE x.y = $1 AND x.z = $3",
-                &[Value::String("te'st".to_string()), Value::UInt32(3232)]
+                &[Value::string("te'st"), Value::UInt32(3232)]
             ),
             "SELECT a, b FROM x WHERE x.y = 'te\\'st' AND x.z = $3"
         );
         assert_eq!(
             parse_query_arguments(
                 "SELECT a, b FROM x WHERE x.y = $1 AND x.z = $1",
-                &[Value::String("te'st".to_string()), Value::UInt32(3232)]
+                &[Value::string("te'st"), Value::UInt32(3232)]
             ),
             "SELECT a, b FROM x WHERE x.y = 'te\\'st' AND x.z = 'te\\'st'"
         );
         assert_eq!(
             parse_query_arguments(
                 "SELECT a, b FROM x WHERE x.y = $1 AND x.z = $0",
-                &[Value::String("te'st".to_string())]
+                &[Value::string("te'st")]
             ),
             "SELECT a, b FROM x WHERE x.y = 'te\\'st' AND x.z = $0"
         );

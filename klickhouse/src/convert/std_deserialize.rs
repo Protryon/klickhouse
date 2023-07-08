@@ -1,4 +1,5 @@
 use std::{
+    any::TypeId,
     collections::{BTreeMap, HashMap},
     hash::Hash,
 };
@@ -169,13 +170,13 @@ impl FromSql for String {
             return Err(unexpected_type(type_));
         }
         match value {
-            Value::String(x) => Ok(x),
+            Value::String(x) => Ok(String::from_utf8(x)?),
             _ => unimplemented!(),
         }
     }
 }
 
-impl<T: FromSql> FromSql for Vec<T> {
+impl<T: FromSql + 'static> FromSql for Vec<T> {
     fn from_sql(type_: &Type, value: Value) -> Result<Self> {
         let subtype = match type_ {
             Type::Array(x) => &**x,
@@ -183,6 +184,14 @@ impl<T: FromSql> FromSql for Vec<T> {
         }
         .strip_low_cardinality();
         match value {
+            Value::String(x) if *subtype == Type::UInt8 || *subtype == Type::Int8 => {
+                let type_id = TypeId::of::<T>();
+                if type_id != TypeId::of::<u8>() && type_id != TypeId::of::<i8>() {
+                    return Err(unexpected_type(subtype));
+                }
+                assert_eq!(std::mem::size_of::<T>(), 1);
+                Ok(unsafe { std::mem::transmute::<Vec<u8>, Vec<T>>(x) })
+            }
             Value::Array(x) => Ok(x
                 .into_iter()
                 .map(|x| T::from_sql(subtype, x))

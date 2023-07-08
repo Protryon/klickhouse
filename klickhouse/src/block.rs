@@ -176,8 +176,8 @@ impl Block {
             column_data: IndexMap::new(),
         };
         for _ in 0..columns {
-            let name = reader.read_string().await?;
-            let type_name = reader.read_string().await?;
+            let name = reader.read_utf8_string().await?;
+            let type_name = reader.read_utf8_string().await?;
             let type_ = Type::from_str(&type_name)?;
             block.column_types.insert(name.clone(), type_.clone());
             let mut state = DeserializerState {};

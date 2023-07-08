@@ -31,7 +31,7 @@ impl Deserializer for StringDeserializer {
                     reader.read_exact(&mut buf[..]).await?;
                     let first_null = buf.iter().position(|x| *x == 0).unwrap_or(buf.len());
                     buf.truncate(first_null);
-                    out.push(Value::String(String::from_utf8(buf)?));
+                    out.push(Value::String(buf));
                 }
                 Ok(out)
             }

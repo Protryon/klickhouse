@@ -305,11 +305,11 @@ async fn roundtrip_null_int() {
 #[tokio::test]
 async fn roundtrip_string() {
     let values = &[
-        Value::String("".to_string()),
-        Value::String("t".to_string()),
-        Value::String("test".to_string()),
-        Value::String("TESTST".to_string()),
-        Value::String("日本語".to_string()),
+        Value::string(""),
+        Value::string("t"),
+        Value::string("test"),
+        Value::string("TESTST"),
+        Value::string("日本語"),
     ];
     assert_eq!(
         &values[..],
@@ -332,13 +332,13 @@ async fn roundtrip_string() {
 #[tokio::test]
 async fn roundtrip_null_string() {
     let values = &[
-        Value::String("".to_string()),
+        Value::string(""),
         Value::Null,
-        Value::String("t".to_string()),
-        Value::String("test".to_string()),
+        Value::string("t"),
+        Value::string("test"),
         Value::Null,
-        Value::String("TESTST".to_string()),
-        Value::String("日本語".to_string()),
+        Value::string("TESTST"),
+        Value::string("日本語"),
         Value::Null,
     ];
     assert_eq!(
@@ -600,20 +600,20 @@ async fn roundtrip_map() {
 #[tokio::test]
 async fn roundtrip_low_cardinality_string() {
     let values = &[
-        Value::String("".to_string()),
-        Value::String("abc".to_string()),
-        Value::String("abc".to_string()),
-        Value::String("bcd".to_string()),
-        Value::String("bcd2".to_string()),
-        Value::String("abc".to_string()),
-        Value::String("abc".to_string()),
-        Value::String("abc".to_string()),
-        Value::String("abc".to_string()),
-        Value::String("abc".to_string()),
-        Value::String("abc".to_string()),
-        Value::String("abc".to_string()),
-        Value::String("abc".to_string()),
-        Value::String("abc".to_string()),
+        Value::string(""),
+        Value::string("abc"),
+        Value::string("abc"),
+        Value::string("bcd"),
+        Value::string("bcd2"),
+        Value::string("abc"),
+        Value::string("abc"),
+        Value::string("abc"),
+        Value::string("abc"),
+        Value::string("abc"),
+        Value::string("abc"),
+        Value::string("abc"),
+        Value::string("abc"),
+        Value::string("abc"),
     ];
     assert_eq!(
         &values[..],
@@ -627,20 +627,20 @@ async fn roundtrip_low_cardinality_string() {
 async fn roundtrip_low_cardinality_string_array() {
     let values = &[
         Value::Array(vec![]),
-        Value::Array(vec![Value::String("".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("bcd".to_string())]),
-        Value::Array(vec![Value::String("bcd2".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
+        Value::Array(vec![Value::string("")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("bcd")]),
+        Value::Array(vec![Value::string("bcd2")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
     ];
     assert_eq!(
         &values[..],
@@ -656,59 +656,20 @@ async fn roundtrip_low_cardinality_string_array() {
 #[tokio::test]
 async fn roundtrip_low_cardinality_string_map() {
     let values = &[
-        Value::Map(vec![Value::String("".to_string())], vec![Value::UInt32(1)]),
-        Value::Map(
-            vec![Value::String("abc".to_string())],
-            vec![Value::UInt32(1)],
-        ),
-        Value::Map(
-            vec![Value::String("abc".to_string())],
-            vec![Value::UInt32(1)],
-        ),
-        Value::Map(
-            vec![Value::String("bcd".to_string())],
-            vec![Value::UInt32(1)],
-        ),
-        Value::Map(
-            vec![Value::String("bcd2".to_string())],
-            vec![Value::UInt32(1)],
-        ),
-        Value::Map(
-            vec![Value::String("abc".to_string())],
-            vec![Value::UInt32(1)],
-        ),
-        Value::Map(
-            vec![Value::String("abc".to_string())],
-            vec![Value::UInt32(1)],
-        ),
-        Value::Map(
-            vec![Value::String("abc".to_string())],
-            vec![Value::UInt32(1)],
-        ),
-        Value::Map(
-            vec![Value::String("abc".to_string())],
-            vec![Value::UInt32(1)],
-        ),
-        Value::Map(
-            vec![Value::String("abc".to_string())],
-            vec![Value::UInt32(1)],
-        ),
-        Value::Map(
-            vec![Value::String("abc".to_string())],
-            vec![Value::UInt32(1)],
-        ),
-        Value::Map(
-            vec![Value::String("abc".to_string())],
-            vec![Value::UInt32(1)],
-        ),
-        Value::Map(
-            vec![Value::String("abc".to_string())],
-            vec![Value::UInt32(1)],
-        ),
-        Value::Map(
-            vec![Value::String("abc".to_string())],
-            vec![Value::UInt32(1)],
-        ),
+        Value::Map(vec![Value::string("")], vec![Value::UInt32(1)]),
+        Value::Map(vec![Value::string("abc")], vec![Value::UInt32(1)]),
+        Value::Map(vec![Value::string("abc")], vec![Value::UInt32(1)]),
+        Value::Map(vec![Value::string("bcd")], vec![Value::UInt32(1)]),
+        Value::Map(vec![Value::string("bcd2")], vec![Value::UInt32(1)]),
+        Value::Map(vec![Value::string("abc")], vec![Value::UInt32(1)]),
+        Value::Map(vec![Value::string("abc")], vec![Value::UInt32(1)]),
+        Value::Map(vec![Value::string("abc")], vec![Value::UInt32(1)]),
+        Value::Map(vec![Value::string("abc")], vec![Value::UInt32(1)]),
+        Value::Map(vec![Value::string("abc")], vec![Value::UInt32(1)]),
+        Value::Map(vec![Value::string("abc")], vec![Value::UInt32(1)]),
+        Value::Map(vec![Value::string("abc")], vec![Value::UInt32(1)]),
+        Value::Map(vec![Value::string("abc")], vec![Value::UInt32(1)]),
+        Value::Map(vec![Value::string("abc")], vec![Value::UInt32(1)]),
     ];
     assert_eq!(
         &values[..],
@@ -727,24 +688,24 @@ async fn roundtrip_low_cardinality_string_map() {
 #[tokio::test]
 async fn roundtrip_low_cardinality_string_null() {
     let values = &[
-        Value::String("".to_string()),
+        Value::string(""),
         Value::Null,
-        Value::String("abc".to_string()),
-        Value::String("abc".to_string()),
-        Value::String("bcd".to_string()),
-        Value::String("bcd2".to_string()),
+        Value::string("abc"),
+        Value::string("abc"),
+        Value::string("bcd"),
+        Value::string("bcd2"),
         Value::Null,
-        Value::String("abc".to_string()),
-        Value::String("abc".to_string()),
-        Value::String("abc".to_string()),
-        Value::String("abc".to_string()),
+        Value::string("abc"),
+        Value::string("abc"),
+        Value::string("abc"),
+        Value::string("abc"),
         Value::Null,
-        Value::String("abc".to_string()),
-        Value::String("abc".to_string()),
-        Value::String("abc".to_string()),
-        Value::String("abc".to_string()),
+        Value::string("abc"),
+        Value::string("abc"),
+        Value::string("abc"),
+        Value::string("abc"),
         Value::Null,
-        Value::String("abc".to_string()),
+        Value::string("abc"),
     ];
     assert_eq!(
         &values[..],
@@ -760,24 +721,24 @@ async fn roundtrip_low_cardinality_string_null() {
 #[tokio::test]
 async fn roundtrip_low_cardinality_array_null() {
     let values = &[
-        Value::Array(vec![Value::String("".to_string())]),
+        Value::Array(vec![Value::string("")]),
         Value::Array(vec![Value::Null]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("bcd".to_string())]),
-        Value::Array(vec![Value::String("bcd2".to_string())]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("bcd")]),
+        Value::Array(vec![Value::string("bcd2")]),
         Value::Array(vec![Value::Null]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
         Value::Array(vec![Value::Null]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
         Value::Array(vec![Value::Null]),
-        Value::Array(vec![Value::String("abc".to_string())]),
+        Value::Array(vec![Value::string("abc")]),
     ];
     assert_eq!(
         &values[..],
@@ -795,24 +756,24 @@ async fn roundtrip_low_cardinality_array_null() {
 #[tokio::test]
 async fn roundtrip_array_null() {
     let values = &[
-        Value::Array(vec![Value::String("".to_string())]),
+        Value::Array(vec![Value::string("")]),
         Value::Array(vec![Value::Null]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("bcd".to_string())]),
-        Value::Array(vec![Value::String("bcd2".to_string())]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("bcd")]),
+        Value::Array(vec![Value::string("bcd2")]),
         Value::Array(vec![Value::Null]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
         Value::Array(vec![Value::Null]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
-        Value::Array(vec![Value::String("abc".to_string())]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
+        Value::Array(vec![Value::string("abc")]),
         Value::Array(vec![Value::Null]),
-        Value::Array(vec![Value::String("abc".to_string())]),
+        Value::Array(vec![Value::string("abc")]),
     ];
     assert_eq!(
         &values[..],

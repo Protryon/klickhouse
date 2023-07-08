@@ -7,9 +7,11 @@ use crate::protocol::MAX_STRING_SIZE;
 pub trait ClickhouseRead: AsyncRead + Unpin + Send + Sync {
     async fn read_var_uint(&mut self) -> Result<u64>;
 
-    async fn read_string(&mut self) -> Result<String>;
+    async fn read_string(&mut self) -> Result<Vec<u8>>;
 
-    async fn read_binary(&mut self) -> Result<Vec<u8>>;
+    async fn read_utf8_string(&mut self) -> Result<String> {
+        Ok(String::from_utf8(self.read_string().await?)?)
+    }
 }
 
 #[async_trait::async_trait]
@@ -27,7 +29,7 @@ impl<T: AsyncRead + Unpin + Send + Sync> ClickhouseRead for T {
         Ok(out)
     }
 
-    async fn read_string(&mut self) -> Result<String> {
+    async fn read_string(&mut self) -> Result<Vec<u8>> {
         let len = self.read_var_uint().await?;
         if len as usize > MAX_STRING_SIZE {
             return Err(KlickhouseError::ProtocolError(format!(
@@ -36,27 +38,7 @@ impl<T: AsyncRead + Unpin + Send + Sync> ClickhouseRead for T {
             )));
         }
         if len == 0 {
-            return Ok(String::new());
-        }
-        let mut buf = Vec::with_capacity(len as usize);
-
-        let buf_mut = unsafe { std::slice::from_raw_parts_mut(buf.as_mut_ptr(), len as usize) };
-        self.read_exact(buf_mut).await?;
-        unsafe { buf.set_len(len as usize) };
-
-        Ok(String::from_utf8(buf)?)
-    }
-
-    async fn read_binary(&mut self) -> Result<Vec<u8>> {
-        let len = self.read_var_uint().await?;
-        if len as usize > MAX_STRING_SIZE {
-            return Err(KlickhouseError::ProtocolError(format!(
-                "binary blob too large: {} > {}",
-                len, MAX_STRING_SIZE
-            )));
-        }
-        if len == 0 {
-            return Ok(Vec::new());
+            return Ok(vec![]);
         }
         let mut buf = Vec::with_capacity(len as usize);
 
@@ -72,7 +54,7 @@ impl<T: AsyncRead + Unpin + Send + Sync> ClickhouseRead for T {
 pub trait ClickhouseWrite: AsyncWrite + Unpin + Send + Sync + 'static {
     async fn write_var_uint(&mut self, value: u64) -> Result<()>;
 
-    async fn write_string(&mut self, value: &str) -> Result<()>;
+    async fn write_string(&mut self, value: impl AsRef<[u8]> + Send) -> Result<()>;
 }
 
 #[async_trait::async_trait]
@@ -92,9 +74,10 @@ impl<T: AsyncWrite + Unpin + Send + Sync + 'static> ClickhouseWrite for T {
         Ok(())
     }
 
-    async fn write_string(&mut self, value: &str) -> Result<()> {
+    async fn write_string(&mut self, value: impl AsRef<[u8]> + Send) -> Result<()> {
+        let value = value.as_ref();
         self.write_var_uint(value.len() as u64).await?;
-        self.write_all(value.as_bytes()).await?;
+        self.write_all(value).await?;
         Ok(())
     }
 }

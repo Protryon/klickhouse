@@ -154,8 +154,8 @@ impl Type {
             Type::Decimal64(s) => Value::Decimal64(*s, 0),
             Type::Decimal128(s) => Value::Decimal128(*s, 0),
             Type::Decimal256(s) => Value::Decimal256(*s, i256::default()),
-            Type::String => Value::String("".to_string()),
-            Type::FixedString(_) => Value::String("".to_string()),
+            Type::String => Value::String(vec![]),
+            Type::FixedString(_) => Value::String(vec![]),
             Type::Uuid => Value::Uuid(Uuid::from_u128(0)),
             Type::Date => Value::Date(Date(0)),
             Type::DateTime(tz) => Value::DateTime(DateTime(*tz, 0)),
@@ -919,6 +919,9 @@ impl Type {
             (Type::Decimal256(precision1), Value::Decimal256(precision2, _)) => {
                 precision1 == precision2
             }
+            (Type::FixedString(_), Value::Array(items))
+            | (Type::String, Value::Array(items)) if items.iter().all(|item| matches!(item, Value::UInt8(_) | Value::Int8(_)))
+            => true,
             (Type::String, Value::String(_))
             | (Type::FixedString(_), Value::String(_))
             | (Type::Uuid, Value::Uuid(_))

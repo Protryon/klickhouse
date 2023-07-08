@@ -36,9 +36,9 @@ impl<R: ClickhouseRead + 'static> InternalClientIn<R> {
 
     async fn read_exception(&mut self) -> Result<ServerException> {
         let code = self.reader.read_i32_le().await?;
-        let name = self.reader.read_string().await?;
-        let message = self.reader.read_string().await?;
-        let stack_trace = self.reader.read_string().await?;
+        let name = self.reader.read_utf8_string().await?;
+        let message = self.reader.read_utf8_string().await?;
+        let stack_trace = self.reader.read_utf8_string().await?;
         let has_nested = self.reader.read_u8().await? != 0;
 
         Ok(ServerException {
@@ -66,7 +66,7 @@ impl<R: ClickhouseRead + 'static> InternalClientIn<R> {
     }
 
     async fn receive_data(&mut self, compression: CompressionMethod) -> Result<ServerData> {
-        let table_name = self.reader.read_string().await?;
+        let table_name = self.reader.read_utf8_string().await?;
 
         let block = match compression {
             CompressionMethod::None => {
@@ -86,18 +86,18 @@ impl<R: ClickhouseRead + 'static> InternalClientIn<R> {
         let packet_id = ServerPacketId::from_u64(self.reader.read_var_uint().await?)?;
         let packet: Result<ServerPacket> = match packet_id {
             ServerPacketId::Hello => {
-                let server_name = self.reader.read_string().await?;
+                let server_name = self.reader.read_utf8_string().await?;
                 let major_version = self.reader.read_var_uint().await?;
                 let minor_version = self.reader.read_var_uint().await?;
                 let revision_version = self.reader.read_var_uint().await?;
                 let timezone = if revision_version > DBMS_MIN_REVISION_WITH_SERVER_TIMEZONE {
-                    Some(self.reader.read_string().await?)
+                    Some(self.reader.read_utf8_string().await?)
                 } else {
                     None
                 };
                 let display_name = if revision_version > DBMS_MIN_REVISION_WITH_SERVER_DISPLAY_NAME
                 {
-                    Some(self.reader.read_string().await?)
+                    Some(self.reader.read_utf8_string().await?)
                 } else {
                     None
                 };
@@ -182,8 +182,8 @@ impl<R: ClickhouseRead + 'static> InternalClientIn<R> {
                     )));
                 }
                 for _ in 0..size {
-                    let database_name = self.reader.read_string().await?;
-                    let table_name = self.reader.read_string().await?;
+                    let database_name = self.reader.read_utf8_string().await?;
+                    let table_name = self.reader.read_utf8_string().await?;
                     let is_replicated = self.reader.read_u8().await? != 0;
                     let absolute_delay = if is_replicated {
                         self.reader.read_var_uint().await? as u32
@@ -206,8 +206,8 @@ impl<R: ClickhouseRead + 'static> InternalClientIn<R> {
             }
             ServerPacketId::Log => Ok(ServerPacket::Log(self.receive_log_data().await?)),
             ServerPacketId::TableColumns => {
-                let name = self.reader.read_string().await?;
-                let description = self.reader.read_string().await?;
+                let name = self.reader.read_utf8_string().await?;
+                let description = self.reader.read_utf8_string().await?;
                 Ok(ServerPacket::TableColumns(TableColumns {
                     name,
                     description,
