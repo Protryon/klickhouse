@@ -504,7 +504,7 @@ dependencies = [
 
 [[package]]
 name = "klickhouse"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "async-trait",
  "bb8",
@@ -523,6 +523,8 @@ dependencies = [
  "refinery-core",
  "rust_decimal",
  "rustc_version",
+ "serde",
+ "serde_json",
  "thiserror",
  "time 0.3.14",
  "tokio",

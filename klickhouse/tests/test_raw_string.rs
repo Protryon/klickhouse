@@ -31,11 +31,9 @@ async fn test_raw_string() {
 
     println!("begin insert");
 
-    let items = vec![
-        TestRawString {
-            raw_string: Bytes(vec![0x0, 0x20, 0x8c, 0x5d, 0x9f]),
-        }
-    ];
+    let items = vec![TestRawString {
+        raw_string: Bytes(vec![0x0, 0x20, 0x8c, 0x5d, 0x9f]),
+    }];
 
     client
         .insert_native_block("insert into test_raw_string format native", items.clone())
@@ -45,13 +43,12 @@ async fn test_raw_string() {
     println!("inserted rows:\n{items:#?}\n\n\n\n\n");
 
     let rows_back = client
-    .query_collect::<TestRawString>("select * from test_raw_string")
-    .await
-    .unwrap();
+        .query_collect::<TestRawString>("select * from test_raw_string")
+        .await
+        .unwrap();
 
     for row in &rows_back {
         println!("row received {row:#?}");
     }
     assert_eq!(items, rows_back)
-
 }

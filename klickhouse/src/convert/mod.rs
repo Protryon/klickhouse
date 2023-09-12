@@ -10,6 +10,10 @@ mod unit_value;
 pub use unit_value::*;
 mod vec_tuple;
 pub use vec_tuple::*;
+#[cfg(feature = "serde")]
+mod json;
+#[cfg(feature = "serde")]
+pub use json::*;
 
 /// A type that can be converted to a raw Clickhouse SQL value.
 pub trait ToSql {
