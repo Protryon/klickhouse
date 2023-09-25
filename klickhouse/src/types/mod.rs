@@ -15,7 +15,7 @@ use crate::{
     protocol::MAX_STRING_SIZE,
     u256,
     values::Value,
-    Date, DateTime, Ipv4, Ipv6, KlickhouseError, Result,
+    Date, DateTime, DynDateTime64, Ipv4, Ipv6, KlickhouseError, Result,
 };
 
 /// A raw Clickhouse type.
@@ -159,7 +159,7 @@ impl Type {
             Type::Uuid => Value::Uuid(Uuid::from_u128(0)),
             Type::Date => Value::Date(Date(0)),
             Type::DateTime(tz) => Value::DateTime(DateTime(*tz, 0)),
-            Type::DateTime64(precision, tz) => Value::DateTime64(*tz, *precision, 0),
+            Type::DateTime64(precision, tz) => Value::DateTime64(DynDateTime64(*tz, 0, *precision)),
             Type::Ipv4 => Value::Ipv4(Ipv4::default()),
             Type::Ipv6 => Value::Ipv6(Ipv6::default()),
             Type::Enum8(_) => Value::Enum8(0),
@@ -927,8 +927,8 @@ impl Type {
             | (Type::Uuid, Value::Uuid(_))
             | (Type::Date, Value::Date(_)) => true,
             (Type::DateTime(tz1), Value::DateTime(date)) => tz1 == &date.0,
-            (Type::DateTime64(precision1, tz1), Value::DateTime64(tz2, precision2, _)) => {
-                tz1 == tz2 && precision1 == precision2
+            (Type::DateTime64(precision1, tz1), Value::DateTime64(tz2)) => {
+                tz1 == &tz2.0 && precision1 == &tz2.2
             }
             (Type::Ipv4, Value::Ipv4(_)) | (Type::Ipv6, Value::Ipv6(_)) => true,
             (Type::Enum8(entries), Value::Enum8(index)) => entries.iter().any(|x| x.1 == *index),

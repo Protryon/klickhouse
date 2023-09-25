@@ -9,6 +9,7 @@ use crate::{
 /// Wrapper type for Clickhouse `Int256` type.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Default)]
 #[allow(non_camel_case_types)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct i256(pub [u8; 32]);
 
 impl From<i256> for u256 {
@@ -66,6 +67,7 @@ impl fmt::Display for i256 {
 }
 /// Wrapper type for Clickhouse `UInt256` type.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[allow(non_camel_case_types)]
 pub struct u256(pub [u8; 32]);
 

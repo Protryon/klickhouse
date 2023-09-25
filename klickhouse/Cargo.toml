@@ -43,7 +43,7 @@ default = ["derive", "compression", "serde"]
 derive = ["klickhouse_derive"]
 compression = ["lz4"]
 refinery = ["refinery-core", "time"]
-serde = ["dep:serde", "serde_json"]
+serde = ["dep:serde", "serde_json", "uuid/serde", "chrono/serde"]
 
 [build-dependencies]
 rustc_version = "0.3"

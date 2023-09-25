@@ -31,6 +31,7 @@ mod tests;
 /// Types are not strictly/completely preserved (i.e. types `String` and `FixedString` both are value `String`).
 /// Use this if you want dynamically typed queries.
 #[derive(Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Value {
     Int8(i8),
     Int16(i16),
@@ -60,7 +61,7 @@ pub enum Value {
 
     Date(Date),
     DateTime(DateTime),
-    DateTime64(Tz, usize, u64),
+    DateTime64(DynDateTime64),
 
     Enum8(i8),
     Enum16(i16),
@@ -102,9 +103,7 @@ impl PartialEq for Value {
             (Self::Uuid(l0), Self::Uuid(r0)) => l0 == r0,
             (Self::Date(l0), Self::Date(r0)) => l0 == r0,
             (Self::DateTime(l0), Self::DateTime(r0)) => l0 == r0,
-            (Self::DateTime64(l0, l1, l2), Self::DateTime64(r0, r1, r2)) => {
-                l0 == r0 && l1 == r1 && l2 == r2
-            }
+            (Self::DateTime64(l0), Self::DateTime64(r0)) => l0 == r0,
             (Self::Enum8(l0), Self::Enum8(r0)) => l0 == r0,
             (Self::Enum16(l0), Self::Enum16(r0)) => l0 == r0,
             (Self::Array(l0), Self::Array(r0)) => l0 == r0,
@@ -155,10 +154,8 @@ impl Hash for Value {
             Value::Uuid(x) => ::core::hash::Hash::hash(x, state),
             Value::Date(x) => ::core::hash::Hash::hash(x, state),
             Value::DateTime(x) => ::core::hash::Hash::hash(x, state),
-            Value::DateTime64(x, __self_1, __self_2) => {
+            Value::DateTime64(x) => {
                 ::core::hash::Hash::hash(x, state);
-                ::core::hash::Hash::hash(__self_1, state);
-                ::core::hash::Hash::hash(__self_2, state)
             }
             Value::Enum8(x) => ::core::hash::Hash::hash(x, state),
             Value::Enum16(x) => ::core::hash::Hash::hash(x, state),
@@ -263,7 +260,7 @@ impl Value {
             Value::Uuid(_) => Type::Uuid,
             Value::Date(_) => Type::Date,
             Value::DateTime(time) => Type::DateTime(time.0),
-            Value::DateTime64(tz, p, _) => Type::DateTime64(*p, *tz),
+            Value::DateTime64(x) => Type::DateTime64(x.2, x.0),
             Value::Enum8(_) => unimplemented!(),
             Value::Enum16(_) => unimplemented!(),
             Value::Array(x) => Type::Array(Box::new(
@@ -381,14 +378,14 @@ impl fmt::Display for Value {
                 escape_string(f, &string)?;
                 write!(f, "'")
             }
-            Value::DateTime64(tz, precision, _) => {
+            Value::DateTime64(datetime) => {
                 let chrono_date: chrono::DateTime<Tz> =
-                    FromSql::from_sql(&Type::DateTime64(*precision, *tz), self.clone())
+                    FromSql::from_sql(&Type::DateTime64(datetime.2, datetime.0), self.clone())
                         .map_err(|_| fmt::Error)?;
                 let string = chrono_date.to_rfc3339_opts(SecondsFormat::AutoSi, true);
                 write!(f, "parseDateTime64BestEffort('")?;
                 escape_string(f, &string)?;
-                write!(f, "', {precision})")
+                write!(f, "', {})", datetime.2)
             }
             Value::Enum8(x) => write!(f, "{x}"),
             Value::Enum16(x) => write!(f, "{x}"),

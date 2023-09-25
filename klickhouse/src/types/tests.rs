@@ -6,7 +6,7 @@ use crate::{
     types::{DeserializerState, SerializerState},
     u256,
     values::Value,
-    Date, DateTime,
+    Date, DateTime, DynDateTime64,
 };
 use uuid::Uuid;
 
@@ -393,9 +393,9 @@ async fn roundtrip_datetime() {
 #[tokio::test]
 async fn roundtrip_datetime64() {
     let values = &[
-        Value::DateTime64(chrono_tz::UTC, 3, 0),
-        Value::DateTime64(chrono_tz::UTC, 3, 32346345634),
-        Value::DateTime64(chrono_tz::UTC, 3, 4534564345),
+        Value::DateTime64(DynDateTime64(chrono_tz::UTC, 0, 3)),
+        Value::DateTime64(DynDateTime64(chrono_tz::UTC, 32346345634, 3)),
+        Value::DateTime64(DynDateTime64(chrono_tz::UTC, 4534564345, 3)),
     ];
     assert_eq!(
         &values[..],

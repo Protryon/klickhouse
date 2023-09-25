@@ -7,6 +7,7 @@ use std::{
 
 /// Wrapper type for Clickhouse `IPv4` type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Ipv4(pub Ipv4Addr);
 
 impl fmt::Display for Ipv4 {
@@ -43,6 +44,7 @@ impl Default for Ipv4 {
 
 /// Wrapper type for Clickhouse `IPv6` type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Ipv6(pub Ipv6Addr);
 
 impl fmt::Display for Ipv6 {

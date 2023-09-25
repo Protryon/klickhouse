@@ -3,7 +3,7 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use tokio::io::AsyncReadExt;
 use uuid::Uuid;
 
-use crate::{i256, io::ClickhouseRead, u256, values::Value, Date, DateTime, Result};
+use crate::{i256, io::ClickhouseRead, u256, values::Value, Date, DateTime, DynDateTime64, Result};
 
 use super::{Deserializer, DeserializerState, Type};
 
@@ -68,7 +68,7 @@ impl Deserializer for SizedDeserializer {
                 }
                 Type::DateTime64(precision, tz) => {
                     let raw = reader.read_u64_le().await?;
-                    Value::DateTime64(*tz, *precision, raw)
+                    Value::DateTime64(DynDateTime64(*tz, raw, *precision))
                 }
                 Type::Enum8(_) => Value::Enum8(reader.read_i8().await?),
                 Type::Enum16(_) => Value::Enum16(reader.read_i16_le().await?),
