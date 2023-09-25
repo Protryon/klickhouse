@@ -42,8 +42,8 @@ impl Deserializer for SizedDeserializer {
                     buf.reverse();
                     Value::UInt256(u256(buf))
                 }
-                Type::Float32 => Value::Float32(reader.read_u32_le().await?),
-                Type::Float64 => Value::Float64(reader.read_u64_le().await?),
+                Type::Float32 => Value::Float32(f32::from_bits(reader.read_u32_le().await?)),
+                Type::Float64 => Value::Float64(f64::from_bits(reader.read_u64_le().await?)),
                 Type::Decimal32(s) => Value::Decimal32(*s, reader.read_i32_le().await?),
                 Type::Decimal64(s) => Value::Decimal64(*s, reader.read_i64_le().await?),
                 Type::Decimal128(s) => Value::Decimal128(*s, reader.read_i128_le().await?),

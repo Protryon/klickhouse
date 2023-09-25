@@ -75,13 +75,13 @@ impl ToSql for i128 {
 
 impl ToSql for f32 {
     fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
-        Ok(Value::Float32(self.to_bits()))
+        Ok(Value::Float32(self))
     }
 }
 
 impl ToSql for f64 {
     fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
-        Ok(Value::Float64(self.to_bits()))
+        Ok(Value::Float64(self))
     }
 }
 

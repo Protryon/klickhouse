@@ -1,6 +1,6 @@
-use std::{borrow::Cow, fmt};
+use std::{borrow::Cow, fmt, hash::Hash};
 
-use chrono::{SecondsFormat, Utc};
+use chrono::{NaiveDate, SecondsFormat};
 use chrono_tz::Tz;
 
 use crate::{
@@ -30,7 +30,7 @@ mod tests;
 /// A raw Clickhouse value.
 /// Types are not strictly/completely preserved (i.e. types `String` and `FixedString` both are value `String`).
 /// Use this if you want dynamically typed queries.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone)]
 pub enum Value {
     Int8(i8),
     Int16(i16),
@@ -46,8 +46,8 @@ pub enum Value {
     UInt128(u128),
     UInt256(u256),
 
-    Float32(u32),
-    Float64(u64),
+    Float32(f32),
+    Float64(f64),
 
     Decimal32(usize, i32),
     Decimal64(usize, i64),
@@ -76,6 +76,106 @@ pub enum Value {
     Ipv4(Ipv4),
     Ipv6(Ipv6),
 }
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Int8(l0), Self::Int8(r0)) => l0 == r0,
+            (Self::Int16(l0), Self::Int16(r0)) => l0 == r0,
+            (Self::Int32(l0), Self::Int32(r0)) => l0 == r0,
+            (Self::Int64(l0), Self::Int64(r0)) => l0 == r0,
+            (Self::Int128(l0), Self::Int128(r0)) => l0 == r0,
+            (Self::Int256(l0), Self::Int256(r0)) => l0 == r0,
+            (Self::UInt8(l0), Self::UInt8(r0)) => l0 == r0,
+            (Self::UInt16(l0), Self::UInt16(r0)) => l0 == r0,
+            (Self::UInt32(l0), Self::UInt32(r0)) => l0 == r0,
+            (Self::UInt64(l0), Self::UInt64(r0)) => l0 == r0,
+            (Self::UInt128(l0), Self::UInt128(r0)) => l0 == r0,
+            (Self::UInt256(l0), Self::UInt256(r0)) => l0 == r0,
+            (Self::Float32(l0), Self::Float32(r0)) => l0.to_bits() == r0.to_bits(),
+            (Self::Float64(l0), Self::Float64(r0)) => l0.to_bits() == r0.to_bits(),
+            (Self::Decimal32(l0, l1), Self::Decimal32(r0, r1)) => l0 == r0 && l1 == r1,
+            (Self::Decimal64(l0, l1), Self::Decimal64(r0, r1)) => l0 == r0 && l1 == r1,
+            (Self::Decimal128(l0, l1), Self::Decimal128(r0, r1)) => l0 == r0 && l1 == r1,
+            (Self::Decimal256(l0, l1), Self::Decimal256(r0, r1)) => l0 == r0 && l1 == r1,
+            (Self::String(l0), Self::String(r0)) => l0 == r0,
+            (Self::Uuid(l0), Self::Uuid(r0)) => l0 == r0,
+            (Self::Date(l0), Self::Date(r0)) => l0 == r0,
+            (Self::DateTime(l0), Self::DateTime(r0)) => l0 == r0,
+            (Self::DateTime64(l0, l1, l2), Self::DateTime64(r0, r1, r2)) => {
+                l0 == r0 && l1 == r1 && l2 == r2
+            }
+            (Self::Enum8(l0), Self::Enum8(r0)) => l0 == r0,
+            (Self::Enum16(l0), Self::Enum16(r0)) => l0 == r0,
+            (Self::Array(l0), Self::Array(r0)) => l0 == r0,
+            (Self::Tuple(l0), Self::Tuple(r0)) => l0 == r0,
+            (Self::Map(l0, l1), Self::Map(r0, r1)) => l0 == r0 && l1 == r1,
+            (Self::Ipv4(l0), Self::Ipv4(r0)) => l0 == r0,
+            (Self::Ipv6(l0), Self::Ipv6(r0)) => l0 == r0,
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
+}
+
+impl Hash for Value {
+    fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) -> () {
+        Hash::hash(&core::mem::discriminant(self), state);
+        match self {
+            Value::Int8(x) => ::core::hash::Hash::hash(x, state),
+            Value::Int16(x) => ::core::hash::Hash::hash(x, state),
+            Value::Int32(x) => ::core::hash::Hash::hash(x, state),
+            Value::Int64(x) => ::core::hash::Hash::hash(x, state),
+            Value::Int128(x) => ::core::hash::Hash::hash(x, state),
+            Value::Int256(x) => ::core::hash::Hash::hash(x, state),
+            Value::UInt8(x) => ::core::hash::Hash::hash(x, state),
+            Value::UInt16(x) => ::core::hash::Hash::hash(x, state),
+            Value::UInt32(x) => ::core::hash::Hash::hash(x, state),
+            Value::UInt64(x) => ::core::hash::Hash::hash(x, state),
+            Value::UInt128(x) => ::core::hash::Hash::hash(x, state),
+            Value::UInt256(x) => ::core::hash::Hash::hash(x, state),
+            Value::Float32(x) => ::core::hash::Hash::hash(&x.to_bits(), state),
+            Value::Float64(x) => ::core::hash::Hash::hash(&x.to_bits(), state),
+            Value::Decimal32(x, __self_1) => {
+                ::core::hash::Hash::hash(x, state);
+                ::core::hash::Hash::hash(__self_1, state)
+            }
+            Value::Decimal64(x, __self_1) => {
+                ::core::hash::Hash::hash(x, state);
+                ::core::hash::Hash::hash(__self_1, state)
+            }
+            Value::Decimal128(x, __self_1) => {
+                ::core::hash::Hash::hash(x, state);
+                ::core::hash::Hash::hash(__self_1, state)
+            }
+            Value::Decimal256(x, __self_1) => {
+                ::core::hash::Hash::hash(x, state);
+                ::core::hash::Hash::hash(__self_1, state)
+            }
+            Value::String(x) => ::core::hash::Hash::hash(x, state),
+            Value::Uuid(x) => ::core::hash::Hash::hash(x, state),
+            Value::Date(x) => ::core::hash::Hash::hash(x, state),
+            Value::DateTime(x) => ::core::hash::Hash::hash(x, state),
+            Value::DateTime64(x, __self_1, __self_2) => {
+                ::core::hash::Hash::hash(x, state);
+                ::core::hash::Hash::hash(__self_1, state);
+                ::core::hash::Hash::hash(__self_2, state)
+            }
+            Value::Enum8(x) => ::core::hash::Hash::hash(x, state),
+            Value::Enum16(x) => ::core::hash::Hash::hash(x, state),
+            Value::Array(x) => ::core::hash::Hash::hash(x, state),
+            Value::Tuple(x) => ::core::hash::Hash::hash(x, state),
+            Value::Map(x, __self_1) => {
+                ::core::hash::Hash::hash(x, state);
+                ::core::hash::Hash::hash(__self_1, state)
+            }
+            Value::Ipv4(x) => ::core::hash::Hash::hash(x, state),
+            Value::Ipv6(x) => ::core::hash::Hash::hash(x, state),
+            _ => {}
+        }
+    }
+}
+
+impl Eq for Value {}
 
 impl Value {
     pub fn string(value: impl Into<String>) -> Self {
@@ -270,7 +370,7 @@ impl fmt::Display for Value {
                 write!(f, "'{}'", uuid)
             }
             Value::Date(date) => {
-                let chrono_date: chrono::Date<Utc> = (*date).into();
+                let chrono_date: NaiveDate = (*date).into();
                 write!(f, "'{}'", chrono_date.format("%Y-%m-%d"))
             }
             Value::DateTime(datetime) => {

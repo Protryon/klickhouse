@@ -146,7 +146,7 @@ impl FromSql for f32 {
             return Err(unexpected_type(type_));
         }
         match value {
-            Value::Float32(x) => Ok(f32::from_bits(x)),
+            Value::Float32(x) => Ok(x),
             _ => unimplemented!(),
         }
     }
@@ -158,7 +158,7 @@ impl FromSql for f64 {
             return Err(unexpected_type(type_));
         }
         match value {
-            Value::Float64(x) => Ok(f64::from_bits(x)),
+            Value::Float64(x) => Ok(x),
             _ => unimplemented!(),
         }
     }

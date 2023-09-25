@@ -186,15 +186,15 @@ async fn roundtrip_i256() {
 #[tokio::test]
 async fn roundtrip_f32() {
     let values = &[
-        Value::Float32(1.0_f32.to_bits()),
-        Value::Float32(0.0_f32.to_bits()),
-        Value::Float32(100.0_f32.to_bits()),
-        Value::Float32(100000.0_f32.to_bits()),
-        Value::Float32(1000000.0_f32.to_bits()),
-        Value::Float32((-1000000.0_f32).to_bits()),
-        Value::Float32(f32::NAN.to_bits()),
-        Value::Float32(f32::INFINITY.to_bits()),
-        Value::Float32(f32::NEG_INFINITY.to_bits()),
+        Value::Float32(1.0_f32),
+        Value::Float32(0.0_f32),
+        Value::Float32(100.0_f32),
+        Value::Float32(100000.0_f32),
+        Value::Float32(1000000.0_f32),
+        Value::Float32(-1000000.0_f32),
+        Value::Float32(f32::NAN),
+        Value::Float32(f32::INFINITY),
+        Value::Float32(f32::NEG_INFINITY),
     ];
     assert_eq!(
         &values[..],
@@ -205,15 +205,15 @@ async fn roundtrip_f32() {
 #[tokio::test]
 async fn roundtrip_f64() {
     let values = &[
-        Value::Float64(1.0_f64.to_bits()),
-        Value::Float64(0.0_f64.to_bits()),
-        Value::Float64(100.0_f64.to_bits()),
-        Value::Float64(100000.0_f64.to_bits()),
-        Value::Float64(1000000.0_f64.to_bits()),
-        Value::Float64((-1000000.0_f64).to_bits()),
-        Value::Float64(f64::NAN.to_bits()),
-        Value::Float64(f64::INFINITY.to_bits()),
-        Value::Float64(f64::NEG_INFINITY.to_bits()),
+        Value::Float64(1.0_f64),
+        Value::Float64(0.0_f64),
+        Value::Float64(100.0_f64),
+        Value::Float64(100000.0_f64),
+        Value::Float64(1000000.0_f64),
+        Value::Float64(-1000000.0_f64),
+        Value::Float64(f64::NAN),
+        Value::Float64(f64::INFINITY),
+        Value::Float64(f64::NEG_INFINITY),
     ];
     assert_eq!(
         &values[..],
