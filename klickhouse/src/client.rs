@@ -288,9 +288,9 @@ impl Client {
                 },
             })
             .await
-            .map_err(|_| KlickhouseError::ProtocolError("failed to send query".to_string()))?;
-        let receiver = receiver.await.map_err(|_| {
-            KlickhouseError::ProtocolError("failed to receive blocks from upstream".to_string())
+            .map_err(|e| KlickhouseError::ProtocolError(format!("failed to send query: {e}")))?;
+        let receiver = receiver.await.map_err(|e| {
+            KlickhouseError::ProtocolError(format!("failed to receive blocks from upstream: {e}"))
         })?;
 
         Ok(ReceiverStream::new(receiver))
@@ -306,9 +306,9 @@ impl Client {
                 },
             })
             .await
-            .map_err(|_| KlickhouseError::ProtocolError("failed to send block".to_string()))?;
-        receiver.await.map_err(|_| {
-            KlickhouseError::ProtocolError("failed to receive blocks from upstream".to_string())
+            .map_err(|e| KlickhouseError::ProtocolError(format!("failed to send block: {e}")))?;
+        receiver.await.map_err(|e| {
+            KlickhouseError::ProtocolError(format!("failed to receive blocks from upstream: {e}"))
         })?;
 
         Ok(())
@@ -331,9 +331,9 @@ impl Client {
                 },
             })
             .await
-            .map_err(|_| KlickhouseError::ProtocolError("failed to send query".to_string()))?;
-        let receiver = receiver.await.map_err(|_| {
-            KlickhouseError::ProtocolError("failed to receive blocks from upstream".to_string())
+            .map_err(|e| KlickhouseError::ProtocolError(format!("failed to send query: {e}")))?;
+        let receiver = receiver.await.map_err(|e| {
+            KlickhouseError::ProtocolError(format!("failed to receive blocks from upstream: {e}"))
         })?;
 
         while let Some(block) = blocks.next().await {
@@ -367,9 +367,9 @@ impl Client {
                 },
             })
             .await
-            .map_err(|_| KlickhouseError::ProtocolError("failed to send query".to_string()))?;
-        let mut receiver = receiver.await.map_err(|_| {
-            KlickhouseError::ProtocolError("failed to receive blocks from upstream".to_string())
+            .map_err(|e| KlickhouseError::ProtocolError(format!("failed to send query: {e}")))?;
+        let mut receiver = receiver.await.map_err(|e| {
+            KlickhouseError::ProtocolError(format!("failed to receive blocks from upstream: {e}"))
         })?;
         let first_block = receiver.recv().await.ok_or_else(|| {
             KlickhouseError::ProtocolError("missing header block from server".to_string())
