@@ -261,6 +261,20 @@ impl Client {
         Self::connect_stream(read, writer, options).await
     }
 
+    /// Connects to a specific socket address over TLS (rustls) for Clickhouse.
+    #[cfg(feature = "tls")]
+    pub async fn connect_tls<A: ToSocketAddrs>(
+        destination: A,
+        options: ClientOptions,
+        name: tokio_rustls::rustls::ServerName,
+        connector: &tokio_rustls::TlsConnector,
+    ) -> Result<Self> {
+        let stream = TcpStream::connect(destination).await?;
+        let tls_stream = connector.connect(name, stream).await?;
+        let (read, writer) = tokio::io::split(tls_stream);
+        Self::connect_stream(read, writer, options).await
+    }
+
     async fn start<R: ClickhouseRead + 'static, W: ClickhouseWrite>(
         inner: InnerClient<R, W>,
     ) -> Result<Self> {
