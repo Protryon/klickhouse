@@ -102,6 +102,7 @@ pub fn expand_derive_serialize(
     let impl_block = quote! {
         #[doc(hidden)]
         #[allow(clippy)]
+        #[allow(non_snake_case)]
         const fn #const_column_count_fn() -> ::std::option::Option<usize> {
             #serialize_length_body
         }
@@ -109,6 +110,7 @@ pub fn expand_derive_serialize(
         use ::klickhouse::{ToSql as _, FromSql as _};
         #[automatically_derived]
         #[allow(clippy)]
+        #[allow(non_snake_case)]
         impl #impl_generics ::klickhouse::Row for #ident #ty_generics #where_clause {
             const COLUMN_COUNT: ::std::option::Option<usize> = #const_column_count_fn();
 
