@@ -2,6 +2,9 @@ use std::fmt;
 
 use crate::{KlickhouseError, Result, ToSql, Value};
 
+mod select;
+pub use select::*;
+
 #[derive(Debug, Clone)]
 pub struct ParsedQuery(pub(crate) String);
 
