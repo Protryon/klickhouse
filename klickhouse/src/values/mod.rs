@@ -117,7 +117,7 @@ impl PartialEq for Value {
 }
 
 impl Hash for Value {
-    fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) -> () {
+    fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
         Hash::hash(&core::mem::discriminant(self), state);
         match self {
             Value::Int8(x) => ::core::hash::Hash::hash(x, state),

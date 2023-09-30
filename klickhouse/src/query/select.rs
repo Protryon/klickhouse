@@ -199,7 +199,7 @@ impl SelectBuilder {
     }
 }
 
-impl<'a> TryInto<ParsedQuery> for SelectBuilder {
+impl TryInto<ParsedQuery> for SelectBuilder {
     type Error = KlickhouseError;
 
     fn try_into(mut self) -> Result<ParsedQuery> {
