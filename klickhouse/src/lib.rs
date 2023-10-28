@@ -3,7 +3,7 @@ pub const VERSION_MAJOR: u64 = 22;
 /// Clickhouse minor version
 pub const VERSION_MINOR: u64 = 9;
 
-mod block;
+pub mod block;
 mod client;
 #[cfg(feature = "compression")]
 mod compression;

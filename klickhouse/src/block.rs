@@ -11,6 +11,7 @@ use crate::{
     KlickhouseError,
 };
 
+/// Metadata about a block
 #[derive(Debug, Clone)]
 pub struct BlockInfo {
     pub is_overflows: bool,
@@ -27,7 +28,7 @@ impl Default for BlockInfo {
 }
 
 impl BlockInfo {
-    pub async fn read<R: ClickhouseRead>(reader: &mut R) -> Result<Self> {
+    async fn read<R: ClickhouseRead>(reader: &mut R) -> Result<Self> {
         let mut new = Self::default();
         loop {
             let field_num = reader.read_var_uint().await?;
@@ -50,7 +51,7 @@ impl BlockInfo {
         Ok(new)
     }
 
-    pub async fn write<W: ClickhouseWrite>(&self, writer: &mut W) -> Result<()> {
+    async fn write<W: ClickhouseWrite>(&self, writer: &mut W) -> Result<()> {
         writer.write_var_uint(1).await?;
         writer
             .write_u8(if self.is_overflows { 1 } else { 2 })
@@ -63,13 +64,19 @@ impl BlockInfo {
 }
 
 #[derive(Debug, Clone)]
+/// A chunk of data in columnar form.
 pub struct Block {
+    /// Metadata about the block
     pub info: BlockInfo,
+    /// The number of rows contained in the block
     pub rows: u64,
+    /// The type of each column by name, in order.
     pub column_types: IndexMap<String, Type>,
+    /// The data of each column by name, in order. All `Value` should correspond to the associated type in `column_types`.
     pub column_data: IndexMap<String, Vec<Value>>,
 }
 
+/// Iterator type for `iter_rows`
 pub struct BlockRowIter<'a> {
     block: &'a Block,
     row: u64,
@@ -90,6 +97,8 @@ impl<'a> Iterator for BlockRowIter<'a> {
         Some(out)
     }
 }
+
+// Iterator type for `take_iter_rows`
 pub struct BlockRowValueIter<'a> {
     column_data: Vec<(&'a str, &'a Type, std::vec::IntoIter<Value>)>,
 }
@@ -109,6 +118,7 @@ impl<'a> Iterator for BlockRowValueIter<'a> {
     }
 }
 
+/// Iterator type for `into_iter_rows`
 pub struct BlockRowIntoIter {
     column_data: IndexMap<String, VecDeque<(Type, Value)>>,
 }
@@ -126,6 +136,7 @@ impl Iterator for BlockRowIntoIter {
 }
 
 impl Block {
+    /// Create a borrowing iterator for all rows
     pub fn iter_rows(&self) -> BlockRowIter<'_> {
         BlockRowIter {
             block: self,
@@ -133,6 +144,7 @@ impl Block {
         }
     }
 
+    /// Iterate over all rows with owned values.
     pub fn take_iter_rows(&mut self) -> BlockRowValueIter {
         let mut column_data = IndexMap::new();
         std::mem::swap(&mut self.column_data, &mut column_data);
@@ -144,6 +156,7 @@ impl Block {
         BlockRowValueIter { column_data: out }
     }
 
+    /// Iterate over all rows with owned value, types, and names.
     pub fn into_iter_rows(self) -> BlockRowIntoIter {
         let column_types = self.column_types;
         BlockRowIntoIter {
@@ -161,7 +174,7 @@ impl Block {
         }
     }
 
-    pub async fn read<R: ClickhouseRead>(reader: &mut R, revision: u64) -> Result<Self> {
+    pub(crate) async fn read<R: ClickhouseRead>(reader: &mut R, revision: u64) -> Result<Self> {
         let info = if revision > 0 {
             BlockInfo::read(reader).await?
         } else {
@@ -195,7 +208,11 @@ impl Block {
         Ok(block)
     }
 
-    pub async fn write<W: ClickhouseWrite>(mut self, writer: &mut W, revision: u64) -> Result<()> {
+    pub(crate) async fn write<W: ClickhouseWrite>(
+        mut self,
+        writer: &mut W,
+        revision: u64,
+    ) -> Result<()> {
         if revision > 0 {
             self.info.write(writer).await?;
         }
