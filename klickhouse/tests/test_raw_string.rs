@@ -12,20 +12,7 @@ async fn test_raw_string() {
         .init();
     let client = super::get_client().await;
 
-    client
-        .execute("drop table if exists test_raw_string")
-        .await
-        .unwrap();
-    client
-        .execute(
-            r"
-    CREATE TABLE test_raw_string (
-        raw_string String
-    ) ENGINE = Memory;
-    ",
-        )
-        .await
-        .unwrap();
+    super::prepare_table("test_raw_string", "raw_string String", &client).await;
 
     println!("begin insert");
 
@@ -34,14 +21,14 @@ async fn test_raw_string() {
     }];
 
     client
-        .insert_native_block("insert into test_raw_string format native", items.clone())
+        .insert_native_block("INSERT INTO test_raw_string FORMAT NATIVE", items.clone())
         .await
         .unwrap();
 
     println!("inserted rows:\n{items:#?}\n\n\n\n\n");
 
     let rows_back = client
-        .query_collect::<TestRawString>("select * from test_raw_string")
+        .query_collect::<TestRawString>("SELECT * FROM test_raw_string")
         .await
         .unwrap();
 

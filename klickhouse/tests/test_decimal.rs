@@ -1,8 +1,7 @@
 #![cfg(feature = "rust_decimal")]
-use futures::StreamExt;
 use rust_decimal::Decimal;
 
-#[derive(klickhouse::Row, Debug, Default)]
+#[derive(klickhouse::Row, Debug, Default, PartialEq, Clone)]
 pub struct TestType {
     d_d128: Decimal,
 }
@@ -13,24 +12,28 @@ async fn test_client() {
         .filter_level(log::LevelFilter::Info)
         .init();
     let client = super::get_client().await;
-    let mut names = client
-        .query::<TestType>("select d_d128 from test_types;")
-        .await
-        .unwrap();
-    while let Some(name) = names.next().await {
-        let name = name.unwrap();
-        println!("d_d128 = {:?}", name);
-    }
+
+    super::prepare_table("test_decimal", "d_d128 Decimal128(5) default 0", &client).await;
 
     println!("begin insert");
 
-    let mut block = TestType::default();
-    block.d_d128 = Decimal::new(12345, 2);
+    let block = TestType {
+        d_d128: Decimal::new(12345, 2),
+    };
 
     client
-        .insert_native_block("insert into test_types (d_d128) format native", vec![block])
+        .insert_native_block(
+            "INSERT INTO test_decimal (d_d128) FORMAT Native",
+            vec![block.clone()],
+        )
         .await
         .unwrap();
+
+    let block2 = client
+        .query_one("SELECT * from test_decimal")
+        .await
+        .unwrap();
+    assert_eq!(block, block2);
 
     println!("done");
 }
