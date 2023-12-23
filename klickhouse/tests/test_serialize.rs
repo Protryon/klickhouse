@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::Utc;
-use klickhouse::{Bytes, Client, ClientOptions, DateTime64, RawRow, Uuid};
+use klickhouse::{Bytes, DateTime64, RawRow, Uuid};
 
 #[derive(klickhouse::Row, Debug, Default)]
 pub struct TestSerialize {
@@ -49,7 +49,7 @@ pub struct Nest {
 
 #[derive(klickhouse::Row, Debug, Default)]
 pub struct TestSerializeNested {
-    #[klickhouse(nested)]
+     #[klickhouse(nested)]
     nest: Vec<Nest>,
 }
 
@@ -57,9 +57,9 @@ pub struct TestSerializeNested {
 #[allow(unused)]
 #[derive(klickhouse::Row, Debug, Default)]
 struct TestSerializeNested2 {
-    #[klickhouse(nested)]
+     #[klickhouse(nested)]
     nest: Vec<Nest>,
-    #[klickhouse(nested)]
+     #[klickhouse(nested)]
     nest2: Vec<Nest>,
 }
 
@@ -68,9 +68,7 @@ async fn test_client() {
     env_logger::builder()
         .filter_level(log::LevelFilter::Info)
         .init();
-    let client = Client::connect("127.0.0.1:9000", ClientOptions::default())
-        .await
-        .unwrap();
+    let client = super::get_client().await;
 
     client
         .execute("drop table if exists test_serialize")
@@ -88,6 +86,7 @@ async fn test_client() {
         d_map_null_string Map(String, Nullable(String)),
         d_bool Bool,
         d_string String,
+
         nest Nested
         (
             nest_string String,
@@ -100,6 +99,7 @@ async fn test_client() {
         d_null_string Nullable(String),
         d_vec Array(String),
         d_vec2 Array(Nullable(String)),
+
         raw_bytes String,
         raw_bytes2 String,
         raw_bytes_fixed FixedString(8),

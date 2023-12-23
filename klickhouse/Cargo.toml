@@ -8,6 +8,11 @@ repository = "https://github.com/Protryon/klickhouse"
 description = "Klickhouse is a pure Rust SDK for working with Clickhouse with the native protocol in async environments with minimal boilerplate and maximal performance."
 keywords = [ "clickhouse", "database", "tokio", "sql" ]
 readme = "../README.md"
+autotests = false
+
+[[test]]
+name = "test"
+path = "tests/main.rs"
 
 [dependencies]
 tokio = { version = "1.21", features = ["io-util", "net", "sync", "rt", "macros"] }

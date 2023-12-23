@@ -1,4 +1,4 @@
-use klickhouse::{Bytes, Client, ClientOptions};
+use klickhouse::Bytes;
 
 #[derive(klickhouse::Row, Debug, Default, Clone, PartialEq, Eq)]
 pub struct TestRawString {
@@ -10,9 +10,7 @@ async fn test_raw_string() {
     env_logger::builder()
         .filter_level(log::LevelFilter::Info)
         .init();
-    let client = Client::connect("127.0.0.1:9000", ClientOptions::default())
-        .await
-        .unwrap();
+    let client = super::get_client().await;
 
     client
         .execute("drop table if exists test_raw_string")

@@ -1,6 +1,5 @@
 #![cfg(feature = "rust_decimal")]
 use futures::StreamExt;
-use klickhouse::{Client, ClientOptions};
 use rust_decimal::Decimal;
 
 #[derive(klickhouse::Row, Debug, Default)]
@@ -13,9 +12,7 @@ async fn test_client() {
     env_logger::builder()
         .filter_level(log::LevelFilter::Info)
         .init();
-    let client = Client::connect("127.0.0.1:9000", ClientOptions::default())
-        .await
-        .unwrap();
+    let client = super::get_client().await;
     let mut names = client
         .query::<TestType>("select d_d128 from test_types;")
         .await

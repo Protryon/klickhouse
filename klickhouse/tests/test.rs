@@ -3,8 +3,8 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use futures::StreamExt;
 use indexmap::IndexMap;
 use klickhouse::{
-    i256, u256, Client, ClientOptions, Date, DateTime, DateTime64, FixedPoint128, FixedPoint256,
-    FixedPoint32, FixedPoint64, Ipv4, Ipv6, Uuid,
+    i256, u256, Date, DateTime, DateTime64, FixedPoint128, FixedPoint256, FixedPoint32,
+    FixedPoint64, Ipv4, Ipv6, Uuid,
 };
 
 #[derive(klickhouse::Row, Debug, Default)]
@@ -56,9 +56,7 @@ async fn test_client() {
     env_logger::builder()
         .filter_level(log::LevelFilter::Info)
         .init();
-    let client = Client::connect("127.0.0.1:9000", ClientOptions::default())
-        .await
-        .unwrap();
+    let client = super::get_client().await;
 
     client
         .execute("DROP TABLE IF EXISTS test_types")

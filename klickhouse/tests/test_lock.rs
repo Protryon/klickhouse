@@ -1,18 +1,14 @@
 use std::time::Duration;
 
-use klickhouse::{ClickhouseLock, Client, ClientOptions};
+use klickhouse::ClickhouseLock;
 
 #[tokio::test]
 async fn test_client() {
     env_logger::builder()
         .filter_level(log::LevelFilter::Info)
         .init();
-    let client1 = Client::connect("127.0.0.1:9000", ClientOptions::default())
-        .await
-        .unwrap();
-    let client2 = Client::connect("127.0.0.1:9000", ClientOptions::default())
-        .await
-        .unwrap();
+    let client1 = super::get_client().await;
+    let client2 = super::get_client().await;
 
     let lock1 = ClickhouseLock::new(client1.clone(), "test");
     let handle = lock1.lock().await.unwrap();

@@ -8,7 +8,19 @@ See [example usage](https://github.com/Protryon/klickhouse/blob/master/klickhous
 
 ## Unsupported Features
 
-* Clickhouse `Enum8` and `Enum16` types -- use `LowCardinality` instead.
+- Clickhouse `Enum8` and `Enum16` types -- use `LowCardinality` instead.
+
+## Running the tests
+
+A Clickhouse server is required to run the integration tests. One can be started easily in a Docker container:
+
+```
+$ docker run  --rm --name clickhouse -p 19000:9000 --ulimit nofile=262144:262144 clickhouse
+$ export KLICKHOUSE_TEST_ADDR=127.0.0.1:19000
+$ cargo nexttest run
+```
+
+(running the tests simultaneously with `cargo test` is currently not suported, due to loggers initializations.)
 
 ## Credit
 
