@@ -25,10 +25,11 @@ async fn main() {
         .await
         .unwrap();
 
-    let mut row = MyUserData::default();
-    row.id = Uuid::new_v4();
-    row.user_data = "some important stuff!".to_string();
-    row.created_at = Utc::now().try_into().unwrap();
+    let row = MyUserData {
+        id: Uuid::new_v4(),
+        user_data: "some important stuff!".to_string(),
+        created_at: Utc::now().try_into().unwrap(),
+    };
 
     client
         .insert_native_block("INSERT INTO my_user_data FORMAT native", vec![row])

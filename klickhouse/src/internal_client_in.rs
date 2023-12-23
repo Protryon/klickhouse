@@ -193,7 +193,7 @@ impl<R: ClickhouseRead + 'static> InternalClientIn<R> {
                     response
                         .database_tables
                         .entry(database_name)
-                        .or_insert_with(IndexMap::new)
+                        .or_default()
                         .insert(
                             table_name,
                             TableStatus {

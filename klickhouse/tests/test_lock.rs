@@ -15,10 +15,9 @@ async fn test_client() {
     println!("lock1 locked");
 
     let lock2 = ClickhouseLock::new(client2.clone(), "test");
-    match tokio::time::timeout(Duration::from_secs(1), lock2.lock()).await {
-        Ok(_) => panic!("failed test"),
-        Err(_) => (), // passed
-    }
+    assert!(tokio::time::timeout(Duration::from_secs(1), lock2.lock())
+        .await
+        .is_err());
 
     println!("lock1 unlocking");
     tokio::time::sleep(Duration::from_secs(1)).await;

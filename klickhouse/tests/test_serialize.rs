@@ -49,7 +49,7 @@ pub struct Nest {
 
 #[derive(klickhouse::Row, Debug, Default)]
 pub struct TestSerializeNested {
-     #[klickhouse(nested)]
+       #[klickhouse(nested)]
     nest: Vec<Nest>,
 }
 
@@ -57,13 +57,14 @@ pub struct TestSerializeNested {
 #[allow(unused)]
 #[derive(klickhouse::Row, Debug, Default)]
 struct TestSerializeNested2 {
-     #[klickhouse(nested)]
+       #[klickhouse(nested)]
     nest: Vec<Nest>,
-     #[klickhouse(nested)]
+       #[klickhouse(nested)]
     nest2: Vec<Nest>,
 }
 
 #[tokio::test]
+#[allow(clippy::field_reassign_with_default)]
 async fn test_client() {
     env_logger::builder()
         .filter_level(log::LevelFilter::Info)
