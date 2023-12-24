@@ -1,3 +1,5 @@
+#![doc = include_str!("../../README.md")]
+
 /// Clickhouse major version
 pub const VERSION_MAJOR: u64 = 22;
 /// Clickhouse minor version

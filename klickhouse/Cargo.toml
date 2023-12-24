@@ -10,6 +10,9 @@ keywords = [ "clickhouse", "database", "tokio", "sql" ]
 readme = "../README.md"
 autotests = false
 
+[package.metadata.docs.rs]
+all-features = true
+
 [[test]]
 name = "test"
 path = "tests/main.rs"
