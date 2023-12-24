@@ -605,6 +605,7 @@ dependencies = [
  "libc",
  "log",
  "lz4",
+ "paste",
  "refinery-core",
  "rust_decimal",
  "rustc_version",
@@ -772,6 +773,12 @@ checksum = "c705f256449c60da65e11ff6626e0c16a0a0b96aaa348de61376b249bc340f41"
 dependencies = [
  "regex",
 ]
+
+[[package]]
+name = "paste"
+version = "1.0.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de3145af08024dea9fa9914f381a17b8fc6034dfb00f3a84013f7ff43f29ed4c"
 
 [[package]]
 name = "percent-encoding"
