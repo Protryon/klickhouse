@@ -71,3 +71,108 @@ to_from_sql!(Point);
 to_from_sql!(Ring);
 to_from_sql!(Polygon);
 to_from_sql!(MultiPolygon);
+#[cfg(feature = "geo-types")]
+mod nav_types_conversions {
+    use super::*;
+
+    // Points and coords
+    impl From<Point> for geo_types::Coord {
+        fn from(source: Point) -> Self {
+            Self {
+                x: source[0],
+                y: source[1],
+            }
+        }
+    }
+    impl From<geo_types::Coord> for Point {
+        fn from(source: geo_types::Coord) -> Self {
+            Self([source.x, source.y])
+        }
+    }
+    // Points and points
+    impl From<Point> for geo_types::Point {
+        fn from(source: Point) -> Self {
+            geo_types::Point(source.into())
+        }
+    }
+    impl From<geo_types::Point> for Point {
+        fn from(source: geo_types::Point) -> Self {
+            source.0.into()
+        }
+    }
+    // Rings and Linestrings
+    impl From<Ring> for geo_types::LineString {
+        fn from(source: Ring) -> Self {
+            Self(source.0.into_iter().map(geo_types::Coord::from).collect())
+        }
+    }
+    impl From<geo_types::LineString> for Ring {
+        fn from(source: geo_types::LineString) -> Self {
+            Self(source.0.into_iter().map(Point::from).collect())
+        }
+    }
+
+    // Rings and polygons (with no holes)
+    // A Polygon -> Ring conversion is not provided, as the polygon might have holes.
+    impl From<Ring> for geo_types::Polygon {
+        fn from(source: Ring) -> Self {
+            geo_types::Polygon::new(source.0.into(), vec![])
+        }
+    }
+    // Polygons and polygons
+    impl From<geo_types::Polygon> for Polygon {
+        fn from(source: geo_types::Polygon) -> Self {
+            Self(
+                [source.exterior().clone().into()]
+                    .into_iter()
+                    .chain(
+                        source
+                            .interiors()
+                            .iter()
+                            .map(|linestring| Ring::from(linestring.clone())),
+                    )
+                    .collect(),
+            )
+        }
+    }
+    impl From<Polygon> for geo_types::Polygon {
+        fn from(mut source: Polygon) -> Self {
+            if source.0.is_empty() {
+                return Self::new(geo_types::LineString::new(vec![]), vec![]);
+            }
+            let exterior = source.0.remove(0);
+            geo_types::Polygon::new(
+                exterior.into(),
+                source
+                    .0
+                    .into_iter()
+                    .map(geo_types::LineString::from)
+                    .collect(),
+            )
+        }
+    }
+    // Multi polygons
+    impl From<MultiPolygon> for geo_types::MultiPolygon {
+        fn from(source: MultiPolygon) -> Self {
+            source.0.into_iter().map(geo_types::Polygon::from).collect()
+        }
+    }
+    impl From<geo_types::MultiPolygon> for MultiPolygon {
+        fn from(source: geo_types::MultiPolygon) -> Self {
+            Self(source.into_iter().map(Polygon::from).collect())
+        }
+    }
+    #[cfg(test)]
+    #[test]
+    fn roundtrip() {
+        let multipolygon_geo: geo_types::MultiPolygon = geo_types::wkt! {
+            // Example from https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry
+            MULTIPOLYGON (((40.0 40.0, 20.0 45.0, 45.0 30.0, 40.0 40.0)),
+                          ((20.0 35.0, 10.0 30.0, 10.0 10.0, 30.0 5.0, 45.0 20.0, 20.0 35.0),
+                           (30.0 20.0, 20.0 15.0, 20.0 25.0, 30. 20.0)))
+        };
+        let multipolygon = MultiPolygon::from(multipolygon_geo.clone());
+        let multipolygon_geo2 = geo_types::MultiPolygon::from(multipolygon);
+        assert_eq!(multipolygon_geo, multipolygon_geo2);
+    }
+}

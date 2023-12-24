@@ -64,6 +64,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "approx"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cab112f0a86d568ea0e627cc1d6be74a1e9cd55214684db5561995f6dad897c6"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "arrayvec"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -456,6 +465,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "geo-types"
+version = "0.7.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "567495020b114f1ce9bed679b29975aa0bfae06ac22beacd5cfde5dabe7b05d6"
+dependencies = [
+ "approx",
+ "num-traits",
+ "serde",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -600,6 +620,7 @@ dependencies = [
  "compiler-tools-derive",
  "env_logger",
  "futures",
+ "geo-types",
  "indexmap 2.0.0",
  "klickhouse_derive",
  "libc",
@@ -639,6 +660,12 @@ name = "libc"
 version = "0.2.148"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9cdc71e17332e86d2e1d38c1f99edcb6288ee11b815fb1a4b049eaa2114d369b"
+
+[[package]]
+name = "libm"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ec2a862134d2a7d32d7983ddcdd1c4923530833c9f2ea1a44fc5fa473989058"
 
 [[package]]
 name = "linux-raw-sys"
@@ -715,6 +742,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f30b0abd723be7e2ffca1272140fac1a2f084c77ec3e123c192b66af1ee9e6c2"
 dependencies = [
  "autocfg",
+ "libm",
 ]
 
 [[package]]
