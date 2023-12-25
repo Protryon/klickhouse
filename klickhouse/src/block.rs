@@ -128,6 +128,9 @@ impl Iterator for BlockRowIntoIter {
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut out = IndexMap::new();
+        if self.column_data.is_empty() {
+            return None;
+        }
         for (name, value) in self.column_data.iter_mut() {
             out.insert(name.clone(), value.pop_front()?);
         }
