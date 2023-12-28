@@ -20,6 +20,7 @@ mod migrate;
 #[cfg(feature = "refinery")]
 pub use migrate::*;
 mod progress;
+pub use progress::*;
 mod protocol;
 mod query;
 pub mod query_parser;
