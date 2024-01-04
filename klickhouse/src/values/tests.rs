@@ -7,6 +7,7 @@ use crate::{
     i256,
     types::Type,
     u256, Date, DateTime, DateTime64, FixedPoint128, FixedPoint256, FixedPoint32, FixedPoint64,
+    MultiPolygon, Point, Polygon, Ring,
 };
 
 use super::Value;
@@ -492,5 +493,27 @@ fn test_escape() {
     assert_eq!(
         Value::string("te\u{1F60A}st").to_string(),
         "'te\\xF0\\x9F\\x98\\x8Ast'"
+    );
+}
+
+#[tokio::test]
+async fn roundtrip_geo() {
+    // Points
+    let point = Point([1.0, 2.0]);
+    assert_eq!(&point, &roundtrip(point.clone(), &Type::Point));
+    // Ring
+    let ring = Ring(vec![point.clone(), Point([3.0, 4.0])]);
+    assert_eq!(&ring, &roundtrip(ring.clone(), &Type::Ring));
+    // Polygon
+    let polygon = Polygon(vec![ring.clone(), Ring(vec![Point([5.0, 6.0])])]);
+    assert_eq!(&polygon, &roundtrip(polygon.clone(), &Type::Polygon));
+    // Multipolygon
+    let multipolygon = MultiPolygon(vec![
+        polygon.clone(),
+        Polygon(vec![ring.clone(), Ring(vec![point])]),
+    ]);
+    assert_eq!(
+        &multipolygon,
+        &roundtrip(multipolygon.clone(), &Type::MultiPolygon)
     );
 }

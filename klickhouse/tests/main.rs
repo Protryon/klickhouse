@@ -1,6 +1,7 @@
 pub mod test;
 pub mod test_bytes;
 pub mod test_decimal;
+pub mod test_geo;
 pub mod test_lock;
 pub mod test_nested;
 pub mod test_raw_string;

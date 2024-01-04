@@ -55,6 +55,13 @@ pub enum Type {
     Ipv4,
     Ipv6,
 
+    // Geo types, see
+    // https://clickhouse.com/docs/en/sql-reference/data-types/geo
+    // These are just aliases of primitive types.
+    Point,
+    Ring,
+    Polygon,
+    MultiPolygon,
     /// Not supported
     Enum8(Vec<(String, i8)>),
     /// Not supported
@@ -162,6 +169,10 @@ impl Type {
             Type::DateTime64(precision, tz) => Value::DateTime64(DynDateTime64(*tz, 0, *precision)),
             Type::Ipv4 => Value::Ipv4(Ipv4::default()),
             Type::Ipv6 => Value::Ipv6(Ipv6::default()),
+            Type::Point => Value::Point(Default::default()),
+            Type::Ring => Value::Ring(Default::default()),
+            Type::Polygon => Value::Polygon(Default::default()),
+            Type::MultiPolygon => Value::MultiPolygon(Default::default()),
             Type::Enum8(_) => Value::Enum8(0),
             Type::Enum16(_) => Value::Enum16(0),
             Type::LowCardinality(x) => x.default_value(),
@@ -461,6 +472,10 @@ impl FromStr for Type {
             "DateTime" => Type::DateTime(chrono_tz::UTC),
             "IPv4" => Type::Ipv4,
             "IPv6" => Type::Ipv6,
+            "Point" => Type::Point,
+            "Ring" => Type::Ring,
+            "Polygon" => Type::Polygon,
+            "MultiPolygon" => Type::MultiPolygon,
             _ => {
                 return Err(KlickhouseError::TypeParseError(format!(
                     "invalid type name: '{}'",
@@ -500,6 +515,10 @@ impl Display for Type {
             Type::DateTime64(precision, tz) => write!(f, "DateTime64({},'{}')", precision, tz),
             Type::Ipv4 => write!(f, "IPv4"),
             Type::Ipv6 => write!(f, "IPv6"),
+            Type::Point => write!(f, "Point"),
+            Type::Ring => write!(f, "Ring"),
+            Type::Polygon => write!(f, "Polygon"),
+            Type::MultiPolygon => write!(f, "MultiPolygon"),
             Type::Enum8(items) => write!(
                 f,
                 "Enum8({})",
@@ -577,6 +596,12 @@ impl Type {
 
             Type::Array(_) => array::ArrayDeserializer::read_prefix(self, reader, state).await?,
             Type::Tuple(_) => tuple::TupleDeserializer::read_prefix(self, reader, state).await?,
+            Type::Point => geo::PointDeserializer::read_prefix(self, reader, state).await?,
+            Type::Ring => geo::RingDeserializer::read_prefix(self, reader, state).await?,
+            Type::Polygon => geo::PolygonDeserializer::read_prefix(self, reader, state).await?,
+            Type::MultiPolygon => {
+                geo::MultiPolygonDeserializer::read_prefix(self, reader, state).await?
+            }
             Type::Nullable(_) => {
                 nullable::NullableDeserializer::read_prefix(self, reader, state).await?
             }
@@ -636,7 +661,13 @@ impl Type {
             }
 
             Type::Array(_) => array::ArrayDeserializer::read(self, reader, rows, state).await?,
+            Type::Ring => geo::RingDeserializer::read(self, reader, rows, state).await?,
+            Type::Polygon => geo::PolygonDeserializer::read(self, reader, rows, state).await?,
+            Type::MultiPolygon => {
+                geo::MultiPolygonDeserializer::read(self, reader, rows, state).await?
+            }
             Type::Tuple(_) => tuple::TupleDeserializer::read(self, reader, rows, state).await?,
+            Type::Point => geo::PointDeserializer::read(self, reader, rows, state).await?,
             Type::Nullable(_) => {
                 nullable::NullableDeserializer::read(self, reader, rows, state).await?
             }
@@ -688,6 +719,12 @@ impl Type {
 
             Type::Array(_) => array::ArraySerializer::write(self, values, writer, state).await?,
             Type::Tuple(_) => tuple::TupleSerializer::write(self, values, writer, state).await?,
+            Type::Point => geo::PointSerializer::write(self, values, writer, state).await?,
+            Type::Ring => geo::RingSerializer::write(self, values, writer, state).await?,
+            Type::Polygon => geo::PolygonSerializer::write(self, values, writer, state).await?,
+            Type::MultiPolygon => {
+                geo::MultiPolygonSerializer::write(self, values, writer, state).await?
+            }
             Type::Nullable(_) => {
                 nullable::NullableSerializer::write(self, values, writer, state).await?
             }
@@ -740,6 +777,12 @@ impl Type {
 
             Type::Array(_) => array::ArraySerializer::write_prefix(self, writer, state).await?,
             Type::Tuple(_) => tuple::TupleSerializer::write_prefix(self, writer, state).await?,
+            Type::Point => geo::PointSerializer::write_prefix(self, writer, state).await?,
+            Type::Ring => geo::RingSerializer::write_prefix(self, writer, state).await?,
+            Type::Polygon => geo::PolygonSerializer::write_prefix(self, writer, state).await?,
+            Type::MultiPolygon => {
+                geo::MultiPolygonSerializer::write_prefix(self, writer, state).await?
+            }
             Type::Nullable(_) => {
                 nullable::NullableSerializer::write_prefix(self, writer, state).await?
             }
@@ -931,6 +974,7 @@ impl Type {
                 tz1 == &tz2.0 && precision1 == &tz2.2
             }
             (Type::Ipv4, Value::Ipv4(_)) | (Type::Ipv6, Value::Ipv6(_)) => true,
+            (Type::Point, Value::Point(_)) | (Type::Ring, Value::Ring(_)) | (Type::Polygon, Value::Polygon(_)) | (Type::MultiPolygon, Value::MultiPolygon(_)) => true,
             (Type::Enum8(entries), Value::Enum8(index)) => entries.iter().any(|x| x.1 == *index),
             (Type::Enum16(entries), Value::Enum16(index)) => entries.iter().any(|x| x.1 == *index),
             (Type::LowCardinality(x), value) => x.inner_validate_value(value),

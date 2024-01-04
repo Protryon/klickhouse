@@ -22,6 +22,15 @@ $ cargo nextest run
 
 (running the tests simultaneously with `cargo test` is currently not suported, due to loggers initializations.)
 
+## Feature flags
+
+- `derive`: Enable [klickhouse_derive], providing a derive macro for the [Row] trait. Default.
+- `compression`: `lz4` compression for client/server communication. Default.
+- `serde`: Derivation of [serde::Serialize] and [serde::Deserialize] on various objects, and JSON support. Default.
+- `tls`: TLS support via [tokio-rustls](https://crates.io/crates/tokio-rustls).
+- `refinery`: Migrations via [refinery](https://crates.io/crates/refinery).
+- `geo-types`: Conversion of geo types to/from the [geo-types](https://crates.io/crates/geo-types) crate.
+
 ## Credit
 
 `klickhouse_derive` was made by copy/paste/simplify of `serde_derive` to get maximal functionality and performance at lowest time-cost. In a prototype, `serde` was directly used, but this was abandoned due to lock-in of `serde`'s data model.

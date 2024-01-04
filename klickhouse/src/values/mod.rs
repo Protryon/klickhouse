@@ -15,12 +15,14 @@ mod date;
 #[cfg(feature = "rust_decimal")]
 mod decimal;
 mod fixed_point;
+mod geo;
 mod int256;
 mod ip;
 
 pub use bytes::*;
 pub use date::*;
 pub use fixed_point::*;
+pub use geo::*;
 pub use int256::*;
 pub use ip::*;
 
@@ -76,6 +78,11 @@ pub enum Value {
 
     Ipv4(Ipv4),
     Ipv6(Ipv6),
+
+    Point(Point),
+    Ring(Ring),
+    Polygon(Polygon),
+    MultiPolygon(MultiPolygon),
 }
 
 impl PartialEq for Value {
@@ -111,6 +118,10 @@ impl PartialEq for Value {
             (Self::Map(l0, l1), Self::Map(r0, r1)) => l0 == r0 && l1 == r1,
             (Self::Ipv4(l0), Self::Ipv4(r0)) => l0 == r0,
             (Self::Ipv6(l0), Self::Ipv6(r0)) => l0 == r0,
+            (Self::Point(l0), Self::Point(r0)) => l0 == r0,
+            (Self::Ring(l0), Self::Ring(r0)) => l0 == r0,
+            (Self::Polygon(l0), Self::Polygon(r0)) => l0 == r0,
+            (Self::MultiPolygon(l0), Self::MultiPolygon(r0)) => l0 == r0,
             _ => core::mem::discriminant(self) == core::mem::discriminant(other),
         }
     }
@@ -167,6 +178,12 @@ impl Hash for Value {
             }
             Value::Ipv4(x) => ::core::hash::Hash::hash(x, state),
             Value::Ipv6(x) => ::core::hash::Hash::hash(x, state),
+
+            Value::Point(x) => ::core::hash::Hash::hash(x, state),
+            Value::Ring(x) => ::core::hash::Hash::hash(x, state),
+            Value::Polygon(x) => ::core::hash::Hash::hash(x, state),
+            Value::MultiPolygon(x) => ::core::hash::Hash::hash(x, state),
+
             _ => {}
         }
     }
@@ -274,6 +291,11 @@ impl Value {
             ),
             Value::Ipv4(_) => Type::Ipv4,
             Value::Ipv6(_) => Type::Ipv6,
+
+            Value::Point(_) => Type::Point,
+            Value::Ring(_) => Type::Ring,
+            Value::Polygon(_) => Type::Polygon,
+            Value::MultiPolygon(_) => Type::MultiPolygon,
         }
     }
 }
@@ -424,6 +446,10 @@ impl fmt::Display for Value {
             }
             Value::Ipv4(ipv4) => write!(f, "'{ipv4}'"),
             Value::Ipv6(ipv6) => write!(f, "'{ipv6}'"),
+            Value::Point(x) => write!(f, "{:?}", x),
+            Value::Ring(x) => write!(f, "{:?}", x),
+            Value::Polygon(x) => write!(f, "{:?}", x),
+            Value::MultiPolygon(x) => write!(f, "{:?}", x),
         }
     }
 }

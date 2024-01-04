@@ -5,7 +5,7 @@ use crate::{
     i256,
     types::{DeserializerState, SerializerState},
     u256,
-    values::Value,
+    values::{self, Value},
     Date, DateTime, DynDateTime64,
 };
 use uuid::Uuid;
@@ -783,5 +783,42 @@ async fn roundtrip_array_null() {
         )
         .await
         .unwrap()
+    );
+}
+
+#[tokio::test]
+async fn roundtrip_geo() {
+    // Points
+    let point = |x| values::Point([x, x + 2.0]);
+    let values = &[Value::Point(point(1.0)), Value::Point(point(3.0))];
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Point, &values[..]).await.unwrap()
+    );
+    // Ring
+    let ring = |x| values::Ring(vec![point(x), point(2.0 * x)]);
+    let values = &[Value::Ring(ring(1.0)), Value::Ring(ring(3.0))];
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Ring, &values[..]).await.unwrap()
+    );
+    // Polygon
+    let polygon = |x| values::Polygon(vec![ring(x), ring(2.0 * x)]);
+    let values = &[Value::Polygon(polygon(1.0)), Value::Polygon(polygon(3.0))];
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Polygon, &values[..]).await.unwrap()
+    );
+    // Multipolygon
+    let multipolygon = |x| values::MultiPolygon(vec![polygon(x), polygon(2.0 * x)]);
+    let values = &[
+        Value::MultiPolygon(multipolygon(1.0)),
+        Value::MultiPolygon(multipolygon(3.0)),
+    ];
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::MultiPolygon, &values[..])
+            .await
+            .unwrap()
     );
 }
