@@ -56,13 +56,13 @@ impl MigrationInner {
     }
 }
 
-impl Into<Migration> for MigrationInner {
-    fn into(self) -> Migration {
+impl From<MigrationInner> for Migration {
+    fn from(inner: MigrationInner) -> Self {
         assert_eq!(
             std::mem::size_of::<Migration>(),
             std::mem::size_of::<MigrationInner>()
         );
-        unsafe { std::mem::transmute(self) }
+        unsafe { std::mem::transmute(inner) }
     }
 }
 

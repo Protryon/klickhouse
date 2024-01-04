@@ -8,11 +8,13 @@ use tokio::{
     net::{TcpStream, ToSocketAddrs},
     select,
     sync::{
+        broadcast,
         mpsc::{self, Receiver},
         oneshot,
     },
 };
 use tokio_stream::wrappers::ReceiverStream;
+use uuid::Uuid;
 
 use crate::{
     block::{Block, BlockInfo},
@@ -22,17 +24,22 @@ use crate::{
         ClientHello, ClientInfo, InternalClientOut, Query, QueryKind, QueryProcessingStage,
     },
     io::{ClickhouseRead, ClickhouseWrite},
+    progress::Progress,
     protocol::{self, ServerPacket},
     KlickhouseError, ParsedQuery, RawRow, Result,
 };
 use log::*;
+
+// Maximum number of progress statuses to keep in memory. New statuses evict old ones.
+const PROGRESS_CAPACITY: usize = 100;
 
 struct InnerClient<R: ClickhouseRead, W: ClickhouseWrite> {
     input: InternalClientIn<R>,
     output: InternalClientOut<W>,
     options: ClientOptions,
     pending_queries: VecDeque<PendingQuery>,
-    executing_query: Option<mpsc::Sender<Result<Block>>>,
+    executing_query: Option<(Uuid, mpsc::Sender<Result<Block>>)>,
+    progress: broadcast::Sender<(Uuid, Progress)>,
 }
 
 struct PendingQuery {
@@ -48,13 +55,15 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
             options,
             pending_queries: VecDeque::new(),
             executing_query: None,
+            progress: broadcast::channel(PROGRESS_CAPACITY).0,
         }
     }
 
     async fn dispatch_query(&mut self, query: PendingQuery) -> Result<()> {
+        let id = Uuid::new_v4();
         self.output
             .send_query(Query {
-                id: "",
+                id: &id.to_string(),
                 info: ClientInfo {
                     kind: QueryKind::InitialQuery,
                     initial_user: "",
@@ -79,7 +88,7 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
 
         let (sender, receiver) = mpsc::channel(32);
         query.response.send(receiver).ok();
-        self.executing_query = Some(sender);
+        self.executing_query = Some((id, sender));
         self.output
             .send_data(
                 Block {
@@ -124,7 +133,7 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
                 ))
             }
             ServerPacket::Data(block) => {
-                if let Some(current) = self.executing_query.as_ref() {
+                if let Some((_, current)) = self.executing_query.as_ref() {
                     current.send(Ok(block.block)).await.ok();
                 } else {
                     return Err(KlickhouseError::ProtocolError(
@@ -133,7 +142,7 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
                 }
             }
             ServerPacket::Exception(e) => {
-                if let Some(current) = self.executing_query.take() {
+                if let Some((_, current)) = self.executing_query.take() {
                     current.send(Err(e.emit())).await.ok();
                     if let Some(query) = self.pending_queries.pop_front() {
                         self.dispatch_query(query).await?;
@@ -142,7 +151,11 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
                     return Err(e.emit());
                 }
             }
-            ServerPacket::Progress(_) => {}
+            ServerPacket::Progress(progress) => {
+                if let Some((id, _)) = &self.executing_query {
+                    let _ = self.progress.send((*id, progress));
+                }
+            }
             ServerPacket::Pong => {}
             ServerPacket::EndOfStream => {
                 if self.executing_query.take().is_none() {
@@ -220,6 +233,7 @@ struct ClientRequest {
 #[derive(Clone)]
 pub struct Client {
     sender: mpsc::Sender<ClientRequest>,
+    progress: broadcast::Sender<(Uuid, Progress)>,
 }
 
 /// Options set for a Clickhouse connection.
@@ -278,9 +292,11 @@ impl Client {
     async fn start<R: ClickhouseRead + 'static, W: ClickhouseWrite>(
         inner: InnerClient<R, W>,
     ) -> Result<Self> {
+        let progress = inner.progress.clone();
         let (sender, receiver) = mpsc::channel(1024);
+
         tokio::spawn(inner.run(receiver));
-        let client = Client { sender };
+        let client = Client { sender, progress };
         client
             .execute("SET date_time_input_format='best_effort'")
             .await?;
@@ -525,5 +541,15 @@ impl Client {
     /// true if the Client is closed
     pub fn is_closed(&self) -> bool {
         self.sender.is_closed()
+    }
+
+    /// Receive progress on the queries as they execute.
+    ///
+    /// TODO: There is currently no way to retrieve the ID of a query launched
+    ///       with `query` or `execute.`
+    ///       The signature of these functions should be modified to also return
+    ///       an ID (and possibly directly the streaming broadcast).
+    pub fn subscribe_progress(&self) -> broadcast::Receiver<(Uuid, Progress)> {
+        self.progress.subscribe()
     }
 }

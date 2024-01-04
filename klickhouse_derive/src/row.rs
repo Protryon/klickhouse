@@ -111,6 +111,7 @@ pub fn expand_derive_serialize(
         #[automatically_derived]
         #[allow(clippy)]
         #[allow(non_snake_case)]
+        #[allow(clippy::absurd_extreme_comparisons)]
         impl #impl_generics ::klickhouse::Row for #ident #ty_generics #where_clause {
             const COLUMN_COUNT: ::std::option::Option<usize> = #const_column_count_fn();
 
