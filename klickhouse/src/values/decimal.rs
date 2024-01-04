@@ -19,11 +19,9 @@ impl FromSql for Decimal {
             Value::UInt8(i) => Ok(Decimal::new(i as i64, 0)),
             Value::UInt16(i) => Ok(Decimal::new(i as i64, 0)),
             Value::UInt32(i) => Ok(Decimal::new(i as i64, 0)),
-            Value::UInt64(i) => Decimal::try_from_i128_with_scale(
-                i.try_into().map_err(|_| out_of_range("u128"))?,
-                0,
-            )
-            .map_err(|_| out_of_range("u128")),
+            Value::UInt64(i) => {
+                Decimal::try_from_i128_with_scale(i.into(), 0).map_err(|_| out_of_range("u128"))
+            }
             Value::UInt128(i) => Decimal::try_from_i128_with_scale(
                 i.try_into().map_err(|_| out_of_range("u128"))?,
                 0,

@@ -149,7 +149,7 @@ impl TryFrom<DateTime> for chrono::DateTime<Tz> {
     type Error = TryFromIntError;
 
     fn try_from(date: DateTime) -> Result<Self, TryFromIntError> {
-        Ok(date.0.timestamp_opt(date.1.try_into()?, 0).unwrap())
+        Ok(date.0.timestamp_opt(date.1.into(), 0).unwrap())
     }
 }
 
@@ -159,7 +159,7 @@ impl TryFrom<DateTime> for chrono::DateTime<FixedOffset> {
     fn try_from(date: DateTime) -> Result<Self, TryFromIntError> {
         Ok(date
             .0
-            .timestamp_opt(date.1.try_into()?, 0)
+            .timestamp_opt(date.1.into(), 0)
             .unwrap()
             .fixed_offset())
     }
@@ -171,7 +171,7 @@ impl TryFrom<DateTime> for chrono::DateTime<Utc> {
     fn try_from(date: DateTime) -> Result<Self, TryFromIntError> {
         Ok(date
             .0
-            .timestamp_opt(date.1.try_into()?, 0)
+            .timestamp_opt(date.1.into(), 0)
             .unwrap()
             .with_timezone(&Utc))
     }
