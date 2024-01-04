@@ -1,13 +1,12 @@
 use std::net::{Ipv4Addr, Ipv6Addr};
 
-use futures::StreamExt;
 use indexmap::IndexMap;
 use klickhouse::{
-    i256, u256, Client, ClientOptions, Date, DateTime, DateTime64, FixedPoint128, FixedPoint256,
-    FixedPoint32, FixedPoint64, Ipv4, Ipv6, Uuid,
+    i256, u256, Date, DateTime, DateTime64, FixedPoint128, FixedPoint256, FixedPoint32,
+    FixedPoint64, Ipv4, Ipv6, Uuid,
 };
 
-#[derive(klickhouse::Row, Debug, Default)]
+#[derive(klickhouse::Row, Debug, Default, PartialEq, Clone)]
 pub struct TestType {
     d_i8: i8,
     d_i16: i16,
@@ -35,18 +34,22 @@ pub struct TestType {
     d_datetime64: DateTime64<3>,
     d_array: Vec<u32>,
     d_2array: Vec<Vec<u32>>,
+
     #[klickhouse(rename = "d_nested.id")]
     d_nested_id: Vec<u32>,
     #[klickhouse(rename = "d_nested.name")]
     d_nested_name: Vec<String>,
+
     d_tuple: (u32, u32),
     d_nullable: Option<u32>,
     d_map: IndexMap<String, String>,
     d_null_string: Option<String>,
+
     d_low_card_string: String,
     d_low_card_array: Vec<String>,
-    d_array_nulls: Vec<Option<String>>,
     d_low_card_array_nulls: Vec<Option<String>>,
+
+    d_array_nulls: Vec<Option<String>>,
     d_ip4: Ipv4,
     d_ip6: Ipv6,
 }
@@ -56,16 +59,9 @@ async fn test_client() {
     env_logger::builder()
         .filter_level(log::LevelFilter::Info)
         .init();
-    let client = Client::connect("127.0.0.1:9000", ClientOptions::default())
-        .await
-        .unwrap();
+    let client = super::get_client().await;
 
-    client
-        .execute("DROP TABLE IF EXISTS test_types")
-        .await
-        .unwrap();
-    client.execute(r"
-    create table test_types (
+    super::prepare_table("test_types", r"
         d_i8 Int8 default 0,
         d_i16 Int16 default 0,
         d_i32 Int32 default 0,
@@ -103,32 +99,23 @@ async fn test_client() {
         d_low_card_array_nulls Array(LowCardinality(Nullable(String))),
         d_ip4 IPv4,
         d_ip6 IPv6
-    ) Engine=Memory;
-    ").await.unwrap();
-
-    let mut names = client
-        .query::<TestType>("select * from test_types;")
-        .await
-        .unwrap();
-    while let Some(name) = names.next().await {
-        let name = name.unwrap();
-        println!("name = {:?}", name);
-    }
+    ", &client).await;
 
     println!("begin insert");
 
-    let mut block = TestType::default();
-    block
-        .d_low_card_array
-        .push("te1ssdsdsdsdasdasdasdsadt".to_string());
-    block.d_low_card_array.push("te2st".to_string());
-    block.d_ip4 = "5.6.7.8".parse::<Ipv4Addr>().unwrap().into();
-    block.d_ip6 = "ff26:0:0:0:0:0:0:c5".parse::<Ipv6Addr>().unwrap().into();
-
+    let block = TestType {
+        d_ip4: "5.6.7.8".parse::<Ipv4Addr>().unwrap().into(),
+        d_ip6: "ff26:0:0:0:0:0:0:c5".parse::<Ipv6Addr>().unwrap().into(),
+        d_low_card_array: vec!["te1ssdsdsdsdasdasdasdsadt".to_string(), "te2st".to_string()],
+        ..Default::default()
+    };
     client
-        .insert_native_block("insert into test_types format native", vec![block])
+        .insert_native_block("insert into test_types format native", vec![block.clone()])
         .await
         .unwrap();
+
+    let block2 = client.query_one("SELECT * from test_types").await.unwrap();
+    assert_eq!(block, block2);
 
     println!("done");
 }

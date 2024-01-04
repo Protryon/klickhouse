@@ -179,7 +179,7 @@ impl FromSql for String {
 impl<T: FromSql + 'static> FromSql for Vec<T> {
     fn from_sql(type_: &Type, value: Value) -> Result<Self> {
         let subtype = match type_ {
-            Type::Array(x) => &**x,
+            Type::Array(x) => x,
             x => return Err(unexpected_type(x)),
         }
         .strip_low_cardinality();

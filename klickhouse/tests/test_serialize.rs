@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use chrono::Utc;
-use klickhouse::{Bytes, Client, ClientOptions, DateTime64, RawRow, Uuid};
+use klickhouse::{DateTime64, Uuid};
 
-#[derive(klickhouse::Row, Debug, Default)]
+#[derive(klickhouse::Row, Debug, Default, PartialEq, Clone)]
 pub struct TestSerialize {
     d_uuid: Uuid,
     d_date: DateTime64<6>,
@@ -28,39 +28,6 @@ pub struct TestSerialize {
     d_null_string: Option<String>,
     d_vec: Vec<String>,
     d_vec2: Vec<Option<String>>,
-
-    raw_bytes: Vec<u8>,
-    raw_bytes2: Bytes,
-    raw_bytes_fixed: Vec<u8>,
-    raw_bytes_fixed2: Bytes,
-    raw_bytes_arr: Vec<u8>,
-    raw_bytes_arr2: Bytes,
-    raw_bytes_arrs: Vec<u8>,
-    raw_bytes_arrs2: Bytes,
-}
-
-#[derive(klickhouse::Row, Debug, Default)]
-pub struct Nest {
-    nest_string: String,
-    nest_u64: Option<u64>,
-    nest_null_string: Option<String>,
-    nest_i16: i16,
-}
-
-#[derive(klickhouse::Row, Debug, Default)]
-pub struct TestSerializeNested {
-    #[klickhouse(nested)]
-    nest: Vec<Nest>,
-}
-
-// used to test compilation with multiple nested entries
-#[allow(unused)]
-#[derive(klickhouse::Row, Debug, Default)]
-struct TestSerializeNested2 {
-    #[klickhouse(nested)]
-    nest: Vec<Nest>,
-    #[klickhouse(nested)]
-    nest2: Vec<Nest>,
 }
 
 #[tokio::test]
@@ -68,18 +35,11 @@ async fn test_client() {
     env_logger::builder()
         .filter_level(log::LevelFilter::Info)
         .init();
-    let client = Client::connect("127.0.0.1:9000", ClientOptions::default())
-        .await
-        .unwrap();
+    let client = super::get_client().await;
 
-    client
-        .execute("drop table if exists test_serialize")
-        .await
-        .unwrap();
-    client
-        .execute(
-            r"
-    CREATE TABLE test_serialize (
+    super::prepare_table(
+        "test_serialize",
+        r"
         d_uuid UUID,
         d_date DateTime64(6),
         d_u64 UInt64,
@@ -88,6 +48,7 @@ async fn test_client() {
         d_map_null_string Map(String, Nullable(String)),
         d_bool Bool,
         d_string String,
+
         nest Nested
         (
             nest_string String,
@@ -100,74 +61,61 @@ async fn test_client() {
         d_null_string Nullable(String),
         d_vec Array(String),
         d_vec2 Array(Nullable(String)),
-        raw_bytes String,
-        raw_bytes2 String,
-        raw_bytes_fixed FixedString(8),
-        raw_bytes_fixed2 FixedString(8),
-        raw_bytes_arr Array(UInt8),
-        raw_bytes_arr2 Array(UInt8),
-        raw_bytes_arrs Array(Int8),
-        raw_bytes_arrs2 Array(Int8)
-    ) ENGINE = Memory;
     ",
-        )
-        .await
-        .unwrap();
+        &client,
+    )
+    .await;
 
     println!("begin insert");
 
     let mut items = Vec::with_capacity(2);
-    for i in 0..items.capacity() {
-        let mut item = TestSerialize::default();
-        item.d_uuid = Uuid::new_v4();
-        item.d_date = Utc::now().try_into().unwrap();
-        item.d_map_null_string
-            .insert("test1".to_string(), Some("test1_value".to_string()));
-        item.d_map_null_string.insert("test2".to_string(), None);
-        item.d_map_null_string
-            .insert("test3".to_string(), Some("test3_value".to_string()));
-        item.d_bool = true;
-        item.d_string = "testn".to_string();
-        item.nest_string.push("nest1_string".to_string());
-        item.nest_string.push("nest2_string".to_string());
-        item.nest_string.push("nest3_string".to_string());
-        item.nest_u64.push(Some(1));
-        item.nest_u64.push(None);
-        item.nest_u64.push(Some(2));
-        item.nest_null_string
-            .push(Some("nest1_nstring".to_string()));
-        item.nest_null_string.push(None);
-        item.nest_null_string
-            .push(Some("nest3_nstring".to_string()));
-        item.nest_i16.push(1);
-        item.nest_i16.push(2);
-        item.nest_i16.push(3);
-        item.d_map_u64.insert("mapu64_1".to_string(), 5);
-        item.d_map_u64.insert("mapu64_1".to_string(), 4);
-        item.d_map_string
-            .insert("test4".to_string(), "test4_value".to_string());
-        item.d_map_string
-            .insert("test5".to_string(), "test5_value".to_string());
-        item.d_null_string = Some("test_string".to_string());
 
-        item.d_vec.push(format!("test{i}"));
-        item.d_vec.push(format!("test{}", i + 10));
-        item.d_vec2.push(Some(format!("test{}", -(i as isize))));
-        item.d_vec2
-            .push(Some(format!("test{}", -(i as isize) - 10)));
-        item.raw_bytes = vec![b'B', 0, 255, 128, 127, b'A'];
-        item.raw_bytes2 = b"test_bytes".to_vec().into();
-        item.raw_bytes_fixed = item.raw_bytes.clone();
-        item.raw_bytes_fixed2 = item.raw_bytes2.clone();
-        item.raw_bytes_arr = item.raw_bytes.clone();
-        item.raw_bytes_arr2 = item.raw_bytes2.clone();
-        item.raw_bytes_arrs = item.raw_bytes.clone();
-        item.raw_bytes_arrs2 = item.raw_bytes2.clone();
+    for i in 0..items.capacity() {
+        let item = TestSerialize {
+            d_i16: 16,
+            d_i32: 32,
+            d_u64: 64,
+            d_uuid: Uuid::new_v4(),
+            d_date: Utc::now().try_into().unwrap(),
+            d_bool: true,
+            d_vec: vec![format!("test{i}"), format!("test{}", i + 10)],
+            d_vec2: vec![
+                Some(format!("test{}", -(i as isize))),
+                Some(format!("test{}", -(i as isize) - 10)),
+            ],
+            d_string: "testn".to_string(),
+            d_null_string: Some("test_string".to_string()),
+            d_map_null_string: HashMap::from([
+                ("test2".to_string(), None),
+                ("test3".to_string(), Some("test3_value".to_string())),
+                ("test1".to_string(), Some("test1_value".to_string())),
+            ]),
+            d_map_u64: HashMap::from([("mapu64_1".into(), 5), ("mapu64_1".into(), 4)]),
+
+            d_map_string: HashMap::from([
+                ("test4".into(), "test4_value".into()),
+                ("test5".into(), "test5_value".into()),
+            ]),
+
+            nest_u64: vec![Some(1), None, Some(2)],
+            nest_i16: vec![1, 2, 3],
+            nest_string: vec![
+                "nest1_string".into(),
+                "nest2_string".into(),
+                "nest3_string".into(),
+            ],
+            nest_null_string: vec![
+                Some("nest1_nstring".to_string()),
+                None,
+                Some("nest3_nstring".to_string()),
+            ],
+        };
+
         items.push(item);
     }
 
     client
-        .insert_native_block("insert into test_serialize format native", items)
+        .insert_native_block("INSERT INTO test_serialize FORMAT NATIVE", items.clone())
         .await
         .unwrap();
 
@@ -175,48 +123,9 @@ async fn test_client() {
 
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
-    for row in client
-        .query_collect::<RawRow>("select * from test_serialize")
-        .await
-        .unwrap()
-    {
-        println!("row {row:#?}");
-    }
-
-    let nested = TestSerializeNested {
-        nest: vec![
-            Nest {
-                nest_string: "nest1".to_string(),
-                nest_u64: Some(1),
-                nest_null_string: None,
-                nest_i16: 32,
-            },
-            Nest {
-                nest_string: "nest2".to_string(),
-                nest_u64: Some(2),
-                nest_null_string: None,
-                nest_i16: 64,
-            },
-        ],
-    };
-
-    client.execute("TRUNCATE test_serialize").await.unwrap();
-
-    println!("reinserting");
-    client
-        .insert_native_block(
-            "insert into test_serialize format native",
-            vec![nested, TestSerializeNested::default()],
-        )
+    let items2 = client
+        .query_collect::<TestSerialize>("SELECT * FROM test_serialize")
         .await
         .unwrap();
-    println!("reinserted");
-
-    for row in client
-        .query_collect::<TestSerializeNested>("select nest.nest_string, nest.nest_u64, nest.nest_null_string, nest.nest_i16 from test_serialize")
-        .await
-        .unwrap()
-    {
-        println!("row_nested {row:#?}");
-    }
+    assert_eq!(items, items2);
 }

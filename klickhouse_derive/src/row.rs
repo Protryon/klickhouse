@@ -426,10 +426,8 @@ fn deserialize_map(
                         let values = _value.unarray().ok_or_else(|| ::klickhouse::KlickhouseError::UnexpectedTypeWithColumn(::std::borrow::Cow::Owned(full_name.to_string()), _type_.clone()))?;
                         if #deser_name_ext.is_empty() {
                             #deser_name_ext_len = values.len();
-                        } else {
-                            if #deser_name_ext_len != values.len() {
-                                return ::klickhouse::Result::Err(::klickhouse::KlickhouseError::DeserializeError(format!("invalid length for nested columns, mismatches previous column {}: {} != {}", _name, #deser_name_ext_len, values.len())));
-                            }
+                        } else if #deser_name_ext_len != values.len() {
+                            return ::klickhouse::Result::Err(::klickhouse::KlickhouseError::DeserializeError(format!("invalid length for nested columns, mismatches previous column {}: {} != {}", _name, #deser_name_ext_len, values.len())));
                         }
                         #deser_name_ext.push((full_name.strip_prefix(#deser_name_dotted).unwrap(), _type_.unarray().ok_or_else(|| ::klickhouse::KlickhouseError::UnexpectedTypeWithColumn(::std::borrow::Cow::Owned(full_name.to_string()), _type_.clone()))?));
                         #deser_name_ext_iter.push(values.into_iter());
@@ -440,10 +438,8 @@ fn deserialize_map(
                         let values = _value.unarray().ok_or_else(|| ::klickhouse::KlickhouseError::UnexpectedTypeWithColumn(::std::borrow::Cow::Owned(_name.to_string()), _type_.clone()))?;
                         if #deser_name_ext.is_empty() {
                             #deser_name_ext_len = values.len();
-                        } else {
-                            if #deser_name_ext_len != values.len() {
-                                return ::klickhouse::Result::Err(::klickhouse::KlickhouseError::DeserializeError(format!("invalid length for nested columns, mismatches previous column {}: {} != {}", _name, #deser_name_ext_len, values.len())));
-                            }
+                        } else if #deser_name_ext_len != values.len() {
+                            return ::klickhouse::Result::Err(::klickhouse::KlickhouseError::DeserializeError(format!("invalid length for nested columns, mismatches previous column {}: {} != {}", _name, #deser_name_ext_len, values.len())));
                         }
                         #deser_name_ext.push((_name, _type_.unarray().ok_or_else(|| ::klickhouse::KlickhouseError::UnexpectedTypeWithColumn(::std::borrow::Cow::Owned(_name.to_string()), _type_.clone()))?));
                         #deser_name_ext_iter.push(values.into_iter());
