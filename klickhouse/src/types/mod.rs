@@ -794,7 +794,7 @@ impl Type {
         Ok(())
     }
 
-    pub(crate) fn validate(&self, dimensions: usize) -> Result<()> {
+    pub(crate) fn validate(&self) -> Result<()> {
         match self {
             Type::Decimal32(precision) => {
                 if *precision == 0 || *precision > 9 {
@@ -843,7 +843,7 @@ impl Type {
                 | Type::UInt32
                 | Type::UInt64
                 | Type::UInt128
-                | Type::UInt256 => inner.validate(dimensions)?,
+                | Type::UInt256 => inner.validate()?,
                 _ => {
                     return Err(KlickhouseError::TypeParseError(format!(
                         "illegal type '{:?}' in LowCardinality, not allowed",
@@ -852,17 +852,12 @@ impl Type {
                 }
             },
             Type::Array(inner) => {
-                if dimensions >= 2 {
-                    return Err(KlickhouseError::TypeParseError(
-                        "too many dimensions (limited to 2D structure)".to_string(),
-                    ));
-                }
-                inner.validate(dimensions + 1)?;
+                inner.validate()?;
             }
             // Type::Nested(_) => return Err(anyhow!("nested not implemented")),
             Type::Tuple(inner) => {
                 for inner in inner {
-                    inner.validate(dimensions)?;
+                    inner.validate()?;
                 }
             }
             Type::Nullable(inner) => {
@@ -878,15 +873,10 @@ impl Type {
                             inner
                         )));
                     }
-                    _ => inner.validate(dimensions)?,
+                    _ => inner.validate()?,
                 }
             }
             Type::Map(key, value) => {
-                if dimensions >= 2 {
-                    return Err(KlickhouseError::TypeParseError(
-                        "too many dimensions (limited to 2D structure)".to_string(),
-                    ));
-                }
                 if !matches!(
                     &**key,
                     Type::String
@@ -913,8 +903,8 @@ impl Type {
                 ) {
                     return Err(KlickhouseError::TypeParseError("key in map must be String, Integer, LowCardinality, FixedString, UUID, Date, DateTime, Date32, Enum".to_string()));
                 }
-                key.validate(dimensions + 1)?;
-                value.validate(dimensions + 1)?;
+                key.validate()?;
+                value.validate()?;
             }
             _ => (),
         }
@@ -922,7 +912,7 @@ impl Type {
     }
 
     pub(crate) fn validate_value(&self, value: &Value) -> Result<()> {
-        self.validate(0)?;
+        self.validate()?;
         if !self.inner_validate_value(value) {
             return Err(KlickhouseError::TypeParseError(format!(
                 "could not assign value '{:?}' to type '{:?}'",
