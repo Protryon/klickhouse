@@ -129,7 +129,7 @@ pub fn expand_derive_serialize(
                 #deserialize_body
             }
 
-            fn serialize_row(self, type_hints: &[&::klickhouse::Type]) -> ::klickhouse::Result<Vec<(::std::borrow::Cow<'static, str>, ::klickhouse::Value)>> {
+            fn serialize_row(self, type_hints: &::klickhouse::IndexMap<String, ::klickhouse::Type>) -> ::klickhouse::Result<Vec<(::std::borrow::Cow<'static, str>, ::klickhouse::Value)>> {
                 #serialize_body
             }
         }
@@ -248,7 +248,6 @@ fn serialize_struct_as_struct(
 
     quote_block! {
         let mut out = vec![];
-        let mut field_index: usize = 0;
         #(#serialize_fields)*
         Ok(out)
     }
@@ -278,14 +277,12 @@ fn serialize_struct_visitor(fields: &[Field], params: &Parameters) -> Vec<TokenS
                         quote! {
                             {
                                 let inner_length = <#field_ty as ::klickhouse::Row>::COLUMN_COUNT.expect("nested structure must have known length");
-                                let type_hints = type_hints.get(field_index..(field_index + inner_length)).unwrap_or_default().into_iter().map(|x| x.unarray()).collect::<::std::option::Option<::std::vec::Vec<_>>>().unwrap_or_default();
-                                field_index += inner_length;
                                 let mut outputs: ::std::vec::Vec<(::std::option::Option<::std::borrow::Cow<str>>, ::std::vec::Vec<::klickhouse::Value>)> = ::std::vec::Vec::with_capacity(inner_length);
                                 for _ in 0..inner_length {
                                     outputs.push((None, ::std::vec::Vec::new()));
                                 }
                                 for row in #field_expr.into_iter() {
-                                    let columns = <#field_ty as ::klickhouse::Row>::serialize_row(row, &type_hints[..])?;
+                                    let columns = <#field_ty as ::klickhouse::Row>::serialize_row(row, type_hints)?;
                                     assert_eq!(columns.len(), inner_length);
                                     for (i, (name, value)) in columns.into_iter().enumerate() {
                                         if outputs[i].0.is_none()  {
@@ -312,14 +309,12 @@ fn serialize_struct_visitor(fields: &[Field], params: &Parameters) -> Vec<TokenS
                     } else if field.attrs.flatten() {
                         quote! {
                             let inner_length = #field_ty::column_names().expect("column_names required for flattened struct serialization").len();
-                            out.extend(#field_expr.serialize_row(&type_hints[field_index..field_index + inner_length])?);
-                            field_index += inner_length;
+                            out.extend(#field_expr.serialize_row(&type_hints)?);
                         }
                     }
                     else {
                         quote! {
-                            out.push((::std::borrow::Cow::Borrowed(#key_expr), <#field_ty as ::klickhouse::ToSql>::to_sql(#field_expr, type_hints.get(field_index).copied())?));
-                            field_index += 1;
+                            out.push((::std::borrow::Cow::Borrowed(#key_expr), <#field_ty as ::klickhouse::ToSql>::to_sql(#field_expr, type_hints.get(#key_expr))?));
                         }
                     }
                 },

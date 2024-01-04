@@ -6,6 +6,7 @@ pub mod test_flatten;
 pub mod test_geo;
 pub mod test_lock;
 pub mod test_nested;
+pub mod test_ordering;
 pub mod test_raw_string;
 pub mod test_serialize;
 
