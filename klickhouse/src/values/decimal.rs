@@ -12,7 +12,7 @@ impl FromSql for Decimal {
             Value::Int8(i) => Ok(Decimal::new(i as i64, 0)),
             Value::Int16(i) => Ok(Decimal::new(i as i64, 0)),
             Value::Int32(i) => Ok(Decimal::new(i as i64, 0)),
-            Value::Int64(i) => Ok(Decimal::new(i as i64, 0)),
+            Value::Int64(i) => Ok(Decimal::new(i, 0)),
             Value::Int128(i) => {
                 Decimal::try_from_i128_with_scale(i, 0).map_err(|_| out_of_range("i128"))
             }
@@ -79,9 +79,7 @@ impl ToSql for Decimal {
             Some(Type::Decimal128(precision)) if *precision as u32 >= scale => {
                 Ok(Value::Decimal128(
                     *precision,
-                    mantissa_to_scale(mantissa, scale, *precision as u32)?
-                        .try_into()
-                        .map_err(|_| out_of_range("Decimal128"))?,
+                    mantissa_to_scale(mantissa, scale, *precision as u32)?,
                 ))
             }
             Some(x) => Err(KlickhouseError::SerializeError(format!(
