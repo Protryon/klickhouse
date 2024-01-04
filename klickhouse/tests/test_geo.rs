@@ -69,7 +69,7 @@ async fn test_client() {
 
 #[derive(Clone, PartialEq, Debug, klickhouse::Row)]
 struct RowWkt {
-    multipolygon: MultiPolygon,
+    multipolygon: geo_types::MultiPolygon,
 }
 
 #[cfg(feature = "geo-types")]
@@ -85,7 +85,7 @@ async fn test_client_wkt() {
                        (30.0 20.0, 20.0 15.0, 20.0 25.0, 30. 20.0)))
     };
     let row = RowWkt {
-        multipolygon: MultiPolygon::from(multipolygon),
+        multipolygon: multipolygon,
     };
 
     client

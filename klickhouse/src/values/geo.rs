@@ -75,6 +75,26 @@ to_from_sql!(MultiPolygon);
 mod nav_types_conversions {
     use super::*;
 
+    macro_rules! to_from_sql {
+        ($geo_t:path, $ch_t:ident) => {
+            impl ToSql for $geo_t {
+                fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
+                    Ok(Value::$ch_t(self.into()))
+                }
+            }
+            impl FromSql for $geo_t {
+                fn from_sql(type_: &Type, value: Value) -> Result<Self> {
+                    if !matches!(type_, Type::$ch_t) {
+                        return Err(unexpected_type(type_));
+                    }
+                    match value {
+                        Value::$ch_t(x) => Ok(x.into()),
+                        _ => unimplemented!(),
+                    }
+                }
+            }
+        };
+    }
     // Points and coords
     impl From<Point> for geo_types::Coord {
         fn from(source: Point) -> Self {
@@ -89,6 +109,8 @@ mod nav_types_conversions {
             Self([source.x, source.y])
         }
     }
+    to_from_sql!(geo_types::Coord, Point);
+
     // Points and points
     impl From<Point> for geo_types::Point {
         fn from(source: Point) -> Self {
@@ -100,6 +122,7 @@ mod nav_types_conversions {
             source.0.into()
         }
     }
+    to_from_sql!(geo_types::Point, Point);
     // Rings and Linestrings
     impl From<Ring> for geo_types::LineString {
         fn from(source: Ring) -> Self {
@@ -111,7 +134,7 @@ mod nav_types_conversions {
             Self(source.0.into_iter().map(Point::from).collect())
         }
     }
-
+    to_from_sql!(geo_types::LineString, Ring);
     // Rings and polygons (with no holes)
     // A Polygon -> Ring conversion is not provided, as the polygon might have holes.
     impl From<Ring> for geo_types::Polygon {
@@ -151,6 +174,7 @@ mod nav_types_conversions {
             )
         }
     }
+    to_from_sql!(geo_types::Polygon, Polygon);
     // Multi polygons
     impl From<MultiPolygon> for geo_types::MultiPolygon {
         fn from(source: MultiPolygon) -> Self {
@@ -162,6 +186,7 @@ mod nav_types_conversions {
             Self(source.into_iter().map(Polygon::from).collect())
         }
     }
+    to_from_sql!(geo_types::MultiPolygon, MultiPolygon);
     #[cfg(test)]
     #[test]
     fn roundtrip() {
