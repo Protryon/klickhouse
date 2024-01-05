@@ -8,6 +8,7 @@ pub const BOUND: Symbol = Symbol("bound");
 pub const DEFAULT: Symbol = Symbol("default");
 pub const DENY_UNKNOWN_FIELDS: Symbol = Symbol("deny_unknown_fields");
 pub const NESTED: Symbol = Symbol("nested");
+pub const FLATTEN: Symbol = Symbol("flatten");
 pub const DESERIALIZE_WITH: Symbol = Symbol("deserialize_with");
 pub const FROM: Symbol = Symbol("from");
 pub const INTO: Symbol = Symbol("into");

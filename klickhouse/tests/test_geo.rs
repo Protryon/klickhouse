@@ -84,9 +84,7 @@ async fn test_client_wkt() {
                       ((20.0 35.0, 10.0 30.0, 10.0 10.0, 30.0 5.0, 45.0 20.0, 20.0 35.0),
                        (30.0 20.0, 20.0 15.0, 20.0 25.0, 30. 20.0)))
     };
-    let row = RowWkt {
-        multipolygon: multipolygon,
-    };
+    let row = RowWkt { multipolygon };
 
     client
         .insert_native_block("INSERT INTO test_geo_wkt FORMAT Native", vec![row.clone()])

@@ -335,6 +335,7 @@ pub struct Field {
     deserialize_with: Option<syn::ExprPath>,
     bound: Option<Vec<syn::WherePredicate>>,
     nested: bool,
+    flatten: bool,
 }
 
 #[allow(clippy::enum_variant_names)]
@@ -360,6 +361,7 @@ impl Field {
         let mut nested = BoolAttr::none(cx, NESTED);
         let mut skip_serializing = BoolAttr::none(cx, SKIP_SERIALIZING);
         let mut skip_deserializing = BoolAttr::none(cx, SKIP_DESERIALIZING);
+        let mut flatten = BoolAttr::none(cx, FLATTEN);
         let mut default = Attr::none(cx, DEFAULT);
         let mut serialize_with = Attr::none(cx, SERIALIZE_WITH);
         let mut deserialize_with = Attr::none(cx, DESERIALIZE_WITH);
@@ -404,6 +406,11 @@ impl Field {
                 // Parse `#[klickhouse(nested)]`
                 Meta(Path(word)) if word == NESTED => {
                     nested.set_true(word);
+                }
+
+                // Parse `#[klickhouse(flatten)]`
+                Meta(Path(word)) if word == FLATTEN => {
+                    flatten.set_true(word);
                 }
 
                 // Parse `#[klickhouse(skip_deserializing)]`
@@ -492,6 +499,7 @@ impl Field {
             deserialize_with: deserialize_with.get(),
             bound: bound.get(),
             nested: nested.get(),
+            flatten: flatten.get(),
         }
     }
 
@@ -503,6 +511,10 @@ impl Field {
         if !self.name.renamed {
             self.name.name = rules.apply_to_field(&self.name.name);
         }
+    }
+
+    pub fn flatten(&self) -> bool {
+        self.flatten
     }
 
     pub fn nested(&self) -> bool {

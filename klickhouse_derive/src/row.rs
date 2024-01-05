@@ -90,13 +90,19 @@ pub fn expand_derive_serialize(
     };
     ctxt.check()?;
 
+    let flatten = cont.data.iter().any(|f| f.attrs.flatten());
+
     let ident = &cont.ident;
     let params = Parameters::new(&cont);
     let (impl_generics, ty_generics, where_clause) = params.generics.split_for_impl();
-    let serialize_body = Stmts(serialize_body(&cont, &params));
     let deserialize_body = Stmts(deserialize_body(&cont, &params));
-    let serialize_length_body = Stmts(serialize_length_body(&cont, &params));
     let column_names_body = Stmts(column_names_body(&cont, &params));
+    let serialize_body = Stmts(serialize_body(&cont, &params));
+    let serialize_length_body = if flatten {
+        Stmts(Fragment::Block(quote! { None }))
+    } else {
+        Stmts(serialize_length_body(&cont, &params))
+    };
     let const_column_count_fn = format_ident!("__{ident}_column_count_klickhouse");
 
     let impl_block = quote! {
@@ -200,9 +206,12 @@ fn column_names_body(cont: &Container, _params: &Parameters) -> Fragment {
         let name_sources = cont.data.iter().filter(|&field| !field.attrs.skip_serializing())
             .map(|field| {
                 let name = field.attrs.name().name();
+                let ty = field.ty;
                 if field.attrs.nested() {
                     let field_ty = unwrap_vec_type(field.ty).expect("invalid non-Vec nested type");
                     quote! { out.extend(<#field_ty as ::klickhouse::Row>::column_names()?.into_iter().map(|x| ::std::borrow::Cow::Owned(format!("{}.{}", #name, x)))); }
+                } else if field.attrs.flatten(){
+                    quote! { out.extend(#ty::column_names()?); }
                 } else {
                     quote! { out.push(::std::borrow::Cow::Borrowed(#name)); }
                 }
@@ -300,7 +309,14 @@ fn serialize_struct_visitor(fields: &[Field], params: &Parameters) -> Vec<TokenS
                                 }
                             }
                         }
-                    } else {
+                    } else if field.attrs.flatten() {
+                        quote! {
+                            let inner_length = #field_ty::column_names().expect("column_names required for flattened struct serialization").len();
+                            out.extend(#field_expr.serialize_row(&type_hints[field_index..field_index + inner_length])?);
+                            field_index += inner_length;
+                        }
+                    }
+                    else {
                         quote! {
                             out.push((::std::borrow::Cow::Borrowed(#key_expr), <#field_ty as ::klickhouse::ToSql>::to_sql(#field_expr, type_hints.get(field_index).copied())?));
                             field_index += 1;
@@ -380,16 +396,19 @@ fn deserialize_map(
         .map(|(i, field)| (field, field_i(i)))
         .collect();
 
+    let skip = |field: &Field| field.attrs.skip_deserializing() || field.attrs.flatten();
+
     // Declare each field that will be deserialized.
-    let let_values = fields_names
-        .iter()
-        .filter(|&&(field, _)| !field.attrs.skip_deserializing())
-        .map(|(field, name)| {
-            let field_ty = field.ty;
-            quote! {
-                let mut #name: ::std::option::Option<#field_ty> = ::std::option::Option::None;
-            }
-        });
+    let let_values =
+        fields_names
+            .iter()
+            .filter(|&&(field, _)| !skip(field))
+            .map(|(field, name)| {
+                let field_ty = field.ty;
+                quote! {
+                    let mut #name: ::std::option::Option<#field_ty> = ::std::option::Option::None;
+                }
+            });
 
     // Match arms to extract a value for a field.
     let mut name_match_arms = Vec::with_capacity(fields_names.len());
@@ -401,7 +420,7 @@ fn deserialize_map(
     let mut current_index = quote! { 0usize };
     fields_names
         .iter()
-        .filter(|&&(field, _)| !field.attrs.skip_deserializing())
+        .filter(|&&(field, _)| !skip(field))
         .for_each(|(field, name)| {
             let deser_name = field.attrs.name().name();
             let local_index = current_index.clone();
@@ -511,12 +530,44 @@ fn deserialize_map(
         }
     };
 
-    let index_match_arm = quote! {
-        match _field_index {
-            #(#index_match_arms)*
-            #ignored_arm
+    let index_match_arm = if fields.iter().any(|f| f.attrs.flatten()) {
+        // Disable index-based matching with flattening
+        quote! { {} }
+    } else {
+        quote! {
+            match _field_index {
+                #(#index_match_arms)*
+                #ignored_arm
+            }
         }
     };
+
+    // Extract values for flattened fields, before we move `map`.
+    let mut pull_flatten: Vec<TokenStream> = vec![quote! {
+        let mut map = map;
+        let mut map_flattened_fields = std::collections::HashMap::<&str, (&::klickhouse::Type, ::klickhouse::Value)>::default();
+    }];
+    for (f, _) in fields_names.iter() {
+        if !f.attrs.flatten() {
+            continue;
+        }
+        let ty = f.ty;
+        let name = f.original.ident.as_ref().unwrap();
+        let missing_names_error =
+            format!("Flattened field {} should provide Row::column_names", name);
+        // TODO: To give the actual field, we would need to change the type of
+        //       KlickhouseError::MissingField from &'static str to Cow.
+        let missing_col_error = format!("Flattened field {} has missing column", name);
+        pull_flatten.push(quote! {
+            for c in #ty::column_names()
+                    .ok_or_else(|| ::klickhouse::KlickhouseError::DeserializeError(#missing_names_error.into()))? {
+                let idx = map.iter().enumerate().find(|(_, (c2,_,_))| c2 == &c)
+                                    .ok_or(::klickhouse::KlickhouseError::MissingField(#missing_col_error))?.0;
+                let (col, ty, val) = map.swap_remove(idx);
+                map_flattened_fields.insert(col, (ty, val));
+            }
+        });
+    }
 
     let match_keys = quote! {
         #[allow(unused_comparisons)]
@@ -528,25 +579,42 @@ fn deserialize_map(
         }
     };
 
-    let extract_values = fields_names
-        .iter()
-        .filter(|&&(field, _)| !field.attrs.skip_deserializing())
-        .map(|(field, name)| {
-            let missing_expr = Match(expr_is_missing(field, cattrs));
+    let extract_values =
+        fields_names
+            .iter()
+            .filter(|&&(field, _)| !skip(field))
+            .map(|(field, name)| {
+                let missing_expr = Match(expr_is_missing(field, cattrs));
 
-            quote! {
-                let #name = match #name {
-                    ::std::option::Option::Some(#name) => #name,
-                    ::std::option::Option::None => #missing_expr
-                };
-            }
-        });
+                quote! {
+                    let #name = match #name {
+                        ::std::option::Option::Some(#name) => #name,
+                        ::std::option::Option::None => #missing_expr
+                    };
+                }
+            });
 
     let result = fields_names.iter().map(|(field, name)| {
         let member = &field.member;
         if field.attrs.skip_deserializing() {
             let value = Expr(expr_is_missing(field, cattrs));
             quote!(#member: #value)
+        } else if field.attrs.flatten() {
+            let ty = field.ty;
+            quote! {
+                #member: {
+                // Recreate map based on the subfield column names and recursive to deserialize it.
+                // The unwraps would have produced an error earlier.
+                // The map is guaranteed to contain values for all fields.
+                let mut map2 = vec![];
+                for c in #ty::column_names().unwrap() {
+                    use std::borrow::Borrow;
+                    let c: &str = c.borrow();
+                    let (c, (ty, val)) = map_flattened_fields.remove_entry(c).unwrap();
+                    map2.push((c, ty, val));
+                }
+                klickhouse::Row::deserialize_row(map2)? }
+            }
         } else {
             quote!(#member: #name)
         }
@@ -571,6 +639,8 @@ fn deserialize_map(
     quote_block! {
         #(#let_values)*
         #(#nested_temp_decls)*
+
+        #(#pull_flatten)*
 
         #match_keys
 
