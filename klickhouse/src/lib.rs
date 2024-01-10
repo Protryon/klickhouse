@@ -35,6 +35,8 @@ pub use manager::ConnectionManager;
 
 pub use uuid::Uuid;
 
+pub use indexmap::IndexMap;
+
 #[cfg(feature = "derive")]
 /// Derive macro for the [Row] trait.
 ///

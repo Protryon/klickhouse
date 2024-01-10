@@ -165,7 +165,10 @@ impl Row for Migration {
         .into())
     }
 
-    fn serialize_row(self, _type_hints: &[&Type]) -> Result<Vec<(Cow<'static, str>, Value)>> {
+    fn serialize_row(
+        self,
+        _type_hints: &indexmap::IndexMap<String, Type>,
+    ) -> Result<Vec<(Cow<'static, str>, Value)>> {
         unimplemented!()
     }
 }

@@ -413,7 +413,7 @@ impl fmt::Display for Value {
             Value::Enum16(x) => write!(f, "{x}"),
             Value::Array(array) => {
                 write!(f, "[")?;
-                if let Some(item) = array.get(0) {
+                if let Some(item) = array.first() {
                     write!(f, "{}", item)?;
                 }
                 for item in array.iter().skip(1) {
@@ -423,7 +423,7 @@ impl fmt::Display for Value {
             }
             Value::Tuple(tuple) => {
                 write!(f, "(")?;
-                if let Some(item) = tuple.get(0) {
+                if let Some(item) = tuple.first() {
                     write!(f, "{}", item)?;
                 }
                 for item in tuple.iter().skip(1) {

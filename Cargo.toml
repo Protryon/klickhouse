@@ -3,3 +3,4 @@ members = [
     "klickhouse",
     "klickhouse_derive",
 ]
+resolver = "2"
