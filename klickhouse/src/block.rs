@@ -89,7 +89,7 @@ impl<'a> Iterator for BlockRowIter<'a> {
         if self.row >= self.block.rows {
             return None;
         }
-        let mut out = Vec::new();
+        let mut out = Vec::with_capacity(self.block.column_data.len());
         for (name, value) in self.block.column_data.iter() {
             out.push((&**name, value.get(self.row as usize)?));
         }
@@ -217,6 +217,7 @@ impl Block {
         revision: u64,
     ) -> Result<()> {
         if revision > 0 {
+            log::debug!("writing block info, revision > 0 = {}", revision);
             self.info.write(writer).await?;
         }
         let joined = self
@@ -241,8 +242,20 @@ impl Block {
             }
             if self.rows > 0 {
                 let mut state = SerializerState {};
-                type_.serialize_prefix(writer, &mut state).await?;
-                type_.serialize_column(data, writer, &mut state).await?;
+                match type_.serialize_prefix(writer, &mut state).await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::error!("error serializing prefix: {}", e);
+                        return Err(e);
+                    }
+                };
+                match type_.serialize_column(data, writer, &mut state).await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::error!("error serializing column: {}", e);
+                        return Err(e);
+                    }
+                };
             }
         }
         Ok(())

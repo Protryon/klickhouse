@@ -16,6 +16,7 @@ impl Serializer for NullableSerializer {
         let inner_type = if let Type::Nullable(n) = type_ {
             &**n
         } else {
+            log::error!("NullableSerializer called with non-nullable type");
             unimplemented!()
         };
 

@@ -50,7 +50,13 @@ impl<T: ArraySerializerGeneric + 'static> Serializer for T {
         for value in values {
             all_values.extend(Self::values(value));
         }
-        type_.serialize_column(all_values, writer, state).await?;
+        match type_.serialize_column(all_values, writer, state).await {
+            Ok(_) => {}
+            Err(e) => {
+                log::error!("error serializing column in array: {}", e);
+                return Err(e);
+            }
+        };
         Ok(())
     }
 }

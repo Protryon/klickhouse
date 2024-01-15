@@ -320,6 +320,7 @@ impl Client {
 
         tokio::spawn(inner.run(receiver));
         let client = Client { sender, progress };
+        // TODO: Remove
         client
             .execute("SET date_time_input_format='best_effort'")
             .await?;
