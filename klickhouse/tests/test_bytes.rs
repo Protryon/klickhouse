@@ -15,9 +15,6 @@ pub struct Row {
 #[tokio::test]
 #[allow(clippy::field_reassign_with_default)]
 async fn test_client() {
-    env_logger::builder()
-        .filter_level(log::LevelFilter::Info)
-        .init();
     let client = super::get_client().await;
 
     super::prepare_table(

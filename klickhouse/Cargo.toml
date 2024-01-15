@@ -6,7 +6,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/Protryon/klickhouse"
 description = "Klickhouse is a pure Rust SDK for working with Clickhouse with the native protocol in async environments with minimal boilerplate and maximal performance."
-keywords = [ "clickhouse", "database", "tokio", "sql" ]
+keywords = ["clickhouse", "database", "tokio", "sql"]
 readme = "../README.md"
 autotests = false
 
@@ -18,7 +18,13 @@ name = "test"
 path = "tests/main.rs"
 
 [dependencies]
-tokio = { version = "1.21", features = ["io-util", "net", "sync", "rt", "macros"] }
+tokio = { version = "1.21", features = [
+    "io-util",
+    "net",
+    "sync",
+    "rt",
+    "macros",
+] }
 async-trait = "0.1"
 thiserror = "1.0"
 log = "0.4"
@@ -35,7 +41,10 @@ cityhash-rs = "1.0"
 bb8 = { version = "0.8", optional = true }
 # must be locked due to transmute
 refinery-core = { version = "=0.8.10", optional = true }
-time = { version = "0.3.5", features = ["parsing", "formatting"], optional = true }
+time = { version = "0.3.5", features = [
+    "parsing",
+    "formatting",
+], optional = true }
 compiler-tools = "0.1.7"
 compiler-tools-derive = "0.1.7"
 rust_decimal = { version = "1.30", optional = true }
@@ -43,7 +52,7 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0", optional = true }
 tokio-rustls = { version = "0.24.1", optional = true }
 paste = "1.0.14"
-geo-types = {version = "0.7.12", optional = true}
+geo-types = { version = "0.7.12", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
@@ -59,4 +68,4 @@ serde = ["dep:serde", "serde_json", "uuid/serde", "chrono/serde"]
 tls = ["tokio-rustls"]
 
 [build-dependencies]
-rustc_version = "0.3"
+rustc_version = "0.4.0"
