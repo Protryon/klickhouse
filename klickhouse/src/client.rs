@@ -116,9 +116,17 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
                 }
             }
             ClientRequestData::SendData { block, response } => {
-                self.output
+                match self
+                    .output
                     .send_data(block, CompressionMethod::default(), "", false)
-                    .await?;
+                    .await
+                {
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!("failed to send data block: {:#?}", e);
+                        return Err(e);
+                    }
+                };
                 response.send(()).ok();
             }
         }
@@ -180,13 +188,22 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
     }
 
     async fn run_inner(mut self, mut input: Receiver<ClientRequest>) -> Result<()> {
-        self.output
+        match self
+            .output
             .send_hello(ClientHello {
                 default_database: &self.options.default_database,
                 username: &self.options.username,
                 password: &self.options.password,
             })
-            .await?;
+            .await
+        {
+            Ok(_) => {}
+            Err(e) => {
+                error!("failed to send hello: {:#?}", e);
+                return Err(e);
+            }
+        };
+
         let hello_response = self.input.receive_hello().await?;
         self.input.server_hello = hello_response.clone();
         self.output.server_hello = hello_response.clone();
@@ -201,7 +218,13 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
                 },
                 packet = self.input.receive_packet() => {
                     let packet = packet?;
-                    self.receive_packet(packet).await?;
+                    match self.receive_packet(packet).await {
+                        Ok(_) => {},
+                        Err(e) => {
+                            error!("failed to receive packet: {:#?}", e);
+                            return Err(e);
+                        }
+                    };
                 },
             }
         }
@@ -209,7 +232,7 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
 
     pub async fn run(self, input: Receiver<ClientRequest>) {
         if let Err(e) = self.run_inner(input).await {
-            error!("clickhouse client failed: {:?}", e);
+            error!("clickhouse client failed: {:#?}", e);
         }
     }
 }
