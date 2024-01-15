@@ -1,6 +1,6 @@
 [package]
 name = "klickhouse"
-version = "0.10.2"
+version = "0.11.0"
 authors = ["Protryon <max.bruce12@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -30,7 +30,7 @@ futures = "0.3"
 tokio-stream = "0.1"
 libc = "0.2"
 lz4 = { version = "1.24", optional = true }
-klickhouse_derive = { version = "=0.10.0", optional = true, path = "../klickhouse_derive" }
+klickhouse_derive = { version = "=0.11.0", optional = true, path = "../klickhouse_derive" }
 cityhash-rs = "1.0"
 bb8 = { version = "0.8", optional = true }
 # must be locked due to transmute
