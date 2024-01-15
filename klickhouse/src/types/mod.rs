@@ -818,7 +818,7 @@ impl Type {
                 }
             }
             Type::Decimal256(precision) => {
-                if *precision == 0 || *precision > 9 {
+                if *precision == 0 || *precision > 76 {
                     return Err(KlickhouseError::TypeParseError(format!(
                         "precision out of bounds for Decimal256({}) must be in range (1..=76)",
                         *precision
