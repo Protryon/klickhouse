@@ -3,6 +3,7 @@ pub mod geo;
 pub mod low_cardinality;
 pub mod map;
 pub mod nullable;
+pub mod object;
 pub mod sized;
 pub mod string;
 pub mod tuple;

@@ -1,6 +1,6 @@
 use tokio::io::AsyncWriteExt;
 
-use crate::{io::ClickhouseWrite, values::Value, Result};
+use crate::{io::ClickhouseWrite, values::Value, KlickhouseError, Result};
 
 use super::{Serializer, SerializerState, Type};
 
@@ -32,23 +32,39 @@ impl Serializer for StringSerializer {
         _state: &mut SerializerState,
     ) -> Result<()> {
         for value in values {
-            match value.justify_null_ref(type_).as_ref() {
+            let value = if value == Value::Null {
+                type_.default_value()
+            } else {
+                value
+            };
+            match value {
                 Value::String(bytes) => {
-                    emit_bytes(type_, bytes, writer).await?;
+                    emit_bytes(type_, &bytes, writer).await?;
                 }
                 Value::Array(items) => {
                     // validate function already confirmed the types here (it's an indirect Vec<u8>/Vec<i8>)
                     let bytes = items
-                        .iter()
-                        .map(|x| match x {
-                            Value::UInt8(x) => *x,
-                            Value::Int8(x) => *x as u8,
-                            _ => unimplemented!(),
+                        .into_iter()
+                        .filter_map(|x| {
+                            match x {
+                                Value::UInt8(x) => Ok(x),
+                                Value::Int8(x) => Ok(x as u8),
+                                // TODO: This is wrong, it will never deserialize w/ missing pieces
+                                _ => Err(KlickhouseError::SerializeError(format!(
+                                    "StringSerializer called with non-string type: {:?}",
+                                    type_
+                                ))),
+                            }
+                            .ok()
                         })
                         .collect::<Vec<u8>>();
                     emit_bytes(type_, &bytes, writer).await?;
                 }
-                _ => unimplemented!(),
+                _ => {
+                    return Err(KlickhouseError::SerializeError(format!(
+                        "StringSerializer unimplemented: {type_:?} for value = {value:?}",
+                    )));
+                }
             }
         }
         Ok(())

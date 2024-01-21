@@ -19,7 +19,7 @@ impl FromSql for Uuid {
         }
         match value {
             Value::Uuid(x) => Ok(x),
-            _ => unimplemented!(),
+            _ => Err(unexpected_type(type_)),
         }
     }
 }

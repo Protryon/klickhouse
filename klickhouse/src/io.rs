@@ -76,8 +76,13 @@ impl<T: AsyncWrite + Unpin + Send + Sync + 'static> ClickhouseWrite for T {
 
     async fn write_string(&mut self, value: impl AsRef<[u8]> + Send) -> Result<()> {
         let value = value.as_ref();
+
+        // Write length
         self.write_var_uint(value.len() as u64).await?;
+
+        // Write data
         self.write_all(value).await?;
+
         Ok(())
     }
 }

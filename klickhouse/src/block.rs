@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, str::FromStr};
 
-use crate::Result;
+use crate::{protocol::DBMS_MIN_PROTOCOL_VERSION_WITH_CUSTOM_SERIALIZATION, Result};
 use indexmap::IndexMap;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -63,7 +63,7 @@ impl BlockInfo {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 /// A chunk of data in columnar form.
 pub struct Block {
     /// Metadata about the block
@@ -71,39 +71,23 @@ pub struct Block {
     /// The number of rows contained in the block
     pub rows: u64,
     /// The type of each column by name, in order.
-    pub column_types: IndexMap<String, Type>,
+    pub column_types: Vec<(String, Type)>,
     /// The data of each column by name, in order. All `Value` should correspond to the associated type in `column_types`.
-    pub column_data: IndexMap<String, Vec<Value>>,
-}
-
-/// Iterator type for `iter_rows`
-pub struct BlockRowIter<'a> {
-    block: &'a Block,
-    row: u64,
-}
-
-impl<'a> Iterator for BlockRowIter<'a> {
-    type Item = Vec<(&'a str, &'a Value)>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.row >= self.block.rows {
-            return None;
-        }
-        let mut out = Vec::with_capacity(self.block.column_data.len());
-        for (name, value) in self.block.column_data.iter() {
-            out.push((&**name, value.get(self.row as usize)?));
-        }
-        self.row += 1;
-        Some(out)
-    }
+    pub column_data: Vec<Value>,
 }
 
 // Iterator type for `take_iter_rows`
-pub struct BlockRowValueIter<'a> {
-    column_data: Vec<(&'a str, &'a Type, std::vec::IntoIter<Value>)>,
+pub struct BlockRowValueIter<'a, I>
+where
+    I: std::iter::Iterator<Item = Value>,
+{
+    column_data: Vec<(&'a str, &'a Type, I)>,
 }
 
-impl<'a> Iterator for BlockRowValueIter<'a> {
+impl<'a, I> Iterator for BlockRowValueIter<'a, I>
+where
+    I: Iterator<Item = Value>,
+{
     type Item = Vec<(&'a str, &'a Type, Value)>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -139,42 +123,17 @@ impl Iterator for BlockRowIntoIter {
 }
 
 impl Block {
-    /// Create a borrowing iterator for all rows
-    pub fn iter_rows(&self) -> BlockRowIter<'_> {
-        BlockRowIter {
-            block: self,
-            row: 0,
-        }
-    }
-
     /// Iterate over all rows with owned values.
-    pub fn take_iter_rows(&mut self) -> BlockRowValueIter {
-        let mut column_data = IndexMap::new();
-        std::mem::swap(&mut self.column_data, &mut column_data);
+    pub fn take_iter_rows(&mut self) -> BlockRowValueIter<impl Iterator<Item = Value>> {
+        let mut column_data = std::mem::take(&mut self.column_data);
         let mut out = Vec::with_capacity(self.rows as usize);
-        for (name, values) in column_data.into_iter() {
-            let (name, type_) = self.column_types.get_key_value(&name).unwrap();
-            out.push((&**name, type_.strip_low_cardinality(), values.into_iter()));
+        for (name, type_) in self.column_types.iter() {
+            let mut column = Vec::with_capacity(self.rows as usize);
+            let column_slice = column_data.drain(..self.rows as usize);
+            column.extend(column_slice);
+            out.push((&**name, type_.strip_low_cardinality(), column.into_iter()));
         }
         BlockRowValueIter { column_data: out }
-    }
-
-    /// Iterate over all rows with owned value, types, and names.
-    pub fn into_iter_rows(self) -> BlockRowIntoIter {
-        let column_types = self.column_types;
-        BlockRowIntoIter {
-            column_data: self
-                .column_data
-                .into_iter()
-                .map(|(name, values)| {
-                    let type_ = column_types.get(&name).unwrap();
-                    (
-                        name,
-                        values.into_iter().map(|x| (type_.clone(), x)).collect(),
-                    )
-                })
-                .collect(),
-        }
     }
 
     pub(crate) async fn read<R: ClickhouseRead>(reader: &mut R, revision: u64) -> Result<Self> {
@@ -188,16 +147,25 @@ impl Block {
         let mut block = Block {
             info,
             rows,
-            column_types: IndexMap::new(),
-            column_data: IndexMap::new(),
+            column_types: Vec::with_capacity(columns as usize),
+            column_data: Vec::with_capacity(columns as usize),
         };
         for _ in 0..columns {
             let name = reader.read_utf8_string().await?;
             let type_name = reader.read_utf8_string().await?;
+
             let type_ = Type::from_str(&type_name)?;
-            block.column_types.insert(name.clone(), type_.clone());
+
+            // TODO: implement
+            let mut _has_custom_serialization = false;
+            if revision >= DBMS_MIN_PROTOCOL_VERSION_WITH_CUSTOM_SERIALIZATION {
+                _has_custom_serialization = reader.read_u8().await? != 0;
+            }
+
+            block.column_types.push((name, type_.clone()));
+
             let mut state = DeserializerState {};
-            let row_data = if rows > 0 {
+            let mut row_data = if rows > 0 {
                 type_.deserialize_prefix(reader, &mut state).await?;
                 type_
                     .deserialize_column(reader, rows as usize, &mut state)
@@ -205,7 +173,7 @@ impl Block {
             } else {
                 vec![]
             };
-            block.column_data.insert(name, row_data);
+            block.column_data.append(&mut row_data);
         }
 
         Ok(block)
@@ -217,45 +185,40 @@ impl Block {
         revision: u64,
     ) -> Result<()> {
         if revision > 0 {
-            log::debug!("writing block info, revision > 0 = {}", revision);
             self.info.write(writer).await?;
         }
-        let joined = self
-            .column_types
-            .into_iter()
-            .flat_map(|(key, type_)| {
-                let values = self.column_data.remove(&key)?;
-                Some((key, (type_, values)))
-            })
-            .collect::<Vec<_>>();
-        writer.write_var_uint(joined.len() as u64).await?;
+
+        let rows = self.rows;
+
+        writer
+            .write_var_uint(self.column_types.len() as u64)
+            .await?;
         writer.write_var_uint(self.rows).await?;
-        for (name, (type_, data)) in joined {
-            writer.write_string(&name).await?;
-            writer.write_string(&type_.to_string()).await?;
-            if data.len() != self.rows as usize {
+
+        for (name, type_) in self.column_types.into_iter() {
+            let mut block = Vec::with_capacity(rows as usize);
+            block.extend(self.column_data.drain(..rows as usize));
+
+            if block.len() != rows as usize {
                 return Err(KlickhouseError::ProtocolError(format!(
                     "row and column length mismatch. {} != {}",
-                    data.len(),
-                    self.rows
+                    block.len(),
+                    rows
                 )));
             }
+
+            // EncodeStart
+            writer.write_string(&name).await?;
+            writer.write_string(&type_.to_string()).await?;
+
             if self.rows > 0 {
+                if revision >= DBMS_MIN_PROTOCOL_VERSION_WITH_CUSTOM_SERIALIZATION {
+                    writer.write_u8(0).await?;
+                }
+
                 let mut state = SerializerState {};
-                match type_.serialize_prefix(writer, &mut state).await {
-                    Ok(_) => {}
-                    Err(e) => {
-                        log::error!("error serializing prefix: {}", e);
-                        return Err(e);
-                    }
-                };
-                match type_.serialize_column(data, writer, &mut state).await {
-                    Ok(_) => {}
-                    Err(e) => {
-                        log::error!("error serializing column: {}", e);
-                        return Err(e);
-                    }
-                };
+                type_.serialize_prefix(writer, &mut state).await?;
+                type_.serialize_column(block, writer, &mut state).await?;
             }
         }
         Ok(())

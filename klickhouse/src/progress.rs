@@ -9,6 +9,7 @@ pub struct Progress {
     pub new_total_rows_to_read: u64,
     pub new_written_rows: Option<u64>,
     pub new_written_bytes: Option<u64>,
+    pub elapsed_ns: Option<u64>,
 }
 impl std::ops::Add for Progress {
     type Output = Progress;
@@ -26,6 +27,7 @@ impl std::ops::Add for Progress {
             new_total_rows_to_read: self.new_total_rows_to_read + rhs.new_total_rows_to_read,
             new_written_rows: sum_opt(self.new_written_rows, rhs.new_written_rows),
             new_written_bytes: sum_opt(self.new_written_bytes, rhs.new_written_bytes),
+            elapsed_ns: sum_opt(self.elapsed_ns, rhs.elapsed_ns),
         }
     }
 }

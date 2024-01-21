@@ -62,10 +62,12 @@ pub enum Type {
     Ring,
     Polygon,
     MultiPolygon,
+
+    // TODO: Modify this and other types so that Type is `Copy`
     /// Not supported
-    Enum8(Vec<(String, i8)>),
+    Enum8(Vec<(Option<String>, i8)>),
     /// Not supported
-    Enum16(Vec<(String, i16)>),
+    Enum16(Vec<(Option<String>, i16)>),
 
     LowCardinality(Box<Type>),
 
@@ -78,13 +80,19 @@ pub enum Type {
     Nullable(Box<Type>),
 
     Map(Box<Type>, Box<Type>),
+
+    Object,
 }
 
 impl Type {
-    pub fn unwrap_array(&self) -> &Type {
+    pub fn unwrap_array(&self) -> Result<&Type> {
         match self {
-            Type::Array(x) => x,
-            _ => unimplemented!(),
+            Type::Array(x) => Ok(x),
+            _ => {
+                return Err(KlickhouseError::Unimplemented(
+                    "only array unwraps are supported",
+                ))
+            }
         }
     }
 
@@ -95,10 +103,14 @@ impl Type {
         }
     }
 
-    pub fn unwrap_map(&self) -> (&Type, &Type) {
+    pub fn unwrap_map(&self) -> Result<(&Type, &Type)> {
         match self {
-            Type::Map(key, value) => (&**key, &**value),
-            _ => unimplemented!(),
+            Type::Map(key, value) => Ok((&**key, &**value)),
+            _ => {
+                return Err(KlickhouseError::Unimplemented(
+                    "only map unwraps are supported",
+                ))
+            }
         }
     }
 
@@ -109,10 +121,14 @@ impl Type {
         }
     }
 
-    pub fn unwrap_tuple(&self) -> &[Type] {
+    pub fn unwrap_tuple(&self) -> Result<&[Type]> {
         match self {
-            Type::Tuple(x) => &x[..],
-            _ => unimplemented!(),
+            Type::Tuple(x) => Ok(&x[..]),
+            _ => {
+                return Err(KlickhouseError::Unimplemented(
+                    "only tuple unwraps are supported",
+                ))
+            }
         }
     }
 
@@ -177,10 +193,10 @@ impl Type {
             Type::Enum16(_) => Value::Enum16(0),
             Type::LowCardinality(x) => x.default_value(),
             Type::Array(_) => Value::Array(vec![]),
-            // Type::Nested(_) => unimplemented!(),
             Type::Tuple(types) => Value::Tuple(types.iter().map(|x| x.default_value()).collect()),
             Type::Nullable(_) => Value::Null,
             Type::Map(_, _) => Value::Map(vec![], vec![]),
+            Type::Object => Value::Object("{}".as_bytes().to_vec()),
         }
     }
 
@@ -251,6 +267,86 @@ fn parse_scale(from: &str) -> Result<usize> {
 fn parse_precision(from: &str) -> Result<usize> {
     from.parse()
         .map_err(|_| KlickhouseError::TypeParseError("couldn't parse precision".to_string()))
+}
+
+trait EnumValueType: std::str::FromStr + std::fmt::Debug {}
+impl EnumValueType for i8 {}
+impl EnumValueType for i16 {}
+
+macro_rules! parse_enum_options {
+    ($opt_str:expr, $num_type:ty) => {{
+        fn assert_numeric_type<T: EnumValueType>() {}
+        assert_numeric_type::<$num_type>();
+
+        fn inner_parse(input: &str) -> Result<Vec<(Option<String>, $num_type)>> {
+            if !input.starts_with('(') || !input.ends_with(')') {
+                return Err(KlickhouseError::TypeParseError(
+                    "malformed arguments to enum type".to_string(),
+                ));
+            }
+
+            // Strip parens
+            let input = input[1..input.len() - 1].trim();
+
+            let mut options = Vec::new();
+            let mut after_name = false;
+            let mut escaped = false;
+            let mut quote_character = None;
+            let mut name = String::new();
+            let mut value = String::new();
+
+            for ch in input.chars() {
+                if escaped {
+                    name.push(ch);
+                    escaped = false;
+                } else if after_name {
+                    match ch {
+                        ' ' | '=' => (),
+                        ',' => {
+                            let parsed_value = value.parse::<$num_type>().map_err(|e| {
+                                KlickhouseError::TypeParseError(format!("{value} @char {ch}: {e}"))
+                            })?;
+                            options.push((Some(name), parsed_value));
+                            after_name = false;
+                            name = String::new();
+                            value = String::new();
+                        }
+                        _ => value.push(ch),
+                    }
+                } else if let Some(qc) = quote_character {
+                    match ch {
+                        '\\' => escaped = true,
+                        _ if ch == qc => {
+                            quote_character = None;
+                            after_name = true;
+                        }
+                        _ => name.push(ch),
+                    }
+                } else if ch == '\'' {
+                    quote_character = Some(ch);
+                }
+            }
+
+            if after_name {
+                let parsed_value = value
+                    .parse::<$num_type>()
+                    .map_err(|e| KlickhouseError::TypeParseError(format!("{value}: {e}")))?;
+                options.push((Some(name), parsed_value));
+            }
+
+            Ok(options)
+        }
+
+        inner_parse($opt_str)
+    }};
+}
+
+fn parse_enum8(option_string: &str) -> Result<Vec<(Option<String>, i8)>> {
+    parse_enum_options!(option_string, i8)
+}
+
+fn parse_enum16(option_string: &str) -> Result<Vec<(Option<String>, i16)>> {
+    parse_enum_options!(option_string, i16)
 }
 
 impl FromStr for Type {
@@ -382,16 +478,8 @@ impl FromStr for Type {
                         )));
                     }
                 }
-                "Enum8" => {
-                    return Err(KlickhouseError::TypeParseError(
-                        "unsupported Enum8 type".to_string(),
-                    ));
-                }
-                "Enum16" => {
-                    return Err(KlickhouseError::TypeParseError(
-                        "unsupported Enum16 type".to_string(),
-                    ));
-                }
+                "Enum8" => return Ok(Type::Enum8(parse_enum8(following)?)),
+                "Enum16" => return Ok(Type::Enum16(parse_enum16(following)?)),
                 "LowCardinality" => {
                     if args.len() != 1 {
                         return Err(KlickhouseError::TypeParseError(format!(
@@ -443,6 +531,7 @@ impl FromStr for Type {
                         Box::new(Type::from_str(args[1])?),
                     )
                 }
+                "Object" | "Json" | "OBJECT" | "JSON" => Type::Object,
                 _ => {
                     return Err(KlickhouseError::TypeParseError(format!(
                         "invalid type with arguments: '{}'",
@@ -524,7 +613,11 @@ impl Display for Type {
                 "Enum8({})",
                 items
                     .iter()
-                    .map(|(name, value)| format!("{}={}", name, value))
+                    .map(|(name, value)| format!(
+                        "{}={}",
+                        name.as_deref().unwrap_or_default(),
+                        value
+                    ))
                     .collect::<Vec<_>>()
                     .join(",")
             ),
@@ -533,7 +626,11 @@ impl Display for Type {
                 "Enum16({})",
                 items
                     .iter()
-                    .map(|(name, value)| format!("{}={}", name, value))
+                    .map(|(name, value)| format!(
+                        "{}={}",
+                        name.as_deref().unwrap_or_default(),
+                        value
+                    ))
                     .collect::<Vec<_>>()
                     .join(",")
             ),
@@ -551,6 +648,7 @@ impl Display for Type {
             ),
             Type::Nullable(inner) => write!(f, "Nullable({})", inner),
             Type::Map(key, value) => write!(f, "Map({},{})", key, value),
+            Type::Object => write!(f, "JSON"),
         }
     }
 }
@@ -610,6 +708,7 @@ impl Type {
                 low_cardinality::LowCardinalityDeserializer::read_prefix(self, reader, state)
                     .await?
             }
+            Type::Object => object::ObjectDeserializer::read_prefix(self, reader, state).await?,
         }
         Ok(())
     }
@@ -675,6 +774,7 @@ impl Type {
             Type::LowCardinality(_) => {
                 low_cardinality::LowCardinalityDeserializer::read(self, reader, rows, state).await?
             }
+            Type::Object => object::ObjectDeserializer::read(self, reader, rows, state).await?,
         })
     }
 
@@ -733,6 +833,7 @@ impl Type {
                 low_cardinality::LowCardinalitySerializer::write(self, values, writer, state)
                     .await?
             }
+            Type::Object => object::ObjectSerializer::write(self, values, writer, state).await?,
         }
         Ok(())
     }
@@ -790,10 +891,13 @@ impl Type {
             Type::LowCardinality(_) => {
                 low_cardinality::LowCardinalitySerializer::write_prefix(self, writer, state).await?
             }
+            Type::Object => object::ObjectSerializer::write_prefix(self, writer, state).await?,
         }
         Ok(())
     }
 
+    // TODO: Re-enable
+    #[allow(unused)]
     pub(crate) fn validate(&self) -> Result<()> {
         match self {
             Type::Decimal32(precision) => {
@@ -906,11 +1010,14 @@ impl Type {
                 key.validate()?;
                 value.validate()?;
             }
-            _ => (),
+            // TODO: Add Object
+            _ => {}
         }
         Ok(())
     }
 
+    // TODO: Re-enable
+    #[allow(unused)]
     pub(crate) fn validate_value(&self, value: &Value) -> Result<()> {
         self.validate()?;
         if !self.inner_validate_value(value) {
@@ -982,7 +1089,8 @@ impl Type {
                 keys.iter().all(|x| key.inner_validate_value(x))
                     && values.iter().all(|x| value.inner_validate_value(x))
             }
-            (_, _) => false,
+            // Defaulting to true here, prevents generalized functionality
+            (_, _) => true,
         }
     }
 }
@@ -993,6 +1101,7 @@ pub struct SerializerState {}
 
 #[async_trait::async_trait]
 pub trait Deserializer {
+    // NOTE: related to custom serialization
     async fn read_prefix<R: ClickhouseRead>(
         _type_: &Type,
         _reader: &mut R,
@@ -1011,6 +1120,7 @@ pub trait Deserializer {
 
 #[async_trait::async_trait]
 pub trait Serializer {
+    // NOTE: As I've seen this is only relevant for Object(json) types
     async fn write_prefix<W: ClickhouseWrite>(
         _type_: &Type,
         _writer: &mut W,

@@ -24,7 +24,7 @@ impl Row for RawRow {
 
     fn serialize_row(
         self,
-        _type_hints: &indexmap::IndexMap<String, Type>,
+        _type_hints: &[(String, Type)],
     ) -> Result<Vec<(Cow<'static, str>, Value)>> {
         Ok(self
             .0
@@ -71,6 +71,13 @@ impl RawRow {
     /// Returns the number of values in the row.
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+
+    pub fn into_values(self) -> Vec<(Type, Value)> {
+        self.0
+            .into_iter()
+            .map(|x| x.map(|(_, t, v)| (t, v)).unwrap())
+            .collect()
     }
 
     /// Like RawRow::get, but returns a Result rather than panicking.

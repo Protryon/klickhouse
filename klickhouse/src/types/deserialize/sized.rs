@@ -72,7 +72,11 @@ impl Deserializer for SizedDeserializer {
                 }
                 Type::Enum8(_) => Value::Enum8(reader.read_i8().await?),
                 Type::Enum16(_) => Value::Enum16(reader.read_i16_le().await?),
-                _ => unimplemented!(),
+                _ => {
+                    return Err(crate::KlickhouseError::DeserializeError(format!(
+                        "SizedDeserializer unimplemented: {type_:?}"
+                    )))
+                }
             });
         }
         Ok(out)

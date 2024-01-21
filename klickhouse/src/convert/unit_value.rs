@@ -23,11 +23,11 @@ impl<T: FromSql + ToSql> Row for UnitValue<T> {
 
     fn serialize_row(
         self,
-        type_hints: &indexmap::IndexMap<String, Type>,
+        type_hints: &[(String, Type)],
     ) -> Result<Vec<(Cow<'static, str>, Value)>> {
         Ok(vec![(
             Cow::Borrowed("_"),
-            self.0.to_sql(type_hints.values().next())?,
+            self.0.to_sql(type_hints.iter().map(|(_, t)| t).next())?,
         )])
     }
 }

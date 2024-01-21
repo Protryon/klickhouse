@@ -17,7 +17,12 @@ impl Serializer for TupleSerializer {
                     item.serialize_prefix(writer, state).await?;
                 }
             }
-            _ => unimplemented!(),
+            _ => {
+                return Err(crate::KlickhouseError::SerializeError(format!(
+                    "TupleSerializer called with non-tuple type: {:?}",
+                    type_
+                )))
+            }
         }
         Ok(())
     }
@@ -31,13 +36,15 @@ impl Serializer for TupleSerializer {
         let inner_types = if let Type::Tuple(inner_types) = &type_ {
             inner_types
         } else {
-            unimplemented!();
+            return Err(crate::errors::KlickhouseError::SerializeError(
+                "TupleSerializer called with non-tuple type".to_string(),
+            ));
         };
 
         let mut columns = vec![Vec::with_capacity(values.len()); inner_types.len()];
 
         for value in values {
-            let tuple = value.unwrap_tuple();
+            let tuple = value.unwrap_tuple()?;
             for (i, value) in tuple.into_iter().enumerate() {
                 columns[i].push(value);
             }

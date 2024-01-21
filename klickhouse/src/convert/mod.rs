@@ -55,6 +55,6 @@ pub trait Row: Sized {
 
     fn serialize_row(
         self,
-        type_hints: &indexmap::IndexMap<String, Type>,
+        type_hints: &[(String, Type)],
     ) -> Result<Vec<(Cow<'static, str>, Value)>>;
 }

@@ -184,7 +184,11 @@ impl Deserializer for LowCardinalityDeserializer {
 
                 output
             }
-            _ => unimplemented!(),
+            _ => {
+                return Err(KlickhouseError::SerializeError(
+                    "LowCardinalityDeserializer: unexpected type".to_string(),
+                ))
+            }
         })
     }
 }

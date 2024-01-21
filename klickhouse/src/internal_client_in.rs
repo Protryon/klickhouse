@@ -1,3 +1,7 @@
+use crate::protocol::{
+    DBMS_MIN_PROTOCOL_VERSION_WITH_SERVER_QUERY_TIME_IN_PROGRESS,
+    DBMS_MIN_REVISION_WITH_SERVER_LOGS,
+};
 use crate::Result;
 use crate::{
     block::Block,
@@ -6,14 +10,15 @@ use crate::{
     protocol::{
         self, BlockStreamProfileInfo, CompressionMethod, ServerData, ServerException, ServerHello,
         ServerPacket, TableColumns, TableStatus, TablesStatusResponse,
-        DBMS_MIN_REVISION_WITH_CLIENT_WRITE_INFO, DBMS_MIN_REVISION_WITH_SERVER_DISPLAY_NAME,
-        DBMS_MIN_REVISION_WITH_SERVER_TIMEZONE, DBMS_MIN_REVISION_WITH_VERSION_PATCH,
-        MAX_STRING_SIZE,
+        DBMS_MIN_PROTOCOL_VERSION_WITH_PASSWORD_COMPLEXITY_RULES,
+        DBMS_MIN_PROTOCOL_VERSION_WITH_PROFILE_EVENTS_IN_INSERT,
+        DBMS_MIN_REVISION_WITH_CLIENT_WRITE_INFO, DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET_V2,
+        DBMS_MIN_REVISION_WITH_SERVER_DISPLAY_NAME, DBMS_MIN_REVISION_WITH_SERVER_TIMEZONE,
+        DBMS_MIN_REVISION_WITH_VERSION_PATCH, DBMS_TCP_PROTOCOL_VERSION, MAX_STRING_SIZE,
     },
     KlickhouseError,
 };
 use indexmap::IndexMap;
-use log::trace;
 use protocol::ServerPacketId;
 use tokio::io::AsyncReadExt;
 use uuid::Uuid;
@@ -37,7 +42,8 @@ impl<R: ClickhouseRead + 'static> InternalClientIn<R> {
     async fn read_exception(&mut self) -> Result<ServerException> {
         let code = self.reader.read_i32_le().await?;
         let name = self.reader.read_utf8_string().await?;
-        let message = self.reader.read_utf8_string().await?;
+        let message =
+            String::from_utf8_lossy(self.reader.read_string().await?.as_ref()).to_string();
         let stack_trace = self.reader.read_utf8_string().await?;
         let has_nested = self.reader.read_u8().await? != 0;
 
@@ -78,74 +84,22 @@ impl<R: ClickhouseRead + 'static> InternalClientIn<R> {
         Ok(ServerData { table_name, block })
     }
 
-    async fn receive_log_data(&mut self) -> Result<ServerData> {
-        unimplemented!()
-    }
-
+    /// receive_packet
+    ///
+    /// Receives a raw packet from the server and forwards it to the wrapping
+    /// Client (if successful).
     pub async fn receive_packet(&mut self) -> Result<ServerPacket> {
         let packet_id = ServerPacketId::from_u64(self.reader.read_var_uint().await?)?;
         let packet: Result<ServerPacket> = match packet_id {
-            ServerPacketId::Hello => {
-                let server_name = self.reader.read_utf8_string().await?;
-                let major_version = self.reader.read_var_uint().await?;
-                let minor_version = self.reader.read_var_uint().await?;
-                let revision_version = self.reader.read_var_uint().await?;
-                let timezone = if revision_version > DBMS_MIN_REVISION_WITH_SERVER_TIMEZONE {
-                    Some(self.reader.read_utf8_string().await?)
-                } else {
-                    None
-                };
-                let display_name = if revision_version > DBMS_MIN_REVISION_WITH_SERVER_DISPLAY_NAME
-                {
-                    Some(self.reader.read_utf8_string().await?)
-                } else {
-                    None
-                };
-                let patch_version = if revision_version > DBMS_MIN_REVISION_WITH_VERSION_PATCH {
-                    self.reader.read_var_uint().await?
-                } else {
-                    revision_version
-                };
-                Ok(ServerPacket::Hello(ServerHello {
-                    server_name,
-                    major_version,
-                    minor_version,
-                    revision_version,
-                    timezone,
-                    display_name,
-                    patch_version,
-                }))
-            }
+            ServerPacketId::Hello => self.read_hello().await.map(ServerPacket::Hello),
             ServerPacketId::Data => Ok(ServerPacket::Data(
                 self.receive_data(CompressionMethod::default()).await?,
             )),
-            ServerPacketId::Exception => Ok(ServerPacket::Exception(self.read_exception().await?)),
-            ServerPacketId::Progress => {
-                let read_rows = self.reader.read_var_uint().await?;
-                let read_bytes = self.reader.read_var_uint().await?;
-                let new_total_rows_to_read = self.reader.read_var_uint().await?;
-                let new_written_rows = if self.server_hello.revision_version
-                    >= DBMS_MIN_REVISION_WITH_CLIENT_WRITE_INFO
-                {
-                    Some(self.reader.read_var_uint().await?)
-                } else {
-                    None
-                };
-                let new_written_bytes = if self.server_hello.revision_version
-                    >= DBMS_MIN_REVISION_WITH_CLIENT_WRITE_INFO
-                {
-                    Some(self.reader.read_var_uint().await?)
-                } else {
-                    None
-                };
-                Ok(ServerPacket::Progress(Progress {
-                    read_rows,
-                    read_bytes,
-                    new_total_rows_to_read,
-                    new_written_rows,
-                    new_written_bytes,
-                }))
+            ServerPacketId::Exception => {
+                log::debug!("receiving server exception packet");
+                Ok(ServerPacket::Exception(self.read_exception().await?))
             }
+            ServerPacketId::Progress => Ok(ServerPacket::Progress(self.read_progress().await?)),
             ServerPacketId::Pong => Ok(ServerPacket::Pong),
             ServerPacketId::EndOfStream => Ok(ServerPacket::EndOfStream),
             ServerPacketId::ProfileInfo => {
@@ -204,7 +158,10 @@ impl<R: ClickhouseRead + 'static> InternalClientIn<R> {
                 }
                 Ok(ServerPacket::TablesStatusResponse(response))
             }
-            ServerPacketId::Log => Ok(ServerPacket::Log(self.receive_log_data().await?)),
+            ServerPacketId::Log => {
+                let data = self.read_log_data().await?;
+                Ok(ServerPacket::Log(data))
+            }
             ServerPacketId::TableColumns => {
                 let name = self.reader.read_utf8_string().await?;
                 let description = self.reader.read_utf8_string().await?;
@@ -228,14 +185,16 @@ impl<R: ClickhouseRead + 'static> InternalClientIn<R> {
 
                     out.push(Uuid::from_bytes(bytes));
                 }
+                log::debug!("received part uuids: {:?}", out);
                 Ok(ServerPacket::PartUUIDs(out))
             }
             ServerPacketId::ReadTaskRequest => Ok(ServerPacket::ReadTaskRequest),
+            ServerPacketId::ProfileEvents => Ok(ServerPacket::ProfileEvents(
+                self.read_profile_events().await?,
+            )),
         };
-        let packet = packet?;
 
-        trace!("clickhouse packet received: {packet:?}");
-        Ok(packet)
+        Ok(packet?)
     }
 
     pub async fn receive_hello(&mut self) -> Result<ServerHello> {
@@ -247,5 +206,117 @@ impl<R: ClickhouseRead + 'static> InternalClientIn<R> {
                 packet
             ))),
         }
+    }
+
+    async fn read_hello(&mut self) -> Result<ServerHello> {
+        log::debug!("receiving server hello packet");
+        let server_name = self.reader.read_utf8_string().await?;
+        let major_version = self.reader.read_var_uint().await?;
+        let minor_version = self.reader.read_var_uint().await?;
+
+        let revision_version = self.reader.read_var_uint().await?;
+        let revision_version = std::cmp::min(revision_version, DBMS_TCP_PROTOCOL_VERSION);
+
+        let timezone = if revision_version >= DBMS_MIN_REVISION_WITH_SERVER_TIMEZONE {
+            Some(self.reader.read_utf8_string().await?)
+        } else {
+            None
+        };
+
+        let display_name = if revision_version >= DBMS_MIN_REVISION_WITH_SERVER_DISPLAY_NAME {
+            Some(self.reader.read_utf8_string().await?)
+        } else {
+            None
+        };
+        let patch_version = if revision_version >= DBMS_MIN_REVISION_WITH_VERSION_PATCH {
+            self.reader.read_var_uint().await?
+        } else {
+            revision_version
+        };
+
+        if revision_version >= DBMS_MIN_PROTOCOL_VERSION_WITH_PASSWORD_COMPLEXITY_RULES {
+            let rules_size = self.reader.read_var_uint().await?;
+            for _ in 0..rules_size {
+                let _ = self.reader.read_utf8_string().await?;
+            }
+        }
+
+        if revision_version >= DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET_V2 {
+            self.reader.read_u64_le().await?;
+        }
+
+        log::debug!(
+            "Connected to {} server version {}.{}.{}, revision: {}",
+            server_name,
+            major_version,
+            minor_version,
+            patch_version,
+            revision_version
+        );
+
+        Ok(ServerHello {
+            server_name,
+            major_version,
+            minor_version,
+            revision_version,
+            timezone,
+            display_name,
+            patch_version,
+        })
+    }
+
+    async fn read_log_data(&mut self) -> Result<ServerData> {
+        // TODO: Deserialize log data into proper struct
+        self.receive_data(CompressionMethod::None).await
+    }
+
+    async fn read_progress(&mut self) -> Result<Progress> {
+        let read_rows = self.reader.read_var_uint().await?;
+        let read_bytes = self.reader.read_var_uint().await?;
+        let new_total_rows_to_read =
+            if self.server_hello.revision_version >= DBMS_MIN_REVISION_WITH_SERVER_LOGS {
+                self.reader.read_var_uint().await?
+            } else {
+                0
+            };
+        let new_written_rows =
+            if self.server_hello.revision_version >= DBMS_MIN_REVISION_WITH_CLIENT_WRITE_INFO {
+                Some(self.reader.read_var_uint().await?)
+            } else {
+                None
+            };
+        let new_written_bytes =
+            if self.server_hello.revision_version >= DBMS_MIN_REVISION_WITH_CLIENT_WRITE_INFO {
+                Some(self.reader.read_var_uint().await?)
+            } else {
+                None
+            };
+        let elapsed_ns = if self.server_hello.revision_version
+            >= DBMS_MIN_PROTOCOL_VERSION_WITH_SERVER_QUERY_TIME_IN_PROGRESS
+        {
+            Some(self.reader.read_var_uint().await?)
+        } else {
+            None
+        };
+        Ok(Progress {
+            read_rows,
+            read_bytes,
+            new_total_rows_to_read,
+            new_written_rows,
+            new_written_bytes,
+            elapsed_ns,
+        })
+    }
+
+    async fn read_profile_events(&mut self) -> Result<Option<ServerData>> {
+        if self.server_hello.revision_version
+            < DBMS_MIN_PROTOCOL_VERSION_WITH_PROFILE_EVENTS_IN_INSERT
+        {
+            return Ok(None);
+        }
+
+        self.receive_data(CompressionMethod::None)
+            .await
+            .map(Option::Some)
     }
 }

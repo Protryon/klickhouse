@@ -1,4 +1,4 @@
-use crate::{io::ClickhouseRead, values::Value, Result};
+use crate::{io::ClickhouseRead, values::Value, KlickhouseError, Result};
 
 use super::{Deserializer, DeserializerState, Type};
 
@@ -17,7 +17,11 @@ impl Deserializer for TupleDeserializer {
                     item.deserialize_prefix(reader, state).await?;
                 }
             }
-            _ => unimplemented!(),
+            _ => {
+                return Err(KlickhouseError::DeserializeError(
+                    "TupleDeserializer called with non-tuple type".to_string(),
+                ))
+            }
         }
         Ok(())
     }
@@ -28,7 +32,7 @@ impl Deserializer for TupleDeserializer {
         rows: usize,
         state: &mut DeserializerState,
     ) -> Result<Vec<Value>> {
-        let types = type_.unwrap_tuple();
+        let types = type_.unwrap_tuple()?;
         let mut tuples = vec![Value::Tuple(Vec::with_capacity(types.len())); rows];
         for type_ in types {
             for (i, value) in type_
@@ -41,7 +45,11 @@ impl Deserializer for TupleDeserializer {
                     Value::Tuple(values) => {
                         values.push(value);
                     }
-                    _ => unimplemented!(),
+                    _ => {
+                        return Err(KlickhouseError::DeserializeError(
+                            "Expected tuple".to_string(),
+                        ))
+                    }
                 }
             }
         }

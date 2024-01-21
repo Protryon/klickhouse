@@ -1,9 +1,9 @@
 #![doc = include_str!("../../README.md")]
 
 /// Clickhouse major version
-pub const VERSION_MAJOR: u64 = 22;
+pub const VERSION_MAJOR: u64 = 23;
 /// Clickhouse minor version
-pub const VERSION_MINOR: u64 = 9;
+pub const VERSION_MINOR: u64 = 10;
 
 pub mod block;
 mod client;

@@ -28,7 +28,12 @@ impl Serializer for LowCardinalitySerializer {
     ) -> Result<()> {
         let inner_type = match type_ {
             Type::LowCardinality(x) => &**x,
-            _ => unimplemented!(),
+            _ => {
+                return Err(crate::KlickhouseError::SerializeError(format!(
+                    "LowCardinalitySerializer called with non-low-cardinality type: {:?}",
+                    type_
+                )))
+            }
         };
 
         if values.is_empty() {

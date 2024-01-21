@@ -21,7 +21,12 @@ impl Serializer for MapSerializer {
                 ])));
                 nested.serialize_prefix(writer, state).await?;
             }
-            _ => unimplemented!(),
+            _ => {
+                return Err(crate::KlickhouseError::SerializeError(format!(
+                    "MapSerializer called with non-map type: {:?}",
+                    type_
+                )))
+            }
         }
         Ok(())
     }
@@ -34,7 +39,12 @@ impl Serializer for MapSerializer {
     ) -> Result<()> {
         let (key_type, value_type) = match type_ {
             Type::Map(key, value) => (key, value),
-            _ => unimplemented!(),
+            _ => {
+                return Err(crate::KlickhouseError::SerializeError(format!(
+                    "MapSerializer called with non-map type: {:?}",
+                    type_
+                )))
+            }
         };
 
         let mut total_keys = vec![];
@@ -43,7 +53,12 @@ impl Serializer for MapSerializer {
         for value in values {
             let (keys, values) = match value {
                 Value::Map(keys, values) => (keys, values),
-                _ => unimplemented!(),
+                _ => {
+                    return Err(crate::KlickhouseError::SerializeError(format!(
+                        "MapSerializer called with non-map value: {:?}",
+                        value
+                    )))
+                }
             };
             assert_eq!(keys.len(), values.len());
             writer

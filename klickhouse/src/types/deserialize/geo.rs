@@ -53,8 +53,8 @@ macro_rules! array_deser {
             pub struct [<$name Deserializer>];
             impl super::array::ArrayDeserializerGeneric for [<$name Deserializer>] {
                 type Item = crate::values::$item;
-                fn inner_type(_type_: &Type) -> &Type {
-                    &Type::$item
+                fn inner_type(_type_: &Type) -> Result<&Type> {
+                    Ok(&Type::$item)
                 }
                 fn inner_value(items: Vec<Self::Item>) -> Value {
                     Value::$name(values::$name(items))

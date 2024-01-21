@@ -1,10 +1,16 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use crate::{
     block::Block,
     io::ClickhouseWrite,
     protocol::{
-        self, CompressionMethod, ServerHello, DBMS_MIN_PROTOCOL_VERSION_WITH_DISTRIBUTED_DEPTH,
+        self, CompressionMethod, ServerHello, DBMS_MIN_PROTOCOL_VERSION_WITH_ADDENDUM,
+        DBMS_MIN_PROTOCOL_VERSION_WITH_DISTRIBUTED_DEPTH,
+        DBMS_MIN_PROTOCOL_VERSION_WITH_PARALLEL_REPLICAS,
+        DBMS_MIN_PROTOCOL_VERSION_WITH_PARAMETERS, DBMS_MIN_PROTOCOL_VERSION_WITH_QUERY_START_TIME,
         DBMS_MIN_REVISION_WITH_CLIENT_INFO, DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET,
         DBMS_MIN_REVISION_WITH_OPENTELEMETRY, DBMS_MIN_REVISION_WITH_QUOTA_KEY_IN_CLIENT_INFO,
+        DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS,
         DBMS_MIN_REVISION_WITH_VERSION_PATCH,
     },
     Result,
@@ -24,7 +30,7 @@ pub struct ClientHello<'a> {
 }
 
 #[repr(u8)]
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 #[allow(unused, clippy::enum_variant_names)]
 pub enum QueryKind {
     NoQuery,
@@ -32,6 +38,7 @@ pub enum QueryKind {
     SecondaryQuery,
 }
 
+#[derive(Debug)]
 pub struct ClientInfo<'a> {
     pub kind: QueryKind,
     pub initial_user: &'a str,
@@ -64,13 +71,26 @@ impl<'a> ClientInfo<'a> {
         to.write_string(self.initial_user).await?;
         to.write_string(self.initial_query_id).await?;
         to.write_string(self.initial_address).await?;
+
+        if revision >= DBMS_MIN_PROTOCOL_VERSION_WITH_QUERY_START_TIME {
+            let ts = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_micros() as u64;
+            to.write_u64_le(ts).await?;
+        }
+
+        // interface = TCP = 1
         to.write_u8(1).await?;
+
         to.write_string(self.os_user).await?;
         to.write_string(self.client_hostname).await?;
         to.write_string(self.client_name).await?;
+
         to.write_var_uint(self.client_version_major).await?;
         to.write_var_uint(self.client_version_minor).await?;
         to.write_var_uint(self.client_tcp_protocol_version).await?;
+
         if revision >= DBMS_MIN_REVISION_WITH_QUOTA_KEY_IN_CLIENT_INFO {
             to.write_string(self.quota_key).await?;
         }
@@ -92,10 +112,17 @@ impl<'a> ClientInfo<'a> {
             }
         }
 
+        if revision >= DBMS_MIN_PROTOCOL_VERSION_WITH_PARALLEL_REPLICAS {
+            to.write_var_uint(0).await?; // collaborate_with_initiator
+            to.write_var_uint(0).await?; // count_participating_replicas
+            to.write_var_uint(0).await?; // number_of_current_replica
+        }
+
         Ok(())
     }
 }
 
+#[derive(Debug)]
 pub struct OpenTelemetry<'a> {
     trace_id: Uuid,
     span_id: u64,
@@ -113,6 +140,7 @@ pub enum QueryProcessingStage {
     WithMergableStateAfterAggregation,
 }
 
+#[derive(Debug)]
 pub struct Query<'a> {
     pub id: &'a str,
     pub info: ClientInfo<'a>,
@@ -138,18 +166,27 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
             .write_var_uint(protocol::ClientPacketId::Query as u64)
             .await?;
         self.writer.write_string(params.id).await?;
+
         if self.server_hello.revision_version >= DBMS_MIN_REVISION_WITH_CLIENT_INFO {
             params
                 .info
                 .write(&mut self.writer, self.server_hello.revision_version)
                 .await?;
         }
+
         //todo: settings
-        self.writer.write_string("").await?;
+        if self.server_hello.revision_version
+            >= DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS
+        {
+            // TODO: Add settings
+        }
+        self.writer.write_string("").await?; // end of settings
+
         if self.server_hello.revision_version >= DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET {
             //todo interserver secret
             self.writer.write_string("").await?;
         }
+
         self.writer.write_var_uint(params.stage as u64).await?;
         self.writer
             .write_u8(if matches!(params.compression, CompressionMethod::None) {
@@ -160,31 +197,37 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
             .await?;
         self.writer.write_string(params.query).await?;
 
+        if self.server_hello.revision_version >= DBMS_MIN_PROTOCOL_VERSION_WITH_PARAMETERS {
+            // TODO: Add params
+            self.writer.write_string("").await?; // end of params
+        }
+
         self.writer.flush().await?;
         Ok(())
     }
 
     #[cfg(feature = "compression")]
     async fn compress_data(&mut self, byte: u8, block: Block) -> Result<()> {
-        let (out, decompressed_size) =
+        let (mut out, decompressed_size) =
             crate::compression::compress_block(block, self.server_hello.revision_version).await?;
         let mut new_out = Vec::with_capacity(out.len() + 5);
         new_out.push(byte);
         new_out.extend_from_slice(&(out.len() as u32 + 9).to_le_bytes()[..]);
         new_out.extend_from_slice(&(decompressed_size as u32).to_le_bytes()[..]);
-        new_out.extend(out);
-
+        new_out.append(&mut out);
+        std::mem::drop(out);
         let hash = cityhash_rs::cityhash_102_128(&new_out[..]);
         self.writer.write_u64_le((hash >> 64) as u64).await?;
         self.writer.write_u64_le(hash as u64).await?;
         // self.writer.write_u8(byte).await?;
         // self.writer.write_u32_le(out.len() as u32).await?;
         self.writer.write_all(&new_out[..]).await?;
+        std::mem::drop(new_out);
         Ok(())
     }
 
     #[cfg(not(feature = "compression"))]
-    async fn compress_data(&mut self, _byte: u8, _block: &Block) -> Result<()> {
+    async fn compress_data(&mut self, _byte: u8, _block: Block) -> Result<()> {
         panic!("attempted to use compression when not compiled with `compression` feature in klickhouse");
     }
 
@@ -193,18 +236,14 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
         block: Block,
         compression: CompressionMethod,
         name: &str,
-        scalar: bool,
     ) -> Result<()> {
-        if scalar {
-            self.writer
-                .write_var_uint(protocol::ClientPacketId::Scalar as u64)
-                .await?;
-        } else {
-            self.writer
-                .write_var_uint(protocol::ClientPacketId::Data as u64)
-                .await?;
-        }
+        self.writer
+            .write_var_uint(protocol::ClientPacketId::Data as u64)
+            .await?;
+
+        // Table name
         self.writer.write_string(name).await?;
+
         match compression {
             CompressionMethod::None => {
                 block
@@ -242,6 +281,16 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
         self.writer.write_string(params.username).await?;
         self.writer.write_string(params.password).await?;
         self.writer.flush().await?;
+        Ok(())
+    }
+
+    pub async fn send_addendum(&mut self) -> Result<()> {
+        if self.server_hello.revision_version >= DBMS_MIN_PROTOCOL_VERSION_WITH_ADDENDUM {
+            self.writer.write_string("").await?;
+
+            // // TODO: Should this flush? Otherwise what is it doing?
+            // self.writer.flush().await?;
+        }
         Ok(())
     }
 

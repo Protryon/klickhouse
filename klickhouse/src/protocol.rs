@@ -10,20 +10,32 @@ pub const DBMS_MIN_REVISION_WITH_QUOTA_KEY_IN_CLIENT_INFO: u64 = 54060;
 // pub const DBMS_MIN_REVISION_WITH_TIME_ZONE_PARAMETER_IN_DATETIME_DATA_TYPE: u64 = 54337;
 pub const DBMS_MIN_REVISION_WITH_SERVER_DISPLAY_NAME: u64 = 54372;
 pub const DBMS_MIN_REVISION_WITH_VERSION_PATCH: u64 = 54401;
-// pub const DBMS_MIN_REVISION_WITH_SERVER_LOGS: u64 = 54406;
+pub const DBMS_MIN_REVISION_WITH_SERVER_LOGS: u64 = 54406;
 // pub const DBMS_MIN_REVISION_WITH_CLIENT_SUPPORT_EMBEDDED_DATA: u64 = 54415;
 // pub const DBMS_MIN_REVISION_WITH_CURRENT_AGGREGATION_VARIANT_SELECTION_METHOD: u64 = 54431;
 // pub const DBMS_MIN_REVISION_WITH_COLUMN_DEFAULTS_METADATA: u64 = 54410;
 // pub const DBMS_MIN_REVISION_WITH_LOW_CARDINALITY_TYPE: u64 = 54405;
 pub const DBMS_MIN_REVISION_WITH_CLIENT_WRITE_INFO: u64 = 54420;
-// pub const DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS: u64 = 54429;
+pub const DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS: u64 = 54429;
 pub const DBMS_MIN_REVISION_WITH_OPENTELEMETRY: u64 = 54442;
 pub const DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET: u64 = 54441;
 // pub const DBMS_MIN_REVISION_WITH_X_FORWARDED_FOR_IN_CLIENT_INFO: u64 = 54443;
 // pub const DBMS_MIN_REVISION_WITH_REFERER_IN_CLIENT_INFO: u64 = 54447;
 pub const DBMS_MIN_PROTOCOL_VERSION_WITH_DISTRIBUTED_DEPTH: u64 = 54448;
 
-pub const DBMS_TCP_PROTOCOL_VERSION: u64 = 54448;
+pub const DBMS_MIN_PROTOCOL_VERSION_WITH_QUERY_START_TIME: u64 = 54449;
+// pub const DBMS_MIN_PROTOCOL_VERSION_WITH_INCREMENTAL_PROFILE_EVENTS: u64 = 54451;
+pub const DBMS_MIN_PROTOCOL_VERSION_WITH_PARALLEL_REPLICAS: u64 = 54453;
+pub const DBMS_MIN_PROTOCOL_VERSION_WITH_CUSTOM_SERIALIZATION: u64 = 54454;
+pub const DBMS_MIN_PROTOCOL_VERSION_WITH_PROFILE_EVENTS_IN_INSERT: u64 = 54456;
+pub const DBMS_MIN_PROTOCOL_VERSION_WITH_ADDENDUM: u64 = 54458;
+pub const DBMS_MIN_PROTOCOL_VERSION_WITH_PARAMETERS: u64 = 54459;
+pub const DBMS_MIN_PROTOCOL_VERSION_WITH_SERVER_QUERY_TIME_IN_PROGRESS: u64 = 54460;
+pub const DBMS_MIN_PROTOCOL_VERSION_WITH_PASSWORD_COMPLEXITY_RULES: u64 = 54461;
+pub const DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET_V2: u64 = 54462;
+
+// main repo = 54448;
+pub const DBMS_TCP_PROTOCOL_VERSION: u64 = DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET_V2;
 
 pub const MAX_STRING_SIZE: usize = 1 << 30;
 
@@ -37,10 +49,12 @@ pub enum ClientPacketId {
     Cancel,
     Ping,
     TablesStatusRequest,
-    KeepAlive,
-    Scalar,
-    IgnoredPartUUIDs,
-    ReadTaskResponse,
+    // NOTE: Deprecated??
+    //
+    // KeepAlive,
+    // Scalar,
+    // IgnoredPartUUIDs,
+    // ReadTaskResponse,
 }
 
 #[repr(u64)]
@@ -60,6 +74,7 @@ pub enum ServerPacketId {
     TableColumns,
     PartUUIDs,
     ReadTaskRequest,
+    ProfileEvents,
 }
 
 impl ServerPacketId {
@@ -79,6 +94,7 @@ impl ServerPacketId {
             11 => ServerPacketId::TableColumns,
             12 => ServerPacketId::PartUUIDs,
             13 => ServerPacketId::ReadTaskRequest,
+            14 => ServerPacketId::ProfileEvents,
             x => {
                 return Err(KlickhouseError::ProtocolError(format!(
                     "invalid packet id from server: {}",
@@ -94,10 +110,10 @@ pub struct ServerHello {
     pub server_name: String,
     pub major_version: u64,
     pub minor_version: u64,
+    pub patch_version: u64,
     pub revision_version: u64,
     pub timezone: Option<String>,
     pub display_name: Option<String>,
-    pub patch_version: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -153,6 +169,17 @@ pub struct TablesStatusResponse {
     pub database_tables: IndexMap<String, IndexMap<String, TableStatus>>,
 }
 
+// TODO: Check against block received, use if matches
+// #[derive(Debug, Clone)]
+// pub struct ProfileEvents {
+//     pub host_name: String,
+//     pub current_time: String,
+//     pub thread_id: u64,
+//     pub type_: i8,
+//     pub name: String,
+//     pub value: i64,
+// }
+
 #[derive(Debug, Clone)]
 pub enum ServerPacket {
     Hello(ServerHello),
@@ -169,6 +196,8 @@ pub enum ServerPacket {
     TableColumns(TableColumns),
     PartUUIDs(Vec<Uuid>),
     ReadTaskRequest,
+    // TODO: implement
+    ProfileEvents(Option<ServerData>),
 }
 
 #[derive(Clone, Copy, Debug, Default)]

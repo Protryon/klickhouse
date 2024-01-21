@@ -6,20 +6,20 @@ use super::{Serializer, SerializerState, Type};
 
 // Trait to allow serializing [Values] wrapping an array of items.
 pub trait ArraySerializerGeneric {
-    fn inner_type(type_: &Type) -> &Type;
-    fn value_len(value: &Value) -> usize;
-    fn values(value: Value) -> Vec<Value>;
+    fn inner_type(type_: &Type) -> Result<&Type>;
+    fn value_len(value: &Value) -> Result<usize>;
+    fn values(value: Value) -> Result<Vec<Value>>;
 }
 
 pub struct ArraySerializer;
 impl ArraySerializerGeneric for ArraySerializer {
-    fn value_len(value: &Value) -> usize {
-        value.unwrap_array_ref().len()
+    fn value_len(value: &Value) -> Result<usize> {
+        value.unwrap_array_ref().map(|a| a.len())
     }
-    fn inner_type(type_: &Type) -> &Type {
+    fn inner_type(type_: &Type) -> Result<&Type> {
         type_.unwrap_array()
     }
-    fn values(value: Value) -> Vec<Value> {
+    fn values(value: Value) -> Result<Vec<Value>> {
         value.unwrap_array()
     }
 }
@@ -31,7 +31,7 @@ impl<T: ArraySerializerGeneric + 'static> Serializer for T {
         writer: &mut W,
         state: &mut SerializerState,
     ) -> Result<()> {
-        T::inner_type(type_).serialize_prefix(writer, state).await
+        T::inner_type(type_)?.serialize_prefix(writer, state).await
     }
 
     async fn write<W: ClickhouseWrite>(
@@ -40,23 +40,25 @@ impl<T: ArraySerializerGeneric + 'static> Serializer for T {
         writer: &mut W,
         state: &mut SerializerState,
     ) -> Result<()> {
-        let type_ = T::inner_type(type_);
+        let type_ = T::inner_type(type_)?;
+
         let mut offset = 0usize;
         for value in &values {
-            offset += Self::value_len(value);
+            offset += Self::value_len(value)?;
             writer.write_u64_le(offset as u64).await?;
         }
         let mut all_values: Vec<Value> = Vec::with_capacity(offset);
         for value in values {
-            all_values.extend(Self::values(value));
+            all_values.append(&mut Self::values(value)?);
         }
         match type_.serialize_column(all_values, writer, state).await {
             Ok(_) => {}
             Err(e) => {
-                log::error!("error serializing column in array: {}", e);
+                log::error!("error serializing column in array: {}\n{type_:?}", e);
                 return Err(e);
             }
         };
+
         Ok(())
     }
 }

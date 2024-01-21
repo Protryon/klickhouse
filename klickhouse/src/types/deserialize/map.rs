@@ -23,7 +23,11 @@ impl Deserializer for MapDeserializer {
                 ])));
                 nested.deserialize_prefix(reader, state).await?;
             }
-            _ => unimplemented!(),
+            _ => {
+                return Err(KlickhouseError::DeserializeError(
+                    "MapDeserializer called with non-map type".to_string(),
+                ))
+            }
         }
         Ok(())
     }
@@ -46,7 +50,11 @@ impl Deserializer for MapDeserializer {
 
         let (key, value) = match type_ {
             Type::Map(key, value) => (key, value),
-            _ => unimplemented!(),
+            _ => {
+                return Err(KlickhouseError::DeserializeError(
+                    "MapDeserializer called with non-map type".to_string(),
+                ))
+            }
         };
 
         let mut offsets: Vec<u64> = Vec::with_capacity(rows);

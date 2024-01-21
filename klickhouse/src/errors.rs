@@ -37,6 +37,8 @@ pub enum KlickhouseError {
     UnexpectedType(Type),
     #[error("unexpected type for column {0}: {1}")]
     UnexpectedTypeWithColumn(Cow<'static, str>, Type),
+    #[error("unimplemented: {0}")]
+    Unimplemented(&'static str),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("utf-8 conversion error: {0}")]
@@ -89,6 +91,7 @@ impl Clone for KlickhouseError {
             }
             Self::Io(arg0) => Self::Io(std::io::Error::new(arg0.kind(), format!("{arg0}"))),
             Self::Utf8(arg0) => Self::Utf8(arg0.clone()),
+            Self::Unimplemented(arg0) => Self::Unimplemented(arg0),
         }
     }
 }

@@ -156,6 +156,12 @@ impl<T: ToSql, Y: ToSql> ToSql for IndexMap<T, Y> {
     }
 }
 
+impl ToSql for serde_json::Value {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
+        Ok(Value::Object(self.to_string().into_bytes()))
+    }
+}
+
 impl<T: ToSql> ToSql for Option<T> {
     fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
         match self {

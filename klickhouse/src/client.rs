@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
 
-use futures::{stream, Stream, StreamExt};
-use indexmap::IndexMap;
+use futures::{Stream, StreamExt};
 use protocol::CompressionMethod;
 use tokio::{
     io::{AsyncRead, AsyncWrite, BufReader, BufWriter},
@@ -42,6 +41,7 @@ struct InnerClient<R: ClickhouseRead, W: ClickhouseWrite> {
     progress: broadcast::Sender<(Uuid, Progress)>,
 }
 
+#[derive(Debug)]
 struct PendingQuery {
     query: String,
     response: oneshot::Sender<mpsc::Receiver<Result<Block>>>,
@@ -94,12 +94,11 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
                 Block {
                     info: BlockInfo::default(),
                     rows: 0,
-                    column_types: IndexMap::new(),
-                    column_data: IndexMap::new(),
+                    ..Default::default()
                 },
                 CompressionMethod::default(),
+                // TODO: Why is name blank here??
                 "",
-                false,
             )
             .await?;
         Ok(())
@@ -118,27 +117,47 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
             ClientRequestData::SendData { block, response } => {
                 match self
                     .output
-                    .send_data(block, CompressionMethod::default(), "", false)
+                    // TODO: Why is name blank here???
+                    .send_data(block, CompressionMethod::default(), "")
                     .await
                 {
-                    Ok(_) => {}
+                    Ok(_) => response.send(Ok(())).ok(),
                     Err(e) => {
                         error!("failed to send data block: {:#?}", e);
-                        return Err(e);
+                        response.send(Err(e)).ok()
                     }
                 };
-                response.send(()).ok();
             }
         }
+
         Ok(())
     }
 
-    async fn receive_packet(&mut self, packet: ServerPacket) -> Result<()> {
+    /// receive_packet
+    ///
+    /// After inner client deserializes server packet, it is fowarded to this function.
+    async fn receive_packet(&mut self, packet: Result<ServerPacket>) -> Result<()> {
+        // NOTE: Unwrapping the result here so we can notify the consumer of any errors
+        let packet = match packet {
+            Ok(packet) => packet,
+            Err(e) => {
+                if let Some((_, current)) = self.executing_query.take() {
+                    current.send(Err(e)).await.ok();
+                    if let Some(query) = self.pending_queries.pop_front() {
+                        self.dispatch_query(query).await?;
+                    }
+                } else {
+                    return Err(e);
+                }
+                return Ok(());
+            }
+        };
+
         match packet {
             ServerPacket::Hello(_) => {
                 return Err(KlickhouseError::ProtocolError(
                     "unexpected retransmission of server hello".to_string(),
-                ))
+                ));
             }
             ServerPacket::Data(block) => {
                 if let Some((_, current)) = self.executing_query.as_ref() {
@@ -183,6 +202,7 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
             ServerPacket::TableColumns(_) => {}
             ServerPacket::PartUUIDs(_) => {}
             ServerPacket::ReadTaskRequest => {}
+            ServerPacket::ProfileEvents(_events) => {}
         }
         Ok(())
     }
@@ -204,9 +224,19 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
             }
         };
 
-        let hello_response = self.input.receive_hello().await?;
+        let hello_response = match self.input.receive_hello().await {
+            Ok(hello_response) => hello_response,
+            Err(e) => {
+                error!("failed to receive hello: {:#?}", e);
+                return Err(e);
+            }
+        };
+
         self.input.server_hello = hello_response.clone();
         self.output.server_hello = hello_response.clone();
+
+        // No-op if revision doesn't match
+        self.output.send_addendum().await?;
 
         loop {
             select! {
@@ -214,16 +244,15 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
                     if request.is_none() {
                         return Ok(());
                     }
-                    self.handle_request(request.unwrap()).await?;
+                    match self.handle_request(request.unwrap()).await {
+                        Ok(_) => {},
+                        Err(e) => error!("failed to handle request: {:?}", e)
+                    };
                 },
                 packet = self.input.receive_packet() => {
-                    let packet = packet?;
                     match self.receive_packet(packet).await {
                         Ok(_) => {},
-                        Err(e) => {
-                            error!("failed to receive packet: {:#?}", e);
-                            return Err(e);
-                        }
+                        Err(e) => return Err(e)
                     };
                 },
             }
@@ -235,6 +264,8 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
             error!("clickhouse client failed: {:#?}", e);
         }
     }
+
+    // TODO: Add ping here, specifically in the context of re-connecting on connection failure
 }
 
 enum ClientRequestData {
@@ -244,7 +275,7 @@ enum ClientRequestData {
     },
     SendData {
         block: Block,
-        response: oneshot::Sender<()>,
+        response: oneshot::Sender<Result<()>>,
     },
 }
 
@@ -320,18 +351,34 @@ impl Client {
 
         tokio::spawn(inner.run(receiver));
         let client = Client { sender, progress };
-        // TODO: Remove
-        client
-            .execute("SET date_time_input_format='best_effort'")
-            .await?;
         Ok(client)
     }
 
-    /// Sends a query string and read column blocks over a stream.
-    /// You probably want [`Client::query()`]
-    pub async fn query_raw(
+    async fn send_data(&self, block: Block) -> Result<()> {
+        let (sender, receiver) = oneshot::channel::<Result<()>>();
+        self.sender
+            .send(ClientRequest {
+                data: ClientRequestData::SendData {
+                    block,
+                    response: sender,
+                },
+            })
+            .await
+            .map_err(|e| KlickhouseError::ProtocolError(format!("failed to send block: {e}")))?;
+        receiver.await.map_err(|e| {
+            KlickhouseError::ProtocolError(format!("failed to receive blocks from upstream: {e}"))
+        })??;
+
+        Ok(())
+    }
+
+    /// Sends a query string with streaming associated data (i.e. insert) over native protocol.
+    /// Once all outgoing blocks are written (EOF of `blocks` stream), then any response blocks from Clickhouse are read.
+    /// You probably want [`Client::insert_native`].
+    pub async fn insert_block(
         &self,
         query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
+        block: Block,
     ) -> Result<impl Stream<Item = Result<Block>>> {
         let (sender, receiver) = oneshot::channel();
         self.sender
@@ -347,25 +394,15 @@ impl Client {
             KlickhouseError::ProtocolError(format!("failed to receive blocks from upstream: {e}"))
         })?;
 
+        self.send_data(block).await?;
+        self.send_data(Block {
+            info: BlockInfo::default(),
+            rows: 0,
+            ..Default::default()
+        })
+        .await?;
+
         Ok(ReceiverStream::new(receiver))
-    }
-
-    async fn send_data(&self, block: Block) -> Result<()> {
-        let (sender, receiver) = oneshot::channel();
-        self.sender
-            .send(ClientRequest {
-                data: ClientRequestData::SendData {
-                    block,
-                    response: sender,
-                },
-            })
-            .await
-            .map_err(|e| KlickhouseError::ProtocolError(format!("failed to send block: {e}")))?;
-        receiver.await.map_err(|e| {
-            KlickhouseError::ProtocolError(format!("failed to receive blocks from upstream: {e}"))
-        })?;
-
-        Ok(())
     }
 
     /// Sends a query string with streaming associated data (i.e. insert) over native protocol.
@@ -396,95 +433,11 @@ impl Client {
         self.send_data(Block {
             info: BlockInfo::default(),
             rows: 0,
-            column_types: IndexMap::new(),
-            column_data: IndexMap::new(),
+            ..Default::default()
         })
         .await?;
 
         Ok(ReceiverStream::new(receiver))
-    }
-
-    /// Sends a query string with streaming associated data (i.e. insert) over native protocol.
-    /// Once all outgoing blocks are written (EOF of `blocks` stream), then any response blocks from Clickhouse are read and DISCARDED.
-    /// Make sure any query you send native data with has a `format native` suffix.
-    pub async fn insert_native<T: Row + Send + Sync + 'static>(
-        &self,
-        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
-        mut blocks: impl Stream<Item = Vec<T>> + Send + Sync + Unpin + 'static,
-    ) -> Result<()> {
-        let (sender, receiver) = oneshot::channel();
-        self.sender
-            .send(ClientRequest {
-                data: ClientRequestData::Query {
-                    query: query.try_into()?.0.trim().to_string(),
-                    response: sender,
-                },
-            })
-            .await
-            .map_err(|e| KlickhouseError::ProtocolError(format!("failed to send query: {e}")))?;
-        let mut receiver = receiver.await.map_err(|e| {
-            KlickhouseError::ProtocolError(format!("failed to receive blocks from upstream: {e}"))
-        })?;
-        let first_block = receiver.recv().await.ok_or_else(|| {
-            KlickhouseError::ProtocolError("missing header block from server".to_string())
-        })??;
-        while let Some(rows) = blocks.next().await {
-            if rows.is_empty() {
-                continue;
-            }
-            let mut block = Block {
-                info: BlockInfo::default(),
-                rows: rows.len() as u64,
-                column_types: first_block.column_types.clone(),
-                column_data: IndexMap::new(),
-            };
-            rows.into_iter()
-                .map(|x| x.serialize_row(&first_block.column_types))
-                .filter_map(|x| match x {
-                    Err(e) => {
-                        error!("serialization error during insert (SKIPPED ROWS!): {:?}", e);
-                        None
-                    }
-                    Ok(x) => Some(x),
-                })
-                .try_for_each(|x| -> Result<()> {
-                    for (key, value) in x {
-                        let type_ = first_block.column_types.get(&*key).ok_or_else(|| {
-                            KlickhouseError::ProtocolError(format!(
-                                "missing type for data, column: {key}"
-                            ))
-                        })?;
-                        type_.validate_value(&value)?;
-                        if let Some(column) = block.column_data.get_mut(&*key) {
-                            column.push(value);
-                        } else {
-                            block.column_data.insert(key.into_owned(), vec![value]);
-                        }
-                    }
-                    Ok(())
-                })?;
-            self.send_data(block).await?;
-        }
-        self.send_data(Block {
-            info: BlockInfo::default(),
-            rows: 0,
-            column_types: IndexMap::new(),
-            column_data: IndexMap::new(),
-        })
-        .await?;
-        Ok(())
-    }
-
-    /// Wrapper over [`Client::insert_native`] to send a single block.
-    /// Make sure any query you send native data with has a `format native` suffix.
-    pub async fn insert_native_block<T: Row + Send + Sync + 'static>(
-        &self,
-        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
-        blocks: Vec<T>,
-    ) -> Result<()> {
-        let blocks = Box::pin(async move { blocks });
-        let stream = futures::stream::once(blocks);
-        self.insert_native(query, stream).await
     }
 
     /// Runs a query against Clickhouse, returning a stream of deserialized rows.
@@ -492,38 +445,22 @@ impl Client {
     pub async fn query<T: Row>(
         &self,
         query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
-    ) -> Result<impl Stream<Item = Result<T>>> {
+    ) -> Result<impl Stream<Item = Result<Vec<T>>>> {
         let raw = self.query_raw(query).await?;
-        Ok(raw.flat_map(|block| match block {
-            Ok(mut block) => stream::iter(
-                block
-                    .take_iter_rows()
-                    .filter(|x| !x.is_empty())
-                    .map(|m| T::deserialize_row(m))
-                    .collect::<Vec<_>>(),
-            ),
-            Err(e) => stream::iter(vec![Err(e)]),
+        Ok(raw.map(|block| match block {
+            Ok(mut block) => block
+                .take_iter_rows()
+                .map(T::deserialize_row)
+                .collect::<Result<Vec<_>>>(),
+            Err(e) => return Err(e),
         }))
-    }
-
-    /// Same as `query`, but collects all rows into a `Vec`
-    pub async fn query_collect<T: Row>(
-        &self,
-        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
-    ) -> Result<Vec<T>> {
-        let mut out = vec![];
-        let mut stream = self.query::<T>(query).await?;
-        while let Some(next) = stream.next().await {
-            out.push(next?);
-        }
-        Ok(out)
     }
 
     /// Same as `query`, but returns the first row and discards the rest.
     pub async fn query_one<T: Row>(
         &self,
         query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
-    ) -> Result<T> {
+    ) -> Result<Vec<T>> {
         self.query::<T>(query)
             .await?
             .next()
@@ -531,12 +468,27 @@ impl Client {
             .unwrap_or_else(|| Err(KlickhouseError::MissingRow))
     }
 
-    /// Same as `query`, but returns the first row, if any, and discards the rest.
-    pub async fn query_opt<T: Row>(
+    /// Sends a query string and read column blocks over a stream.
+    /// You probably want [`Client::query()`]
+    pub async fn query_raw(
         &self,
         query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
-    ) -> Result<Option<T>> {
-        self.query::<T>(query).await?.next().await.transpose()
+    ) -> Result<impl Stream<Item = Result<Block>>> {
+        let (sender, receiver) = oneshot::channel();
+        self.sender
+            .send(ClientRequest {
+                data: ClientRequestData::Query {
+                    query: query.try_into()?.0,
+                    response: sender,
+                },
+            })
+            .await
+            .map_err(|e| KlickhouseError::ProtocolError(format!("failed to send query: {e}")))?;
+        let receiver = receiver.await.map_err(|e| {
+            KlickhouseError::ProtocolError(format!("failed to receive blocks from upstream: {e}"))
+        })?;
+
+        Ok(ReceiverStream::new(receiver))
     }
 
     /// Same as `query`, but discards all returns blocks. Waits until the first block returns from the server to check for errors.

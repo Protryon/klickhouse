@@ -46,22 +46,28 @@ macro_rules! array_ser {
         paste::paste! {
             pub struct [<$name Serializer>];
             impl super::array::ArraySerializerGeneric for [<$name Serializer>] {
-                fn inner_type(_type_: &Type) -> &Type {
-                    &Type::$item
+                fn inner_type(_type_: &Type) -> Result<&Type> {
+                    Ok(&Type::$item)
                 }
-                fn value_len(value: &Value) -> usize {
+                fn value_len(value: &Value) -> Result<usize> {
                     match value {
-                        Value::$name(array) => array.0.len(),
-                        _ => unreachable!()
+                        Value::$name(array) => Ok(array.0.len()),
+                        _ => Err(crate::errors::KlickhouseError::SerializeError(format!(
+                            "Expected Value::{}",
+                            stringify!($name)
+                        )))
                     }
                 }
-                fn values(value: Value) -> Vec<Value> {
+                fn values(value: Value) -> Result<Vec<Value>> {
                     match value {
                         // The into_iter/collect is annoying, but unavoidable if we want
                         // to give strong types to the user inside the containers rather than
                         // [Value]s.
-                        Value::$name(array) => array.0.into_iter().map(Value::$item).collect(),
-                        _ => unreachable!()
+                        Value::$name(array) => Ok(array.0.into_iter().map(Value::$item).collect()),
+                        _ => Err(crate::errors::KlickhouseError::SerializeError(format!(
+                            "Expected Value::{}",
+                            stringify!($name)
+                        )))
                     }
                 }
             }

@@ -83,6 +83,8 @@ pub enum Value {
     Ring(Ring),
     Polygon(Polygon),
     MultiPolygon(MultiPolygon),
+
+    Object(Vec<u8>),
 }
 
 impl PartialEq for Value {
@@ -202,28 +204,38 @@ impl Value {
             Value::UInt16(x) => *x as usize,
             Value::UInt32(x) => *x as usize,
             Value::UInt64(x) => *x as usize,
+            // TODO: Remove this, no panics
             _ => unimplemented!(),
         }
     }
 
-    pub fn unwrap_array_ref(&self) -> &[Value] {
+    pub fn unwrap_array_ref(&self) -> Result<&[Value]> {
         match self {
-            Value::Array(a) => &a[..],
-            _ => unimplemented!(),
+            Value::Array(a) => Ok(&a[..]),
+            _ => Err(crate::errors::KlickhouseError::SerializeError(format!(
+                "Expected array, got {}",
+                self
+            ))),
         }
     }
 
-    pub fn unwrap_array(self) -> Vec<Value> {
+    pub fn unwrap_array(self) -> Result<Vec<Value>> {
         match self {
-            Value::Array(a) => a,
-            _ => unimplemented!(),
+            Value::Array(a) => Ok(a),
+            _ => Err(crate::errors::KlickhouseError::SerializeError(format!(
+                "Expected array, got {}",
+                self
+            ))),
         }
     }
 
-    pub fn unwrap_tuple(self) -> Vec<Value> {
+    pub fn unwrap_tuple(self) -> Result<Vec<Value>> {
         match self {
-            Value::Tuple(a) => a,
-            _ => unimplemented!(),
+            Value::Tuple(a) => Ok(a),
+            _ => Err(crate::errors::KlickhouseError::SerializeError(format!(
+                "Expected tuple, got {}",
+                self
+            ))),
         }
     }
 
@@ -278,8 +290,8 @@ impl Value {
             Value::Date(_) => Type::Date,
             Value::DateTime(time) => Type::DateTime(time.0),
             Value::DateTime64(x) => Type::DateTime64(x.2, x.0),
-            Value::Enum8(_) => unimplemented!(),
-            Value::Enum16(_) => unimplemented!(),
+            Value::Enum8(i) => Type::Enum8(vec![(None, *i)]),
+            Value::Enum16(i) => Type::Enum16(vec![(None, *i)]),
             Value::Array(x) => Type::Array(Box::new(
                 x.first().map(|x| x.guess_type()).unwrap_or(Type::String),
             )),
@@ -296,6 +308,7 @@ impl Value {
             Value::Ring(_) => Type::Ring,
             Value::Polygon(_) => Type::Polygon,
             Value::MultiPolygon(_) => Type::MultiPolygon,
+            Value::Object(_) => Type::Object,
         }
     }
 }
@@ -378,6 +391,7 @@ impl fmt::Display for Value {
                 }
             }
             Value::Decimal256(..) => {
+                // TODO: Remove this, no panics
                 unimplemented!("Decimal256 display not implemented");
             }
             Value::String(string) => {
@@ -450,6 +464,12 @@ impl fmt::Display for Value {
             Value::Ring(x) => write!(f, "{:?}", x),
             Value::Polygon(x) => write!(f, "{:?}", x),
             Value::MultiPolygon(x) => write!(f, "{:?}", x),
+            Value::Object(x) => {
+                let x = serde_json::from_slice(x).unwrap_or(std::str::from_utf8(x).unwrap_or(""));
+                write!(f, "'")?;
+                escape_string(f, x)?;
+                write!(f, "'")
+            }
         }
     }
 }

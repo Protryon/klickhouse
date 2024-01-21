@@ -8,7 +8,7 @@ use super::{Deserializer, DeserializerState, Type};
 pub trait ArrayDeserializerGeneric {
     type Item;
     /// The type of the items, e.g. [Value]
-    fn inner_type(type_: &Type) -> &Type;
+    fn inner_type(type_: &Type) -> Result<&Type>;
     /// Mapping from items to the return Value, e.g. simply `Vec<Value> -> Value::Array(items)`.
     fn inner_value(items: Vec<Self::Item>) -> Value;
     /// Conversion between the [Value] read and the items, e.g. simply the identity.
@@ -19,7 +19,7 @@ pub trait ArrayDeserializerGeneric {
 pub struct ArrayDeserializer;
 impl ArrayDeserializerGeneric for ArrayDeserializer {
     type Item = Value;
-    fn inner_type(type_: &Type) -> &Type {
+    fn inner_type(type_: &Type) -> Result<&Type> {
         type_.unwrap_array()
     }
     fn inner_value(items: Vec<Self::Item>) -> Value {
@@ -37,7 +37,7 @@ impl<T: ArrayDeserializerGeneric + 'static> Deserializer for T {
         reader: &mut R,
         state: &mut DeserializerState,
     ) -> Result<()> {
-        Self::inner_type(type_)
+        Self::inner_type(type_)?
             .deserialize_prefix(reader, state)
             .await
     }
@@ -55,7 +55,7 @@ impl<T: ArrayDeserializerGeneric + 'static> Deserializer for T {
         for _ in 0..rows {
             offsets.push(reader.read_u64_le().await?);
         }
-        let mut items = Self::inner_type(type_)
+        let mut items = Self::inner_type(type_)?
             .deserialize_column(reader, offsets[offsets.len() - 1] as usize, state)
             .await?
             .into_iter()
