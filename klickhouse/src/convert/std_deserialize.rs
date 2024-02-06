@@ -271,7 +271,7 @@ impl<T: FromSql> FromSql for Option<T> {
     fn from_sql(type_: &Type, value: Value) -> Result<Self> {
         let subtype = match type_ {
             Type::Nullable(x) => x.strip_low_cardinality(),
-            x => return Err(unexpected_type(x)),
+            x => x,
         };
         match value {
             Value::Null => Ok(None),
