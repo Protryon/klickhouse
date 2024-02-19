@@ -191,7 +191,13 @@ impl AsyncTransaction for Client {
             }
         };
         for query in queries {
+            if query.is_empty() {
+                continue;
+            }
             for query in query_parser::split_query_statements(query) {
+                if query.is_empty() {
+                    continue;
+                }
                 Client::execute(self, query).await?;
             }
         }
