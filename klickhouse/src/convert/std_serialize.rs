@@ -99,7 +99,9 @@ impl<'a> ToSql for &'a str {
 
 impl<T: ToSql + 'static> ToSql for Vec<T> {
     fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
-        let type_hint = type_hint.and_then(|x| x.unarray());
+        let type_hint = type_hint
+            .and_then(|x| x.unarray())
+            .map(|x| x.strip_low_cardinality());
         if matches!(type_hint, Some(Type::String) | Some(Type::FixedString(_))) {
             let type_id = TypeId::of::<T>();
             if type_id == TypeId::of::<u8>() || type_id == TypeId::of::<i8>() {
@@ -168,7 +170,9 @@ impl<T: ToSql> ToSql for Option<T> {
 #[cfg(const_generics)]
 impl<T: ToSql, const N: usize> ToSql for [T; N] {
     fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
-        let type_hint = type_hint.and_then(|x| x.unarray());
+        let type_hint = type_hint
+            .and_then(|x| x.unarray())
+            .map(|x| x.strip_low_cardinality());
         Ok(Value::Array(
             IntoIterator::into_iter(self)
                 .map(|x| x.to_sql(type_hint))

@@ -609,7 +609,7 @@ dependencies = [
 
 [[package]]
 name = "klickhouse"
-version = "0.11.0"
+version = "0.11.1"
 dependencies = [
  "async-trait",
  "bb8",
@@ -642,7 +642,7 @@ dependencies = [
 
 [[package]]
 name = "klickhouse_derive"
-version = "0.11.0"
+version = "0.11.1"
 dependencies = [
  "proc-macro2",
  "quote",

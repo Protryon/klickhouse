@@ -444,7 +444,7 @@ fn deserialize_map(
                         } else if #deser_name_ext_len != values.len() {
                             return ::klickhouse::Result::Err(::klickhouse::KlickhouseError::DeserializeError(format!("invalid length for nested columns, mismatches previous column {}: {} != {}", _name, #deser_name_ext_len, values.len())));
                         }
-                        #deser_name_ext.push((full_name.strip_prefix(#deser_name_dotted).unwrap(), _type_.unarray().ok_or_else(|| ::klickhouse::KlickhouseError::UnexpectedTypeWithColumn(::std::borrow::Cow::Owned(full_name.to_string()), _type_.clone()))?));
+                        #deser_name_ext.push((full_name.strip_prefix(#deser_name_dotted).unwrap(), _type_.unarray().map(|x| x.strip_low_cardinality()).ok_or_else(|| ::klickhouse::KlickhouseError::UnexpectedTypeWithColumn(::std::borrow::Cow::Owned(full_name.to_string()), _type_.clone()))?));
                         #deser_name_ext_iter.push(values.into_iter());
                     }
                 });
@@ -456,7 +456,7 @@ fn deserialize_map(
                         } else if #deser_name_ext_len != values.len() {
                             return ::klickhouse::Result::Err(::klickhouse::KlickhouseError::DeserializeError(format!("invalid length for nested columns, mismatches previous column {}: {} != {}", _name, #deser_name_ext_len, values.len())));
                         }
-                        #deser_name_ext.push((_name, _type_.unarray().ok_or_else(|| ::klickhouse::KlickhouseError::UnexpectedTypeWithColumn(::std::borrow::Cow::Owned(_name.to_string()), _type_.clone()))?));
+                        #deser_name_ext.push((_name, _type_.unarray().map(|x| x.strip_low_cardinality()).ok_or_else(|| ::klickhouse::KlickhouseError::UnexpectedTypeWithColumn(::std::borrow::Cow::Owned(_name.to_string()), _type_.clone()))?));
                         #deser_name_ext_iter.push(values.into_iter());
                     }
                 });
@@ -487,11 +487,11 @@ fn deserialize_map(
                 None => {
                     let field_ty = field.ty;
                     let span = field.original.span();
-                    quote_spanned!(span=> <#field_ty as ::klickhouse::FromSql>::from_sql(_type_, _value).map_err(|e| e.with_column_name(#deser_name))?)
+                    quote_spanned!(span=> <#field_ty as ::klickhouse::FromSql>::from_sql(_type_.strip_low_cardinality(), _value).map_err(|e| e.with_column_name(#deser_name))?)
                 }
                 Some(path) => {
                     let span = field.original.span();
-                    quote_spanned!(span=> #path(_type_, _value)?)
+                    quote_spanned!(span=> #path(_type_.strip_low_cardinality(), _value)?)
                 }
             };
             name_match_arms.push(quote_spanned! { span=>
