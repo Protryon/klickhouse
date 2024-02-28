@@ -191,7 +191,6 @@ impl TryFrom<chrono::DateTime<FixedOffset>> for DateTime {
     fn try_from(other: chrono::DateTime<FixedOffset>) -> Result<Self, TryFromIntError> {
         chrono_tz::Tz::UTC
             .from_utc_datetime(&other.naive_utc())
-            .with_timezone(&other.timezone())
             .try_into()
     }
 }
