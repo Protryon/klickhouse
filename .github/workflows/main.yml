@@ -17,6 +17,13 @@ jobs:
       matrix:
         include:
           - { rust: stable, os: ubuntu-22.04 }
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:24.3.1
+        ports:
+          - 9000:9000
+        options: >-
+          --ulimit nofile=262144:262144
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,6 +48,13 @@ jobs:
       matrix:
         include:
           - { rust: 1.75.0, os: ubuntu-22.04 }
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:24.3.1
+        ports:
+          - 9000:9000
+        options: >-
+          --ulimit nofile=262144:262144
     steps:
       - name: Checkout
         uses: actions/checkout@v4
