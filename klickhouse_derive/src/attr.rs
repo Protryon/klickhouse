@@ -606,23 +606,6 @@ pub fn get_klickhouse_meta_items(cx: &Ctxt, attr: &syn::Attribute) -> Result<Vec
     };
 
     Ok(nested.into_iter().collect())
-
-    // let mut result = Vec::new();
-
-    // for meta in nested {
-    //     match meta {
-    //         List(list) => {
-    //             result.push(list);
-    //         },
-    //         other => {
-    //             cx.error_spanned_by(other, "expected #[klickhouse(...)]");
-
-    //             return Err(())
-    //         }
-    //     }
-    // }
-
-    // Ok(result)
 }
 
 fn get_lit_str<'a>(cx: &Ctxt, attr_name: Symbol, lit: &'a syn::Lit) -> Result<&'a syn::LitStr, ()> {
