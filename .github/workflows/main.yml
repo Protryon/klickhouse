@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  tests:
+    name: Run tests - Rust (${{ matrix.rust }}) on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { rust: stable, os: ubuntu-22.04 }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: rustfmt
+      - name: Build with all features
+        run: cargo build --all-features
+      - name: Build
+        run: cargo build --workspace --verbose
+      - name: Run tests
+        run: cargo test --workspace --all-features
+      - name: Clean
+        run: cargo clean
+
+  tests_min_compat:
+    name: Run min rust version tests - Rust (${{ matrix.rust }}) on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { rust: 1.75.0, os: ubuntu-22.04 }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: rustfmt
+      - name: Build with all features
+        run: cargo build --all-features
+      - name: Build
+        run: cargo build --workspace --verbose
+      - name: Run tests
+        run: cargo test --workspace --all-features
+      - name: Clean
+        run: cargo clean
+
+  rustfmt:
+    name: Run rustfmt - Rust (${{ matrix.rust }}) on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { rust: nightly-2024-03-31, os: ubuntu-22.04 }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: rustfmt
+      - name: Check format
+        run: cargo +${{ matrix.rust }} fmt --all -- --check
+      - name: Check examples format
+        working-directory: ./examples
+        run: cargo +${{ matrix.rust }} fmt --all -- --check
+
+  clippy:
+    name: Run clippy - Rust (${{ matrix.rust }}) on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { rust: stable, os: ubuntu-22.04 }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: clippy
+      - name: Check with clippy
+        run: cargo clippy --all
+
+  # TODO: Examples need to be reworked
+  # examples:
+  #   name: Build examples - Rust (${{ matrix.rust }}) on ${{ matrix.os }}
+  #   runs-on: ${{ matrix.os }}
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       include:
+  #         - { rust: stable, os: ubuntu-22.04 }
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #       with:
+  #         submodules: true
+  #     - uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         toolchain: ${{ matrix.rust }}
+  #         components: clippy, rustfmt
+  #     - name: Check examples with clippy
+  #       run: cargo clippy --all
+  #       working-directory: ./examples
+  #     - name: Build examples
+  #       run: cargo build --workspace --verbose
+  #       working-directory: ./examples
+  #     - name: Clean examples
+  #       run: cargo clean
+  #       working-directory: ./examples
