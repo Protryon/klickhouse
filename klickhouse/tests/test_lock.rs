@@ -4,9 +4,9 @@ use klickhouse::ClickhouseLock;
 
 #[tokio::test]
 async fn test_client() {
-    env_logger::builder()
+    let _ = env_logger::builder()
         .filter_level(log::LevelFilter::Info)
-        .init();
+        .try_init();
     let client1 = super::get_client().await;
     let client2 = super::get_client().await;
 

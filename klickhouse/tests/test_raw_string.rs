@@ -7,9 +7,9 @@ pub struct TestRawString {
 
 #[tokio::test]
 async fn test_raw_string() {
-    env_logger::builder()
+    let _ = env_logger::builder()
         .filter_level(log::LevelFilter::Info)
-        .init();
+        .try_init();
     let client = super::get_client().await;
 
     super::prepare_table("test_raw_string", "raw_string String", &client).await;
