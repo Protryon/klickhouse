@@ -4,9 +4,8 @@ use crate::symbol::*;
 use proc_macro2::{Span, TokenStream, TokenTree};
 use quote::ToTokens;
 use syn::parse::{self, Parse, ParseStream};
-use syn::Ident;
-use syn::Meta::{List, NameValue, Path};
-use syn::NestedMeta::{Lit, Meta};
+use syn::punctuated::Punctuated;
+use syn::{Expr, Ident, Meta};
 
 // This module handles parsing of `#[klickhouse(...)]` attributes. The entrypoints
 // are `attr::Container::from_ast`, `attr::Variant::from_ast`, and
@@ -142,15 +141,23 @@ impl Container {
         {
             match &meta_item {
                 // Parse `#[klickhouse(rename = "foo")]`
-                Meta(NameValue(m)) if m.path == RENAME => {
-                    if let Ok(s) = get_lit_str(cx, RENAME, &m.lit) {
+                Meta::NameValue(m) if m.path == RENAME => {
+                    let Expr::Lit(expr_lit) = &m.value else {
+                        continue;
+                    };
+
+                    if let Ok(s) = get_lit_str(cx, RENAME, &expr_lit.lit) {
                         rename.set(&m.path, s.value());
                     }
                 }
 
                 // Parse `#[klickhouse(rename_all = "foo")]`
-                Meta(NameValue(m)) if m.path == RENAME_ALL => {
-                    if let Ok(s) = get_lit_str(cx, RENAME_ALL, &m.lit) {
+                Meta::NameValue(m) if m.path == RENAME_ALL => {
+                    let Expr::Lit(expr_lit) = &m.value else {
+                        continue;
+                    };
+
+                    if let Ok(s) = get_lit_str(cx, RENAME_ALL, &expr_lit.lit) {
                         match RenameRule::from_str(&s.value()) {
                             Ok(rename_rule) => {
                                 rename_all_rule.set(&m.path, rename_rule);
@@ -161,12 +168,12 @@ impl Container {
                 }
 
                 // Parse `#[klickhouse(deny_unknown_fields)]`
-                Meta(Path(word)) if word == DENY_UNKNOWN_FIELDS => {
+                Meta::Path(word) if word == DENY_UNKNOWN_FIELDS => {
                     deny_unknown_fields.set_true(word);
                 }
 
                 // Parse `#[klickhouse(default)]`
-                Meta(Path(word)) if word == DEFAULT => match &item.data {
+                Meta::Path(word) if word == DEFAULT => match &item.data {
                     syn::Data::Struct(syn::DataStruct { fields, .. }) => match fields {
                         syn::Fields::Named(_) => {
                             default.set(word, Default::Default);
@@ -187,8 +194,12 @@ impl Container {
                 },
 
                 // Parse `#[klickhouse(default = "...")]`
-                Meta(NameValue(m)) if m.path == DEFAULT => {
-                    if let Ok(path) = parse_lit_into_expr_path(cx, DEFAULT, &m.lit) {
+                Meta::NameValue(m) if m.path == DEFAULT => {
+                    let Expr::Lit(expr_lit) = &m.value else {
+                        continue;
+                    };
+
+                    if let Ok(path) = parse_lit_into_expr_path(cx, DEFAULT, &expr_lit.lit) {
                         match &item.data {
                             syn::Data::Struct(syn::DataStruct { fields, .. }) => {
                                 match fields {
@@ -218,34 +229,52 @@ impl Container {
                 }
 
                 // Parse `#[klickhouse(bound = "T: SomeBound")]`
-                Meta(NameValue(m)) if m.path == BOUND => {
-                    if let Ok(where_predicates) = parse_lit_into_where(cx, BOUND, BOUND, &m.lit) {
+                Meta::NameValue(m) if m.path == BOUND => {
+                    let Expr::Lit(expr_lit) = &m.value else {
+                        continue;
+                    };
+
+                    if let Ok(where_predicates) =
+                        parse_lit_into_where(cx, BOUND, BOUND, &expr_lit.lit)
+                    {
                         bound.set(&m.path, where_predicates.clone());
                     }
                 }
 
                 // Parse `#[klickhouse(from = "Type")]
-                Meta(NameValue(m)) if m.path == FROM => {
-                    if let Ok(from_ty) = parse_lit_into_ty(cx, FROM, &m.lit) {
+                Meta::NameValue(m) if m.path == FROM => {
+                    let Expr::Lit(expr_lit) = &m.value else {
+                        continue;
+                    };
+
+                    if let Ok(from_ty) = parse_lit_into_ty(cx, FROM, &expr_lit.lit) {
                         type_from.set_opt(&m.path, Some(from_ty));
                     }
                 }
 
                 // Parse `#[klickhouse(try_from = "Type")]
-                Meta(NameValue(m)) if m.path == TRY_FROM => {
-                    if let Ok(try_from_ty) = parse_lit_into_ty(cx, TRY_FROM, &m.lit) {
+                Meta::NameValue(m) if m.path == TRY_FROM => {
+                    let Expr::Lit(expr_lit) = &m.value else {
+                        continue;
+                    };
+
+                    if let Ok(try_from_ty) = parse_lit_into_ty(cx, TRY_FROM, &expr_lit.lit) {
                         type_try_from.set_opt(&m.path, Some(try_from_ty));
                     }
                 }
 
                 // Parse `#[klickhouse(into = "Type")]
-                Meta(NameValue(m)) if m.path == INTO => {
-                    if let Ok(into_ty) = parse_lit_into_ty(cx, INTO, &m.lit) {
+                Meta::NameValue(m) if m.path == INTO => {
+                    let Expr::Lit(expr_lit) = &m.value else {
+                        continue;
+                    };
+
+                    if let Ok(into_ty) = parse_lit_into_ty(cx, INTO, &expr_lit.lit) {
                         type_into.set_opt(&m.path, Some(into_ty));
                     }
                 }
 
-                Meta(meta_item) => {
+                meta_item => {
                     let path = meta_item
                         .path()
                         .into_token_stream()
@@ -256,19 +285,12 @@ impl Container {
                         format!("unknown klickhouse container attribute `{}`", path),
                     );
                 }
-
-                Lit(lit) => {
-                    cx.error_spanned_by(
-                        lit,
-                        "unexpected literal in klickhouse container attribute",
-                    );
-                }
             }
         }
 
         let mut is_packed = false;
         for attr in &item.attrs {
-            if attr.path.is_ident("repr") {
+            if attr.path().is_ident("repr") {
                 let _ = attr.parse_args_with(|input: ParseStream| {
                     while let Some(token) = input.parse()? {
                         if let TokenTree::Ident(ident) = token {
@@ -380,67 +402,88 @@ impl Field {
         {
             match &meta_item {
                 // Parse `#[klickhouse(rename = "foo")]`
-                Meta(NameValue(m)) if m.path == RENAME => {
-                    if let Ok(s) = get_lit_str(cx, RENAME, &m.lit) {
+                Meta::NameValue(m) if m.path == RENAME => {
+                    let Expr::Lit(expr_lit) = &m.value else {
+                        continue;
+                    };
+
+                    if let Ok(s) = get_lit_str(cx, RENAME, &expr_lit.lit) {
                         rename.set(&m.path, s.value());
                     }
                 }
 
                 // Parse `#[klickhouse(default)]`
-                Meta(Path(word)) if word == DEFAULT => {
+                Meta::Path(word) if word == DEFAULT => {
                     default.set(word, Default::Default);
                 }
 
                 // Parse `#[klickhouse(default = "...")]`
-                Meta(NameValue(m)) if m.path == DEFAULT => {
-                    if let Ok(path) = parse_lit_into_expr_path(cx, DEFAULT, &m.lit) {
+                Meta::NameValue(m) if m.path == DEFAULT => {
+                    let Expr::Lit(expr_lit) = &m.value else {
+                        continue;
+                    };
+
+                    if let Ok(path) = parse_lit_into_expr_path(cx, DEFAULT, &expr_lit.lit) {
                         default.set(&m.path, Default::Path(path));
                     }
                 }
 
                 // Parse `#[klickhouse(skip_serializing)]`
-                Meta(Path(word)) if word == SKIP_SERIALIZING => {
+                Meta::Path(word) if word == SKIP_SERIALIZING => {
                     skip_serializing.set_true(word);
                 }
 
                 // Parse `#[klickhouse(nested)]`
-                Meta(Path(word)) if word == NESTED => {
+                Meta::Path(word) if word == NESTED => {
                     nested.set_true(word);
                 }
 
                 // Parse `#[klickhouse(flatten)]`
-                Meta(Path(word)) if word == FLATTEN => {
+                Meta::Path(word) if word == FLATTEN => {
                     flatten.set_true(word);
                 }
 
                 // Parse `#[klickhouse(skip_deserializing)]`
-                Meta(Path(word)) if word == SKIP_DESERIALIZING => {
+                Meta::Path(word) if word == SKIP_DESERIALIZING => {
                     skip_deserializing.set_true(word);
                 }
 
                 // Parse `#[klickhouse(skip)]`
-                Meta(Path(word)) if word == SKIP => {
+                Meta::Path(word) if word == SKIP => {
                     skip_serializing.set_true(word);
                     skip_deserializing.set_true(word);
                 }
 
                 // Parse `#[klickhouse(serialize_with = "...")]`
-                Meta(NameValue(m)) if m.path == SERIALIZE_WITH => {
-                    if let Ok(path) = parse_lit_into_expr_path(cx, SERIALIZE_WITH, &m.lit) {
+                Meta::NameValue(m) if m.path == SERIALIZE_WITH => {
+                    let Expr::Lit(expr_lit) = &m.value else {
+                        continue;
+                    };
+
+                    if let Ok(path) = parse_lit_into_expr_path(cx, SERIALIZE_WITH, &expr_lit.lit) {
                         serialize_with.set(&m.path, path);
                     }
                 }
 
                 // Parse `#[klickhouse(deserialize_with = "...")]`
-                Meta(NameValue(m)) if m.path == DESERIALIZE_WITH => {
-                    if let Ok(path) = parse_lit_into_expr_path(cx, DESERIALIZE_WITH, &m.lit) {
+                Meta::NameValue(m) if m.path == DESERIALIZE_WITH => {
+                    let Expr::Lit(expr_lit) = &m.value else {
+                        continue;
+                    };
+
+                    if let Ok(path) = parse_lit_into_expr_path(cx, DESERIALIZE_WITH, &expr_lit.lit)
+                    {
                         deserialize_with.set(&m.path, path);
                     }
                 }
 
                 // Parse `#[klickhouse(with = "...")]`
-                Meta(NameValue(m)) if m.path == WITH => {
-                    if let Ok(path) = parse_lit_into_expr_path(cx, WITH, &m.lit) {
+                Meta::NameValue(m) if m.path == WITH => {
+                    let Expr::Lit(expr_lit) = &m.value else {
+                        continue;
+                    };
+
+                    if let Ok(path) = parse_lit_into_expr_path(cx, WITH, &expr_lit.lit) {
                         let mut ser_path = path.clone();
                         ser_path
                             .path
@@ -457,13 +500,19 @@ impl Field {
                 }
 
                 // Parse `#[klickhouse(bound = "T: SomeBound")]`
-                Meta(NameValue(m)) if m.path == BOUND => {
-                    if let Ok(where_predicates) = parse_lit_into_where(cx, BOUND, BOUND, &m.lit) {
+                Meta::NameValue(m) if m.path == BOUND => {
+                    let Expr::Lit(expr_lit) = &m.value else {
+                        continue;
+                    };
+
+                    if let Ok(where_predicates) =
+                        parse_lit_into_where(cx, BOUND, BOUND, &expr_lit.lit)
+                    {
                         bound.set(&m.path, where_predicates.clone());
                     }
                 }
 
-                Meta(meta_item) => {
+                meta_item => {
                     let path = meta_item
                         .path()
                         .into_token_stream()
@@ -473,10 +522,6 @@ impl Field {
                         meta_item.path(),
                         format!("unknown klickhouse field attribute `{}`", path),
                     );
-                }
-
-                Lit(lit) => {
-                    cx.error_spanned_by(lit, "unexpected literal in klickhouse field attribute");
                 }
             }
         }
@@ -546,25 +591,38 @@ impl Field {
     }
 }
 
-pub fn get_klickhouse_meta_items(
-    cx: &Ctxt,
-    attr: &syn::Attribute,
-) -> Result<Vec<syn::NestedMeta>, ()> {
-    if attr.path != KLICKHOUSE {
+pub fn get_klickhouse_meta_items(cx: &Ctxt, attr: &syn::Attribute) -> Result<Vec<syn::Meta>, ()> {
+    if !attr.path().is_ident(&KLICKHOUSE) {
         return Ok(Vec::new());
     }
 
-    match attr.parse_meta() {
-        Ok(List(meta)) => Ok(meta.nested.into_iter().collect()),
-        Ok(other) => {
-            cx.error_spanned_by(other, "expected #[klickhouse(...)]");
-            Err(())
-        }
+    let nested = match attr.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated) {
+        Ok(nested) => nested,
         Err(err) => {
             cx.syn_error(err);
-            Err(())
+
+            return Err(());
         }
-    }
+    };
+
+    Ok(nested.into_iter().collect())
+
+    // let mut result = Vec::new();
+
+    // for meta in nested {
+    //     match meta {
+    //         List(list) => {
+    //             result.push(list);
+    //         },
+    //         other => {
+    //             cx.error_spanned_by(other, "expected #[klickhouse(...)]");
+
+    //             return Err(())
+    //         }
+    //     }
+    // }
+
+    // Ok(result)
 }
 
 fn get_lit_str<'a>(cx: &Ctxt, attr_name: Symbol, lit: &'a syn::Lit) -> Result<&'a syn::LitStr, ()> {
