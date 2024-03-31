@@ -17,6 +17,9 @@ A Clickhouse server is required to run the integration tests. One can be started
 ```sh
 $ docker run  --rm --name clickhouse -p 19000:9000 --ulimit nofile=262144:262144 clickhouse
 $ export KLICKHOUSE_TEST_ADDR=127.0.0.1:19000
+$ # export KLICKHOUSE_TEST_USER=default
+$ # export KLICKHOUSE_TEST_PASSWORD=default
+$ # export KLICKHOUSE_TEST_DATABASE=default
 $ cargo nextest run
 ```
 

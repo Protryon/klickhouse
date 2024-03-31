@@ -13,8 +13,23 @@ pub mod test_serialize;
 use klickhouse::{Client, ClientOptions};
 
 pub async fn get_client() -> Client {
+    let mut options = ClientOptions::default();
+
+    if let Ok(user) = std::env::var("KLICKHOUSE_TEST_USER") {
+        options.username = user;
+    }
+
+    if let Ok(password) = std::env::var("KLICKHOUSE_TEST_PASSWORD") {
+        options.password = password;
+    }
+
+    if let Ok(database) = std::env::var("KLICKHOUSE_TEST_DATABASE") {
+        options.default_database = database;
+    }
+
     let address = std::env::var("KLICKHOUSE_TEST_ADDR").unwrap_or_else(|_| "127.0.0.1:9000".into());
-    Client::connect(address, ClientOptions::default())
+
+    Client::connect(address, options)
         .await
         .unwrap()
 }
