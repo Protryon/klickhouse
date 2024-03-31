@@ -29,9 +29,7 @@ pub async fn get_client() -> Client {
 
     let address = std::env::var("KLICKHOUSE_TEST_ADDR").unwrap_or_else(|_| "127.0.0.1:9000".into());
 
-    Client::connect(address, options)
-        .await
-        .unwrap()
+    Client::connect(address, options).await.unwrap()
 }
 /// Drop the table if it exists, and create it with the given structure.
 /// Make sure to use distinct table names across tests to avoid conflicts between tests executing
