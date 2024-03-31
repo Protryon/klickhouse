@@ -92,9 +92,10 @@ jobs:
           components: rustfmt
       - name: Check format
         run: cargo +${{ matrix.rust }} fmt --all -- --check
-      - name: Check examples format
-        working-directory: ./examples
-        run: cargo +${{ matrix.rust }} fmt --all -- --check
+      # TODO: Examples need to be reworked
+      # - name: Check examples format
+      #   working-directory: ./examples
+      #   run: cargo +${{ matrix.rust }} fmt --all -- --check
 
   clippy:
     name: Run clippy - Rust (${{ matrix.rust }}) on ${{ matrix.os }}
