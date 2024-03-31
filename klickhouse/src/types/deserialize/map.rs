@@ -8,7 +8,6 @@ use super::{Deserializer, DeserializerState, Type};
 
 pub struct MapDeserializer;
 
-#[async_trait::async_trait]
 impl Deserializer for MapDeserializer {
     async fn read_prefix<R: ClickhouseRead>(
         type_: &Type,

@@ -6,7 +6,6 @@ use super::{Deserializer, DeserializerState, Type};
 
 pub struct NullableDeserializer;
 
-#[async_trait::async_trait]
 impl Deserializer for NullableDeserializer {
     async fn read_prefix<R: ClickhouseRead>(
         type_: &Type,

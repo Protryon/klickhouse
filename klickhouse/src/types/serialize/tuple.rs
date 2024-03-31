@@ -4,7 +4,6 @@ use super::{Serializer, SerializerState, Type};
 
 pub struct TupleSerializer;
 
-#[async_trait::async_trait]
 impl Serializer for TupleSerializer {
     async fn write_prefix<W: ClickhouseWrite>(
         type_: &Type,

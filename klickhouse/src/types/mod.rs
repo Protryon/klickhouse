@@ -1,6 +1,7 @@
 use std::{fmt::Display, str::FromStr};
 
 pub use chrono_tz::Tz;
+use futures::{Future, FutureExt};
 use uuid::Uuid;
 
 mod deserialize;
@@ -556,242 +557,276 @@ impl Display for Type {
 }
 
 impl Type {
-    pub(crate) async fn deserialize_prefix<R: ClickhouseRead>(
-        &self,
-        reader: &mut R,
-        state: &mut DeserializerState,
-    ) -> Result<()> {
+    pub(crate) fn deserialize_prefix<'a, R: ClickhouseRead>(
+        &'a self,
+        reader: &'a mut R,
+        state: &'a mut DeserializerState,
+    ) -> impl Future<Output = Result<()>> + Send + '_ {
         use deserialize::*;
-        match self {
-            Type::Int8
-            | Type::Int16
-            | Type::Int32
-            | Type::Int64
-            | Type::Int128
-            | Type::Int256
-            | Type::UInt8
-            | Type::UInt16
-            | Type::UInt32
-            | Type::UInt64
-            | Type::UInt128
-            | Type::UInt256
-            | Type::Float32
-            | Type::Float64
-            | Type::Decimal32(_)
-            | Type::Decimal64(_)
-            | Type::Decimal128(_)
-            | Type::Decimal256(_)
-            | Type::Uuid
-            | Type::Date
-            | Type::DateTime(_)
-            | Type::DateTime64(_, _)
-            | Type::Ipv4
-            | Type::Ipv6
-            | Type::Enum8(_)
-            | Type::Enum16(_) => sized::SizedDeserializer::read_prefix(self, reader, state).await?,
 
-            Type::String | Type::FixedString(_) => {
-                string::StringDeserializer::read_prefix(self, reader, state).await?
-            }
+        async move {
+            match self {
+                Type::Int8
+                | Type::Int16
+                | Type::Int32
+                | Type::Int64
+                | Type::Int128
+                | Type::Int256
+                | Type::UInt8
+                | Type::UInt16
+                | Type::UInt32
+                | Type::UInt64
+                | Type::UInt128
+                | Type::UInt256
+                | Type::Float32
+                | Type::Float64
+                | Type::Decimal32(_)
+                | Type::Decimal64(_)
+                | Type::Decimal128(_)
+                | Type::Decimal256(_)
+                | Type::Uuid
+                | Type::Date
+                | Type::DateTime(_)
+                | Type::DateTime64(_, _)
+                | Type::Ipv4
+                | Type::Ipv6
+                | Type::Enum8(_)
+                | Type::Enum16(_) => {
+                    sized::SizedDeserializer::read_prefix(self, reader, state).await?
+                }
 
-            Type::Array(_) => array::ArrayDeserializer::read_prefix(self, reader, state).await?,
-            Type::Tuple(_) => tuple::TupleDeserializer::read_prefix(self, reader, state).await?,
-            Type::Point => geo::PointDeserializer::read_prefix(self, reader, state).await?,
-            Type::Ring => geo::RingDeserializer::read_prefix(self, reader, state).await?,
-            Type::Polygon => geo::PolygonDeserializer::read_prefix(self, reader, state).await?,
-            Type::MultiPolygon => {
-                geo::MultiPolygonDeserializer::read_prefix(self, reader, state).await?
+                Type::String | Type::FixedString(_) => {
+                    string::StringDeserializer::read_prefix(self, reader, state).await?
+                }
+
+                Type::Array(_) => {
+                    array::ArrayDeserializer::read_prefix(self, reader, state).await?
+                }
+                Type::Tuple(_) => {
+                    tuple::TupleDeserializer::read_prefix(self, reader, state).await?
+                }
+                Type::Point => geo::PointDeserializer::read_prefix(self, reader, state).await?,
+                Type::Ring => geo::RingDeserializer::read_prefix(self, reader, state).await?,
+                Type::Polygon => geo::PolygonDeserializer::read_prefix(self, reader, state).await?,
+                Type::MultiPolygon => {
+                    geo::MultiPolygonDeserializer::read_prefix(self, reader, state).await?
+                }
+                Type::Nullable(_) => {
+                    nullable::NullableDeserializer::read_prefix(self, reader, state).await?
+                }
+                Type::Map(_, _) => map::MapDeserializer::read_prefix(self, reader, state).await?,
+                Type::LowCardinality(_) => {
+                    low_cardinality::LowCardinalityDeserializer::read_prefix(self, reader, state)
+                        .await?
+                }
             }
-            Type::Nullable(_) => {
-                nullable::NullableDeserializer::read_prefix(self, reader, state).await?
-            }
-            Type::Map(_, _) => map::MapDeserializer::read_prefix(self, reader, state).await?,
-            Type::LowCardinality(_) => {
-                low_cardinality::LowCardinalityDeserializer::read_prefix(self, reader, state)
-                    .await?
-            }
+            Ok(())
         }
-        Ok(())
+        .boxed()
     }
 
-    pub(crate) async fn deserialize_column<R: ClickhouseRead>(
-        &self,
-        reader: &mut R,
+    pub(crate) fn deserialize_column<'a, R: ClickhouseRead>(
+        &'a self,
+        reader: &'a mut R,
         rows: usize,
-        state: &mut DeserializerState,
-    ) -> Result<Vec<Value>> {
+        state: &'a mut DeserializerState,
+    ) -> impl Future<Output = Result<Vec<Value>>> + Send + '_ {
         use deserialize::*;
-        if rows > MAX_STRING_SIZE {
-            return Err(KlickhouseError::ProtocolError(format!(
-                "deserialize response size too large. {} > {}",
-                rows, MAX_STRING_SIZE
-            )));
+
+        async move {
+            if rows > MAX_STRING_SIZE {
+                return Err(KlickhouseError::ProtocolError(format!(
+                    "deserialize response size too large. {} > {}",
+                    rows, MAX_STRING_SIZE
+                )));
+            }
+
+            Ok(match self {
+                Type::Int8
+                | Type::Int16
+                | Type::Int32
+                | Type::Int64
+                | Type::Int128
+                | Type::Int256
+                | Type::UInt8
+                | Type::UInt16
+                | Type::UInt32
+                | Type::UInt64
+                | Type::UInt128
+                | Type::UInt256
+                | Type::Float32
+                | Type::Float64
+                | Type::Decimal32(_)
+                | Type::Decimal64(_)
+                | Type::Decimal128(_)
+                | Type::Decimal256(_)
+                | Type::Uuid
+                | Type::Date
+                | Type::DateTime(_)
+                | Type::DateTime64(_, _)
+                | Type::Ipv4
+                | Type::Ipv6
+                | Type::Enum8(_)
+                | Type::Enum16(_) => {
+                    sized::SizedDeserializer::read(self, reader, rows, state).await?
+                }
+
+                Type::String | Type::FixedString(_) => {
+                    string::StringDeserializer::read(self, reader, rows, state).await?
+                }
+
+                Type::Array(_) => array::ArrayDeserializer::read(self, reader, rows, state).await?,
+                Type::Ring => geo::RingDeserializer::read(self, reader, rows, state).await?,
+                Type::Polygon => geo::PolygonDeserializer::read(self, reader, rows, state).await?,
+                Type::MultiPolygon => {
+                    geo::MultiPolygonDeserializer::read(self, reader, rows, state).await?
+                }
+                Type::Tuple(_) => tuple::TupleDeserializer::read(self, reader, rows, state).await?,
+                Type::Point => geo::PointDeserializer::read(self, reader, rows, state).await?,
+                Type::Nullable(_) => {
+                    nullable::NullableDeserializer::read(self, reader, rows, state).await?
+                }
+                Type::Map(_, _) => map::MapDeserializer::read(self, reader, rows, state).await?,
+                Type::LowCardinality(_) => {
+                    low_cardinality::LowCardinalityDeserializer::read(self, reader, rows, state)
+                        .await?
+                }
+            })
         }
-
-        Ok(match self {
-            Type::Int8
-            | Type::Int16
-            | Type::Int32
-            | Type::Int64
-            | Type::Int128
-            | Type::Int256
-            | Type::UInt8
-            | Type::UInt16
-            | Type::UInt32
-            | Type::UInt64
-            | Type::UInt128
-            | Type::UInt256
-            | Type::Float32
-            | Type::Float64
-            | Type::Decimal32(_)
-            | Type::Decimal64(_)
-            | Type::Decimal128(_)
-            | Type::Decimal256(_)
-            | Type::Uuid
-            | Type::Date
-            | Type::DateTime(_)
-            | Type::DateTime64(_, _)
-            | Type::Ipv4
-            | Type::Ipv6
-            | Type::Enum8(_)
-            | Type::Enum16(_) => sized::SizedDeserializer::read(self, reader, rows, state).await?,
-
-            Type::String | Type::FixedString(_) => {
-                string::StringDeserializer::read(self, reader, rows, state).await?
-            }
-
-            Type::Array(_) => array::ArrayDeserializer::read(self, reader, rows, state).await?,
-            Type::Ring => geo::RingDeserializer::read(self, reader, rows, state).await?,
-            Type::Polygon => geo::PolygonDeserializer::read(self, reader, rows, state).await?,
-            Type::MultiPolygon => {
-                geo::MultiPolygonDeserializer::read(self, reader, rows, state).await?
-            }
-            Type::Tuple(_) => tuple::TupleDeserializer::read(self, reader, rows, state).await?,
-            Type::Point => geo::PointDeserializer::read(self, reader, rows, state).await?,
-            Type::Nullable(_) => {
-                nullable::NullableDeserializer::read(self, reader, rows, state).await?
-            }
-            Type::Map(_, _) => map::MapDeserializer::read(self, reader, rows, state).await?,
-            Type::LowCardinality(_) => {
-                low_cardinality::LowCardinalityDeserializer::read(self, reader, rows, state).await?
-            }
-        })
+        .boxed()
     }
 
-    pub(crate) async fn serialize_column<W: ClickhouseWrite>(
-        &self,
+    pub(crate) fn serialize_column<'a, W: ClickhouseWrite>(
+        &'a self,
         values: Vec<Value>,
-        writer: &mut W,
-        state: &mut SerializerState,
-    ) -> Result<()> {
+        writer: &'a mut W,
+        state: &'a mut SerializerState,
+    ) -> impl Future<Output = Result<()>> + Send + '_ {
         use serialize::*;
-        match self {
-            Type::Int8
-            | Type::Int16
-            | Type::Int32
-            | Type::Int64
-            | Type::Int128
-            | Type::Int256
-            | Type::UInt8
-            | Type::UInt16
-            | Type::UInt32
-            | Type::UInt64
-            | Type::UInt128
-            | Type::UInt256
-            | Type::Float32
-            | Type::Float64
-            | Type::Decimal32(_)
-            | Type::Decimal64(_)
-            | Type::Decimal128(_)
-            | Type::Decimal256(_)
-            | Type::Uuid
-            | Type::Date
-            | Type::DateTime(_)
-            | Type::DateTime64(_, _)
-            | Type::Ipv4
-            | Type::Ipv6
-            | Type::Enum8(_)
-            | Type::Enum16(_) => sized::SizedSerializer::write(self, values, writer, state).await?,
 
-            Type::String | Type::FixedString(_) => {
-                string::StringSerializer::write(self, values, writer, state).await?
-            }
+        async move {
+            match self {
+                Type::Int8
+                | Type::Int16
+                | Type::Int32
+                | Type::Int64
+                | Type::Int128
+                | Type::Int256
+                | Type::UInt8
+                | Type::UInt16
+                | Type::UInt32
+                | Type::UInt64
+                | Type::UInt128
+                | Type::UInt256
+                | Type::Float32
+                | Type::Float64
+                | Type::Decimal32(_)
+                | Type::Decimal64(_)
+                | Type::Decimal128(_)
+                | Type::Decimal256(_)
+                | Type::Uuid
+                | Type::Date
+                | Type::DateTime(_)
+                | Type::DateTime64(_, _)
+                | Type::Ipv4
+                | Type::Ipv6
+                | Type::Enum8(_)
+                | Type::Enum16(_) => {
+                    sized::SizedSerializer::write(self, values, writer, state).await?
+                }
 
-            Type::Array(_) => array::ArraySerializer::write(self, values, writer, state).await?,
-            Type::Tuple(_) => tuple::TupleSerializer::write(self, values, writer, state).await?,
-            Type::Point => geo::PointSerializer::write(self, values, writer, state).await?,
-            Type::Ring => geo::RingSerializer::write(self, values, writer, state).await?,
-            Type::Polygon => geo::PolygonSerializer::write(self, values, writer, state).await?,
-            Type::MultiPolygon => {
-                geo::MultiPolygonSerializer::write(self, values, writer, state).await?
+                Type::String | Type::FixedString(_) => {
+                    string::StringSerializer::write(self, values, writer, state).await?
+                }
+
+                Type::Array(_) => {
+                    array::ArraySerializer::write(self, values, writer, state).await?
+                }
+                Type::Tuple(_) => {
+                    tuple::TupleSerializer::write(self, values, writer, state).await?
+                }
+                Type::Point => geo::PointSerializer::write(self, values, writer, state).await?,
+                Type::Ring => geo::RingSerializer::write(self, values, writer, state).await?,
+                Type::Polygon => geo::PolygonSerializer::write(self, values, writer, state).await?,
+                Type::MultiPolygon => {
+                    geo::MultiPolygonSerializer::write(self, values, writer, state).await?
+                }
+                Type::Nullable(_) => {
+                    nullable::NullableSerializer::write(self, values, writer, state).await?
+                }
+                Type::Map(_, _) => map::MapSerializer::write(self, values, writer, state).await?,
+                Type::LowCardinality(_) => {
+                    low_cardinality::LowCardinalitySerializer::write(self, values, writer, state)
+                        .await?
+                }
             }
-            Type::Nullable(_) => {
-                nullable::NullableSerializer::write(self, values, writer, state).await?
-            }
-            Type::Map(_, _) => map::MapSerializer::write(self, values, writer, state).await?,
-            Type::LowCardinality(_) => {
-                low_cardinality::LowCardinalitySerializer::write(self, values, writer, state)
-                    .await?
-            }
+            Ok(())
         }
-        Ok(())
+        .boxed()
     }
 
-    pub(crate) async fn serialize_prefix<W: ClickhouseWrite>(
-        &self,
-        writer: &mut W,
-        state: &mut SerializerState,
-    ) -> Result<()> {
+    pub(crate) fn serialize_prefix<'a, W: ClickhouseWrite>(
+        &'a self,
+        writer: &'a mut W,
+        state: &'a mut SerializerState,
+    ) -> impl Future<Output = Result<()>> + Send + '_ {
         use serialize::*;
-        match self {
-            Type::Int8
-            | Type::Int16
-            | Type::Int32
-            | Type::Int64
-            | Type::Int128
-            | Type::Int256
-            | Type::UInt8
-            | Type::UInt16
-            | Type::UInt32
-            | Type::UInt64
-            | Type::UInt128
-            | Type::UInt256
-            | Type::Float32
-            | Type::Float64
-            | Type::Decimal32(_)
-            | Type::Decimal64(_)
-            | Type::Decimal128(_)
-            | Type::Decimal256(_)
-            | Type::Uuid
-            | Type::Date
-            | Type::DateTime(_)
-            | Type::DateTime64(_, _)
-            | Type::Ipv4
-            | Type::Ipv6
-            | Type::Enum8(_)
-            | Type::Enum16(_) => sized::SizedSerializer::write_prefix(self, writer, state).await?,
 
-            Type::String | Type::FixedString(_) => {
-                string::StringSerializer::write_prefix(self, writer, state).await?
-            }
+        async move {
+            match self {
+                Type::Int8
+                | Type::Int16
+                | Type::Int32
+                | Type::Int64
+                | Type::Int128
+                | Type::Int256
+                | Type::UInt8
+                | Type::UInt16
+                | Type::UInt32
+                | Type::UInt64
+                | Type::UInt128
+                | Type::UInt256
+                | Type::Float32
+                | Type::Float64
+                | Type::Decimal32(_)
+                | Type::Decimal64(_)
+                | Type::Decimal128(_)
+                | Type::Decimal256(_)
+                | Type::Uuid
+                | Type::Date
+                | Type::DateTime(_)
+                | Type::DateTime64(_, _)
+                | Type::Ipv4
+                | Type::Ipv6
+                | Type::Enum8(_)
+                | Type::Enum16(_) => {
+                    sized::SizedSerializer::write_prefix(self, writer, state).await?
+                }
 
-            Type::Array(_) => array::ArraySerializer::write_prefix(self, writer, state).await?,
-            Type::Tuple(_) => tuple::TupleSerializer::write_prefix(self, writer, state).await?,
-            Type::Point => geo::PointSerializer::write_prefix(self, writer, state).await?,
-            Type::Ring => geo::RingSerializer::write_prefix(self, writer, state).await?,
-            Type::Polygon => geo::PolygonSerializer::write_prefix(self, writer, state).await?,
-            Type::MultiPolygon => {
-                geo::MultiPolygonSerializer::write_prefix(self, writer, state).await?
+                Type::String | Type::FixedString(_) => {
+                    string::StringSerializer::write_prefix(self, writer, state).await?
+                }
+
+                Type::Array(_) => array::ArraySerializer::write_prefix(self, writer, state).await?,
+                Type::Tuple(_) => tuple::TupleSerializer::write_prefix(self, writer, state).await?,
+                Type::Point => geo::PointSerializer::write_prefix(self, writer, state).await?,
+                Type::Ring => geo::RingSerializer::write_prefix(self, writer, state).await?,
+                Type::Polygon => geo::PolygonSerializer::write_prefix(self, writer, state).await?,
+                Type::MultiPolygon => {
+                    geo::MultiPolygonSerializer::write_prefix(self, writer, state).await?
+                }
+                Type::Nullable(_) => {
+                    nullable::NullableSerializer::write_prefix(self, writer, state).await?
+                }
+                Type::Map(_, _) => map::MapSerializer::write_prefix(self, writer, state).await?,
+                Type::LowCardinality(_) => {
+                    low_cardinality::LowCardinalitySerializer::write_prefix(self, writer, state)
+                        .await?
+                }
             }
-            Type::Nullable(_) => {
-                nullable::NullableSerializer::write_prefix(self, writer, state).await?
-            }
-            Type::Map(_, _) => map::MapSerializer::write_prefix(self, writer, state).await?,
-            Type::LowCardinality(_) => {
-                low_cardinality::LowCardinalitySerializer::write_prefix(self, writer, state).await?
-            }
+            Ok(())
         }
-        Ok(())
+        .boxed()
     }
 
     pub(crate) fn validate(&self) -> Result<()> {
@@ -991,47 +1026,45 @@ pub struct DeserializerState {}
 
 pub struct SerializerState {}
 
-#[async_trait::async_trait]
 pub trait Deserializer {
-    async fn read_prefix<R: ClickhouseRead>(
+    fn read_prefix<R: ClickhouseRead>(
         _type_: &Type,
         _reader: &mut R,
         _state: &mut DeserializerState,
-    ) -> Result<()> {
-        Ok(())
+    ) -> impl Future<Output = Result<()>> {
+        async { Ok(()) }
     }
 
-    async fn read<R: ClickhouseRead>(
+    fn read<R: ClickhouseRead>(
         type_: &Type,
         reader: &mut R,
         rows: usize,
         state: &mut DeserializerState,
-    ) -> Result<Vec<Value>>;
+    ) -> impl Future<Output = Result<Vec<Value>>>;
 }
 
-#[async_trait::async_trait]
 pub trait Serializer {
-    async fn write_prefix<W: ClickhouseWrite>(
+    fn write_prefix<W: ClickhouseWrite>(
         _type_: &Type,
         _writer: &mut W,
         _state: &mut SerializerState,
-    ) -> Result<()> {
-        Ok(())
+    ) -> impl Future<Output = Result<()>> {
+        async { Ok(()) }
     }
 
-    async fn write_suffix<W: ClickhouseWrite>(
+    fn write_suffix<W: ClickhouseWrite>(
         _type_: &Type,
         _value: &[Value],
         _writer: &mut W,
         _state: &mut SerializerState,
-    ) -> Result<()> {
-        Ok(())
+    ) -> impl Future<Output = Result<()>> {
+        async { Ok(()) }
     }
 
-    async fn write<W: ClickhouseWrite>(
+    fn write<W: ClickhouseWrite>(
         type_: &Type,
         values: Vec<Value>,
         writer: &mut W,
         state: &mut SerializerState,
-    ) -> Result<()>;
+    ) -> impl Future<Output = Result<()>>;
 }

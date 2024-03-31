@@ -9,7 +9,6 @@ use crate::types::low_cardinality::*;
 
 pub struct LowCardinalitySerializer;
 
-#[async_trait::async_trait]
 impl Serializer for LowCardinalitySerializer {
     async fn write_prefix<W: ClickhouseWrite>(
         _type_: &Type,

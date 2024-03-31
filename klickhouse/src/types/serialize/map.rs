@@ -6,7 +6,6 @@ use super::{Serializer, SerializerState, Type};
 
 pub struct MapSerializer;
 
-#[async_trait::async_trait]
 impl Serializer for MapSerializer {
     async fn write_prefix<W: ClickhouseWrite>(
         type_: &Type,
