@@ -57,6 +57,7 @@ geo-types = ["dep:geo-types"]
 refinery = ["refinery-core", "time"]
 serde = ["dep:serde", "serde_json", "uuid/serde", "chrono/serde"]
 tls = ["tokio-rustls"]
+bb8 = ["dep:bb8"]
 
 [build-dependencies]
 rustc_version = "0.3"
