@@ -1,5 +1,4 @@
 use crate::{query_parser, ClickhouseLock, FromSql};
-use async_trait::async_trait;
 use refinery_core::traits::r#async::{AsyncMigrate, AsyncQuery, AsyncTransaction};
 use refinery_core::Migration;
 use std::borrow::Cow;
@@ -173,7 +172,7 @@ impl Row for Migration {
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl AsyncTransaction for Client {
     type Error = KlickhouseError;
 
@@ -206,7 +205,7 @@ impl AsyncTransaction for Client {
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl AsyncQuery<Vec<Migration>> for Client {
     async fn query(
         &mut self,
@@ -248,7 +247,7 @@ impl<T: ClusterName> ClusterMigration<T> {
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl<T: ClusterName> AsyncTransaction for ClusterMigration<T> {
     type Error = KlickhouseError;
 
@@ -276,7 +275,7 @@ impl<T: ClusterName> AsyncTransaction for ClusterMigration<T> {
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl<T: ClusterName> AsyncQuery<Vec<Migration>> for ClusterMigration<T> {
     async fn query(
         &mut self,
