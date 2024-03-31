@@ -280,7 +280,7 @@ impl Client {
     pub async fn connect_tls<A: ToSocketAddrs>(
         destination: A,
         options: ClientOptions,
-        name: tokio_rustls::rustls::ServerName,
+        name: rustls_pki_types::ServerName<'static>,
         connector: &tokio_rustls::TlsConnector,
     ) -> Result<Self> {
         let stream = TcpStream::connect(destination).await?;
