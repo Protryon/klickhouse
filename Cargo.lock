@@ -757,6 +757,7 @@ dependencies = [
  "refinery-core",
  "rust_decimal",
  "rustc_version",
+ "rustls-pki-types",
  "serde",
  "serde_json",
  "thiserror",
