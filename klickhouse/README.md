@@ -30,6 +30,7 @@ $ cargo nextest run
 - `tls`: TLS support via [tokio-rustls](https://crates.io/crates/tokio-rustls).
 - `refinery`: Migrations via [refinery](https://crates.io/crates/refinery).
 - `geo-types`: Conversion of geo types to/from the [geo-types](https://crates.io/crates/geo-types) crate.
+- `bb8`: Enables a `ConnectionManager` managed by bb8
 
 ## Credit
 
