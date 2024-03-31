@@ -7,6 +7,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/Protryon/klickhouse"
 description = "proc-macro crate for klickhouse"
 keywords = [ "clickhouse", "database", "tokio", "sql" ]
+rust-version = "1.75.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

@@ -9,6 +9,7 @@ description = "Klickhouse is a pure Rust SDK for working with Clickhouse with th
 keywords = [ "clickhouse", "database", "tokio", "sql" ]
 readme = "../README.md"
 autotests = false
+rust-version = "1.75.0"
 
 [package.metadata.docs.rs]
 all-features = true
