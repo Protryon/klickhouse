@@ -19,12 +19,12 @@ name = "test"
 path = "tests/main.rs"
 
 [dependencies]
-tokio = { version = "1.21", features = ["io-util", "net", "sync", "rt", "macros"] }
+tokio = { version = "1.37", features = ["io-util", "net", "sync", "rt", "macros"] }
 async-trait = "0.1"
 thiserror = "1.0"
 log = "0.4"
-indexmap = { version = "2.0" }
-uuid = { version = "1.4", features = ["v4"] }
+indexmap = { version = "2.2" }
+uuid = { version = "1.8", features = ["v4"] }
 chrono = "0.4"
 chrono-tz = "0.8"
 futures = "0.3"
@@ -35,20 +35,21 @@ klickhouse_derive = { version = "=0.11.1", optional = true, path = "../klickhous
 cityhash-rs = "1.0"
 bb8 = { version = "0.8", optional = true }
 # must be locked due to transmute
-refinery-core = { version = "=0.8.10", optional = true }
-time = { version = "0.3.5", features = ["parsing", "formatting"], optional = true }
-compiler-tools = "0.1.7"
-compiler-tools-derive = "0.1.7"
-rust_decimal = { version = "1.30", optional = true }
+refinery-core = { version = "=0.8.13", optional = true }
+time = { version = "0.3", features = ["parsing", "formatting"], optional = true }
+compiler-tools = "0.1"
+compiler-tools-derive = "0.1"
+rust_decimal = { version = "1.35", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0", optional = true }
-tokio-rustls = { version = "0.24.1", optional = true }
-paste = "1.0.14"
-geo-types = {version = "0.7.12", optional = true}
+tokio-rustls = { version = "0.26", optional = true }
+rustls-pki-types = { version = "1.4", optional = true }
+paste = "1.0"
+geo-types = { version = "0.7", optional = true}
 
 [dev-dependencies]
-tokio = { version = "1", features = ["full"] }
-env_logger = "0.10"
+tokio = { version = "1.37", features = ["full"] }
+env_logger = "0.11"
 
 [features]
 default = ["derive", "compression", "serde"]
@@ -57,8 +58,8 @@ compression = ["lz4"]
 geo-types = ["dep:geo-types"]
 refinery = ["refinery-core", "time"]
 serde = ["dep:serde", "serde_json", "uuid/serde", "chrono/serde"]
-tls = ["tokio-rustls"]
+tls = ["tokio-rustls", "rustls-pki-types"]
 bb8 = ["dep:bb8"]
 
 [build-dependencies]
-rustc_version = "0.3"
+rustc_version = "0.4"
