@@ -8,7 +8,6 @@ use crate::types::low_cardinality::*;
 
 pub struct LowCardinalityDeserializer;
 
-#[async_trait::async_trait]
 impl Deserializer for LowCardinalityDeserializer {
     async fn read_prefix<R: ClickhouseRead>(
         _type_: &Type,

@@ -5,7 +5,7 @@ use crate::receiver::replace_receiver;
 use crate::{attr, bound, dummy};
 use proc_macro2::{Span, TokenStream};
 use syn::spanned::Spanned;
-use syn::{self, GenericArgument, Ident, Member, PathArguments, Type};
+use syn::{GenericArgument, Ident, Member, PathArguments, Type};
 
 macro_rules! quote_block {
     ($($tt:tt)*) => {

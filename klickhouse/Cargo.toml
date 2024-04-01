@@ -9,6 +9,7 @@ description = "Klickhouse is a pure Rust SDK for working with Clickhouse with th
 keywords = [ "clickhouse", "database", "tokio", "sql" ]
 readme = "../README.md"
 autotests = false
+rust-version = "1.75.0"
 
 [package.metadata.docs.rs]
 all-features = true
@@ -58,6 +59,7 @@ geo-types = ["dep:geo-types"]
 refinery = ["refinery-core", "time"]
 serde = ["dep:serde", "serde_json", "uuid/serde", "chrono/serde"]
 tls = ["tokio-rustls", "rustls-pki-types"]
+bb8 = ["dep:bb8"]
 
 [build-dependencies]
 rustc_version = "0.4"

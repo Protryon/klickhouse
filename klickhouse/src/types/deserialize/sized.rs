@@ -9,7 +9,6 @@ use super::{Deserializer, DeserializerState, Type};
 
 pub struct SizedDeserializer;
 
-#[async_trait::async_trait]
 impl Deserializer for SizedDeserializer {
     async fn read<R: ClickhouseRead>(
         type_: &Type,

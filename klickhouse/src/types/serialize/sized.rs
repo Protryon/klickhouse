@@ -11,7 +11,6 @@ fn swap_endian_256(mut input: [u8; 32]) -> [u8; 32] {
     input
 }
 
-#[async_trait::async_trait]
 impl Serializer for SizedSerializer {
     async fn write<W: ClickhouseWrite>(
         type_: &Type,

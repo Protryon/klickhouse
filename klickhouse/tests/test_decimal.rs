@@ -8,9 +8,9 @@ pub struct TestType {
 
 #[tokio::test]
 async fn test_client() {
-    env_logger::builder()
+    let _ = env_logger::builder()
         .filter_level(log::LevelFilter::Info)
-        .init();
+        .try_init();
     let client = super::get_client().await;
 
     super::prepare_table("test_decimal", "d_d128 Decimal128(5) default 0", &client).await;

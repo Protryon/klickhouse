@@ -23,7 +23,6 @@ async fn emit_bytes<W: ClickhouseWrite>(type_: &Type, bytes: &[u8], writer: &mut
     Ok(())
 }
 
-#[async_trait::async_trait]
 impl Serializer for StringSerializer {
     async fn write<W: ClickhouseWrite>(
         type_: &Type,

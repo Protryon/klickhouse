@@ -14,9 +14,12 @@ See [example usage](https://github.com/Protryon/klickhouse/blob/master/klickhous
 
 A Clickhouse server is required to run the integration tests. One can be started easily in a Docker container:
 
-```
+```sh
 $ docker run  --rm --name clickhouse -p 19000:9000 --ulimit nofile=262144:262144 clickhouse
 $ export KLICKHOUSE_TEST_ADDR=127.0.0.1:19000
+$ # export KLICKHOUSE_TEST_USER=default
+$ # export KLICKHOUSE_TEST_PASSWORD=default
+$ # export KLICKHOUSE_TEST_DATABASE=default
 $ cargo nextest run
 ```
 
@@ -30,6 +33,7 @@ $ cargo nextest run
 - `tls`: TLS support via [tokio-rustls](https://crates.io/crates/tokio-rustls).
 - `refinery`: Migrations via [refinery](https://crates.io/crates/refinery).
 - `geo-types`: Conversion of geo types to/from the [geo-types](https://crates.io/crates/geo-types) crate.
+- `bb8`: Enables a `ConnectionManager` managed by bb8
 
 ## Credit
 

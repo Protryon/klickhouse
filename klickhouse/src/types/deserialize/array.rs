@@ -30,7 +30,6 @@ impl ArrayDeserializerGeneric for ArrayDeserializer {
     }
 }
 
-#[async_trait::async_trait]
 impl<T: ArrayDeserializerGeneric + 'static> Deserializer for T {
     async fn read_prefix<R: ClickhouseRead>(
         type_: &Type,
