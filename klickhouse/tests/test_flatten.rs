@@ -16,9 +16,9 @@ pub struct SubRow {
 
 #[tokio::test]
 async fn test_client() {
-    env_logger::builder()
+    let _ = env_logger::builder()
         .filter_level(log::LevelFilter::Info)
-        .init();
+        .try_init();
 
     assert!(TestRow::column_names()
         .unwrap()
