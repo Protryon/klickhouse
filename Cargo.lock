@@ -389,26 +389,25 @@ checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
 name = "compiler-tools"
-version = "0.1.7"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ae8d475ca78f45d786aa0c47c70a05cd7420419e98ef29281aaf48987f49d65"
+checksum = "cc80bd305611ea6275a49dfa4b7525f5dbf628274e4ad92382e89231c2074e91"
 dependencies = [
- "once_cell",
  "regex",
  "serde",
 ]
 
 [[package]]
 name = "compiler-tools-derive"
-version = "0.1.7"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "efc08ae3c185634f8388f57387e09128f3840ef3d5b74d3a7c51d093edf77af8"
+checksum = "0748adeee3cbac61b70d26e701515182d22d227baabe596d190f2b4154895842"
 dependencies = [
- "indexmap 1.9.3",
+ "indexmap",
  "proc-macro2",
  "quote",
  "regex",
- "syn 1.0.109",
+ "syn 2.0.57",
 ]
 
 [[package]]
@@ -692,16 +691,6 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
-dependencies = [
- "autocfg",
- "hashbrown 0.12.3",
-]
-
-[[package]]
-name = "indexmap"
 version = "2.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "168fb715dda47215e360912c096649d23d58bf392ac62f73919e831745e40f26"
@@ -736,7 +725,7 @@ dependencies = [
 
 [[package]]
 name = "klickhouse"
-version = "0.11.2"
+version = "0.12.0"
 dependencies = [
  "async-trait",
  "bb8",
@@ -748,7 +737,7 @@ dependencies = [
  "env_logger",
  "futures",
  "geo-types",
- "indexmap 2.2.6",
+ "indexmap",
  "klickhouse_derive",
  "libc",
  "log",
@@ -770,11 +759,11 @@ dependencies = [
 
 [[package]]
 name = "klickhouse_derive"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.37",
+ "syn 2.0.57",
 ]
 
 [[package]]
@@ -1659,7 +1648,7 @@ version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a8534fd7f78b5405e860340ad6575217ce99f38d4d5c8f2442cb5ecb50090e1"
 dependencies = [
- "indexmap 2.2.6",
+ "indexmap",
  "toml_datetime",
  "winnow",
 ]

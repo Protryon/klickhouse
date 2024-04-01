@@ -223,7 +223,7 @@ impl Block {
             .column_types
             .into_iter()
             .flat_map(|(key, type_)| {
-                let values = self.column_data.remove(&key)?;
+                let values = self.column_data.swap_remove(&key)?;
                 Some((key, (type_, values)))
             })
             .collect::<Vec<_>>();
