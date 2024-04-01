@@ -1,20 +1,20 @@
-use crate::{KlickhouseError, Result};
+use futures::Future;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+
+use crate::{KlickhouseError, Result};
 
 use crate::protocol::MAX_STRING_SIZE;
 
-#[async_trait::async_trait]
 pub trait ClickhouseRead: AsyncRead + Unpin + Send + Sync {
-    async fn read_var_uint(&mut self) -> Result<u64>;
+    fn read_var_uint(&mut self) -> impl Future<Output = Result<u64>> + Send;
 
-    async fn read_string(&mut self) -> Result<Vec<u8>>;
+    fn read_string(&mut self) -> impl Future<Output = Result<Vec<u8>>> + Send;
 
-    async fn read_utf8_string(&mut self) -> Result<String> {
-        Ok(String::from_utf8(self.read_string().await?)?)
+    fn read_utf8_string(&mut self) -> impl Future<Output = Result<String>> + Send {
+        async { Ok(String::from_utf8(self.read_string().await?)?) }
     }
 }
 
-#[async_trait::async_trait]
 impl<T: AsyncRead + Unpin + Send + Sync> ClickhouseRead for T {
     async fn read_var_uint(&mut self) -> Result<u64> {
         let mut out = 0u64;
@@ -50,14 +50,15 @@ impl<T: AsyncRead + Unpin + Send + Sync> ClickhouseRead for T {
     }
 }
 
-#[async_trait::async_trait]
 pub trait ClickhouseWrite: AsyncWrite + Unpin + Send + Sync + 'static {
-    async fn write_var_uint(&mut self, value: u64) -> Result<()>;
+    fn write_var_uint(&mut self, value: u64) -> impl Future<Output = Result<()>> + Send;
 
-    async fn write_string(&mut self, value: impl AsRef<[u8]> + Send) -> Result<()>;
+    fn write_string(
+        &mut self,
+        value: impl AsRef<[u8]> + Send,
+    ) -> impl Future<Output = Result<()>> + Send;
 }
 
-#[async_trait::async_trait]
 impl<T: AsyncWrite + Unpin + Send + Sync + 'static> ClickhouseWrite for T {
     async fn write_var_uint(&mut self, mut value: u64) -> Result<()> {
         for _ in 0..9u64 {

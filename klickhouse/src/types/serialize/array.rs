@@ -24,7 +24,6 @@ impl ArraySerializerGeneric for ArraySerializer {
     }
 }
 
-#[async_trait::async_trait]
 impl<T: ArraySerializerGeneric + 'static> Serializer for T {
     async fn write_prefix<W: ClickhouseWrite>(
         type_: &Type,

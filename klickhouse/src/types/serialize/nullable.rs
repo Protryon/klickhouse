@@ -5,7 +5,6 @@ use crate::{io::ClickhouseWrite, values::Value, Result};
 use super::{Serializer, SerializerState, Type};
 pub struct NullableSerializer;
 
-#[async_trait::async_trait]
 impl Serializer for NullableSerializer {
     async fn write<W: ClickhouseWrite>(
         type_: &Type,

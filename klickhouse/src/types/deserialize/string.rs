@@ -7,7 +7,6 @@ use super::{Deserializer, DeserializerState, Type};
 pub struct StringDeserializer;
 
 #[allow(clippy::uninit_vec)]
-#[async_trait::async_trait]
 impl Deserializer for StringDeserializer {
     async fn read<R: ClickhouseRead>(
         type_: &Type,

@@ -4,7 +4,6 @@ use super::{Deserializer, DeserializerState, Type};
 
 pub struct TupleDeserializer;
 
-#[async_trait::async_trait]
 impl Deserializer for TupleDeserializer {
     async fn read_prefix<R: ClickhouseRead>(
         type_: &Type,
