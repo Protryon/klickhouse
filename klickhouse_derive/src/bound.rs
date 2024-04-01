@@ -174,10 +174,12 @@ pub fn with_bound(
                     for arg in &arguments.args {
                         match arg {
                             syn::GenericArgument::Type(arg) => self.visit_type(arg),
-                            syn::GenericArgument::Binding(arg) => self.visit_type(&arg.ty),
+                            syn::GenericArgument::AssocType(arg) => self.visit_type(&arg.ty),
                             syn::GenericArgument::Lifetime(_)
                             | syn::GenericArgument::Constraint(_)
+                            | syn::GenericArgument::AssocConst(_)
                             | syn::GenericArgument::Const(_) => {}
+                            _ => todo!(),
                         }
                     }
                 }
@@ -201,6 +203,8 @@ pub fn with_bound(
             match bound {
                 syn::TypeParamBound::Trait(bound) => self.visit_path(&bound.path),
                 syn::TypeParamBound::Lifetime(_) => {}
+                syn::TypeParamBound::Verbatim(_) => todo!(),
+                _ => todo!(),
             }
         }
 
