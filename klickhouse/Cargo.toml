@@ -29,10 +29,7 @@ thiserror = "1.0"
 log = "0.4"
 indexmap = { version = "2.2" }
 uuid = { version = "1.8", features = ["v4"] }
-chrono = { version = "0.4", default-features = false, features = [
-    "std",
-    "now"
-] }
+chrono = { version = "0.4", default-features = false, features = ["std", "now"] }
 chrono-tz = "0.9"
 futures = "0.3"
 tokio-stream = "0.1"
