@@ -739,7 +739,6 @@ dependencies = [
  "geo-types",
  "indexmap",
  "klickhouse_derive",
- "libc",
  "log",
  "lz4",
  "paste",
