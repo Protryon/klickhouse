@@ -31,7 +31,7 @@ indexmap = { version = "2.2" }
 uuid = { version = "1.8", features = ["v4"] }
 chrono = "0.4"
 chrono-tz = "0.8"
-futures = "0.3"
+futures-util = { version = "0.3", default-features = false }
 tokio-stream = "0.1"
 libc = "0.2"
 lz4 = { version = "1.24", optional = true }
