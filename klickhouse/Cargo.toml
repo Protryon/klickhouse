@@ -23,7 +23,7 @@ name = "pool"
 required-features = ["bb8"]
 
 [dependencies]
-tokio = { version = "1.37", features = ["io-util", "net", "sync", "rt", "macros"] }
+tokio = { version = "1.37", features = ["io-util", "net", "rt", "macros"] }
 async-trait = "0.1"
 thiserror = "1.0"
 log = "0.4"
