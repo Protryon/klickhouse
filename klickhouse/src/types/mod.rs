@@ -1,7 +1,8 @@
+use std::future::Future;
 use std::{fmt::Display, str::FromStr};
 
 pub use chrono_tz::Tz;
-use futures::{Future, FutureExt};
+use futures_util::FutureExt;
 use uuid::Uuid;
 
 mod deserialize;
