@@ -11,6 +11,9 @@ use crate::io::ClickhouseRead;
 use crate::protocol::CompressionMethod;
 use crate::{KlickhouseError, Result};
 
+#[allow(non_camel_case_types)]
+type c_char = i8;
+
 pub async fn compress_block(block: Block, revision: u64) -> Result<(Vec<u8>, usize)> {
     let mut raw = vec![];
     block.write(&mut raw, revision).await?;
@@ -18,8 +21,8 @@ pub async fn compress_block(block: Block, revision: u64) -> Result<(Vec<u8>, usi
     let mut compressed = Vec::<u8>::with_capacity(raw.len() + (raw.len() / 255) + 16 + 1);
     let out_len = unsafe {
         lz4::liblz4::LZ4_compress_default(
-            raw.as_ptr() as *const libc::c_char,
-            compressed.as_mut_ptr() as *mut libc::c_char,
+            raw.as_ptr() as *const c_char,
+            compressed.as_mut_ptr() as *mut c_char,
             raw.len() as i32,
             compressed.capacity() as i32,
         )
@@ -42,8 +45,8 @@ pub fn decompress_block(data: &[u8], decompressed_size: u32) -> Result<Vec<u8>> 
 
     let out_len = unsafe {
         lz4::liblz4::LZ4_decompress_safe(
-            data.as_ptr() as *const libc::c_char,
-            output.as_mut_ptr() as *mut libc::c_char,
+            data.as_ptr() as *const c_char,
+            output.as_mut_ptr() as *mut c_char,
             data.len() as i32,
             output.capacity() as i32,
         )
