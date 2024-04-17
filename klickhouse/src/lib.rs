@@ -32,6 +32,8 @@ pub use query::*;
 
 #[cfg(feature = "bb8")]
 pub use manager::ConnectionManager;
+#[cfg(feature = "bb8")]
+pub use bb8;
 
 pub use uuid::Uuid;
 
