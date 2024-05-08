@@ -1,8 +1,9 @@
+use std::future::Future;
 use std::io::ErrorKind;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use futures::{Future, FutureExt};
+use futures_util::FutureExt;
 use tokio::io::{AsyncRead, AsyncReadExt, ReadBuf};
 
 use crate::block::Block;

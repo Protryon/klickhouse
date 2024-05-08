@@ -1,5 +1,5 @@
 use chrono::Utc;
-use futures::StreamExt;
+use futures_util::StreamExt;
 use klickhouse::*;
 
 #[derive(Row, Debug, Default)]

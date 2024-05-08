@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use futures::{stream, Stream, StreamExt};
+use futures_util::{stream, Stream, StreamExt};
 use indexmap::IndexMap;
 use protocol::CompressionMethod;
 use tokio::{
@@ -459,7 +459,7 @@ impl Client {
         blocks: Vec<T>,
     ) -> Result<()> {
         let blocks = Box::pin(async move { blocks });
-        let stream = futures::stream::once(blocks);
+        let stream = futures_util::stream::once(blocks);
         self.insert_native(query, stream).await
     }
 

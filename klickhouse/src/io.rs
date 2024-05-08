@@ -1,4 +1,5 @@
-use futures::Future;
+use std::future::Future;
+
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use crate::{KlickhouseError, Result};
