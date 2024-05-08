@@ -31,6 +31,8 @@ mod values;
 pub use query::*;
 
 #[cfg(feature = "bb8")]
+pub use bb8;
+#[cfg(feature = "bb8")]
 pub use manager::ConnectionManager;
 
 pub use uuid::Uuid;
