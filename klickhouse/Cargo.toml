@@ -6,7 +6,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/Protryon/klickhouse"
 description = "Klickhouse is a pure Rust SDK for working with Clickhouse with the native protocol in async environments with minimal boilerplate and maximal performance."
-keywords = [ "clickhouse", "database", "tokio", "sql" ]
+keywords = ["clickhouse", "database", "tokio", "sql"]
 readme = "../README.md"
 autotests = false
 rust-version = "1.75.0"
@@ -29,17 +29,24 @@ thiserror = "1.0"
 log = "0.4"
 indexmap = { version = "2.2" }
 uuid = { version = "1.8", features = ["v4"] }
-chrono = { version = "0.4", default-features = false, features = ["std", "now"] }
+chrono = { version = "0.4", default-features = false, features = [
+    "std",
+    "now",
+] }
 chrono-tz = "0.9"
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 tokio-stream = "0.1"
+libc = { version = "0.2", optional = true }
 lz4 = { version = "1.24", optional = true }
 klickhouse_derive = { version = "=0.13.0", optional = true, path = "../klickhouse_derive" }
 cityhash-rs = "1.0"
 bb8 = { version = "0.8", optional = true }
 # must be locked due to transmute
 refinery-core = { version = "=0.8.13", optional = true }
-time = { version = "0.3", features = ["parsing", "formatting"], optional = true }
+time = { version = "0.3", features = [
+    "parsing",
+    "formatting",
+], optional = true }
 compiler-tools = "0.2"
 compiler-tools-derive = "0.2"
 rust_decimal = { version = "1.35", optional = true }
@@ -48,7 +55,7 @@ serde_json = { version = "1.0", optional = true }
 tokio-rustls = { version = "0.26", optional = true }
 rustls-pki-types = { version = "1.4", optional = true }
 paste = "1.0"
-geo-types = { version = "0.7", optional = true}
+geo-types = { version = "0.7", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1.37", features = ["rt-multi-thread"] }
@@ -57,7 +64,7 @@ env_logger = "0.11"
 [features]
 default = ["derive", "compression", "serde"]
 derive = ["klickhouse_derive"]
-compression = ["lz4"]
+compression = ["libc", "lz4"]
 geo-types = ["dep:geo-types"]
 refinery = ["refinery-core", "time"]
 serde = ["dep:serde", "serde_json", "uuid/serde", "chrono/serde"]

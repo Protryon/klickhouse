@@ -12,8 +12,17 @@ use crate::io::ClickhouseRead;
 use crate::protocol::CompressionMethod;
 use crate::{KlickhouseError, Result};
 
-#[allow(non_camel_case_types)]
-type c_char = i8;
+#[cfg(not(all(
+    target_arch = "wasm32",
+    not(any(target_env = "wasi", target_os = "wasi"))
+)))]
+use libc::c_char;
+
+#[cfg(all(
+    target_arch = "wasm32",
+    not(any(target_env = "wasi", target_os = "wasi"))
+))]
+use std::os::raw::c_char;
 
 pub async fn compress_block(block: Block, revision: u64) -> Result<(Vec<u8>, usize)> {
     let mut raw = vec![];
