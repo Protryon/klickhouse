@@ -1,3 +1,4 @@
+use std::ffi::c_char;
 use std::future::Future;
 use std::io::ErrorKind;
 use std::pin::Pin;
@@ -11,9 +12,6 @@ use crate::internal_client_in::MAX_COMPRESSION_SIZE;
 use crate::io::ClickhouseRead;
 use crate::protocol::CompressionMethod;
 use crate::{KlickhouseError, Result};
-
-#[allow(non_camel_case_types)]
-type c_char = i8;
 
 pub async fn compress_block(block: Block, revision: u64) -> Result<(Vec<u8>, usize)> {
     let mut raw = vec![];
