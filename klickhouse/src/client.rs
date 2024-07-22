@@ -1,11 +1,12 @@
 use std::collections::VecDeque;
+use std::time::Duration;
 
 use futures_util::{stream, Stream, StreamExt};
 use indexmap::IndexMap;
 use protocol::CompressionMethod;
 use tokio::{
     io::{AsyncRead, AsyncWrite, BufReader, BufWriter},
-    net::{TcpStream, ToSocketAddrs},
+    net::{lookup_host, TcpStream, ToSocketAddrs},
     select,
     sync::{
         broadcast,
@@ -284,6 +285,24 @@ impl Client {
         connector: &tokio_rustls::TlsConnector,
     ) -> Result<Self> {
         let stream = TcpStream::connect(destination).await?;
+        let tls_stream = connector.connect(name, stream).await?;
+        let (read, writer) = tokio::io::split(tls_stream);
+        Self::connect_stream(read, writer, options).await
+    }
+
+    /// Connects to a specific socket address over TLS (rustls) for Clickhouse.
+    /// This function will timeout after `duration` if the connection is not established.
+    #[cfg(feature = "tls")]
+    pub async fn connect_tls_timeout<A: ToSocketAddrs>(
+        destination: A,
+        options: ClientOptions,
+        name: rustls_pki_types::ServerName<'static>,
+        connector: &tokio_rustls::TlsConnector,
+        duration: Duration,
+    ) -> Result<Self> {
+        let destination = lookup_host(destination).await?.next().unwrap();
+        let tcp_stream = std::net::TcpStream::connect_timeout(&destination, duration)?;
+        let stream = TcpStream::from_std(tcp_stream)?;
         let tls_stream = connector.connect(name, stream).await?;
         let (read, writer) = tokio::io::split(tls_stream);
         Self::connect_stream(read, writer, options).await
