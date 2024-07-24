@@ -289,6 +289,27 @@ impl Client {
         Self::connect_stream(read, writer, options).await
     }
 
+    /// Connects to a specific socket address over TLS (rustls) for Clickhouse.
+    /// This function will timeout after `duration` if the connection is not established.
+    #[cfg(feature = "tls")]
+    pub async fn connect_tls_timeout<A: ToSocketAddrs>(
+        destination: A,
+        options: ClientOptions,
+        name: rustls_pki_types::ServerName<'static>,
+        connector: &tokio_rustls::TlsConnector,
+        duration: std::time::Duration,
+    ) -> Result<Self> {
+        let destination = tokio::net::lookup_host(destination).await?.next().unwrap();
+        let async_connect = tokio::task::spawn_blocking(move || {
+            std::net::TcpStream::connect_timeout(&destination, duration)
+        });
+        let stream =
+            TcpStream::from_std(async_connect.await.map_err(|e| std::io::Error::from(e))??)?;
+        let tls_stream = connector.connect(name, stream).await?;
+        let (read, writer) = tokio::io::split(tls_stream);
+        Self::connect_stream(read, writer, options).await
+    }
+
     async fn start<R: ClickhouseRead + 'static, W: ClickhouseWrite>(
         inner: InnerClient<R, W>,
     ) -> Result<Self> {
