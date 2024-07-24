@@ -1,12 +1,11 @@
 use std::collections::VecDeque;
-use std::time::Duration;
 
 use futures_util::{stream, Stream, StreamExt};
 use indexmap::IndexMap;
 use protocol::CompressionMethod;
 use tokio::{
     io::{AsyncRead, AsyncWrite, BufReader, BufWriter},
-    net::{lookup_host, TcpStream, ToSocketAddrs},
+    net::{TcpStream, ToSocketAddrs},
     select,
     sync::{
         broadcast,
@@ -298,11 +297,14 @@ impl Client {
         options: ClientOptions,
         name: rustls_pki_types::ServerName<'static>,
         connector: &tokio_rustls::TlsConnector,
-        duration: Duration,
+        duration: std::time::Duration,
     ) -> Result<Self> {
-        let destination = lookup_host(destination).await?.next().unwrap();
-        let tcp_stream = std::net::TcpStream::connect_timeout(&destination, duration)?;
-        let stream = TcpStream::from_std(tcp_stream)?;
+        let destination = tokio::net::lookup_host(destination).await?.next().unwrap();
+        let async_connect = tokio::task::spawn_blocking(move || {
+            std::net::TcpStream::connect_timeout(&destination, duration)
+        });
+        let stream =
+            TcpStream::from_std(async_connect.await.map_err(|e| std::io::Error::from(e))??)?;
         let tls_stream = connector.connect(name, stream).await?;
         let (read, writer) = tokio::io::split(tls_stream);
         Self::connect_stream(read, writer, options).await
