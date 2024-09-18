@@ -242,6 +242,7 @@ pub struct ClientOptions {
     pub username: String,
     pub password: String,
     pub default_database: String,
+    pub tcp_nodelay: bool,
 }
 
 impl Default for ClientOptions {
@@ -250,6 +251,7 @@ impl Default for ClientOptions {
             username: "default".to_string(),
             password: String::new(),
             default_database: String::new(),
+            tcp_nodelay: true,
         }
     }
 }
@@ -271,7 +273,9 @@ impl Client {
 
     /// Connects to a specific socket address over plaintext TCP for Clickhouse.
     pub async fn connect<A: ToSocketAddrs>(destination: A, options: ClientOptions) -> Result<Self> {
-        let (read, writer) = TcpStream::connect(destination).await?.into_split();
+        let stream = TcpStream::connect(destination).await?;
+        stream.set_nodelay(options.tcp_nodelay)?;
+        let (read, writer) = stream.into_split();
         Self::connect_stream(read, writer, options).await
     }
 
@@ -284,6 +288,7 @@ impl Client {
         connector: &tokio_rustls::TlsConnector,
     ) -> Result<Self> {
         let stream = TcpStream::connect(destination).await?;
+        stream.set_nodelay(options.tcp_nodelay)?;
         let tls_stream = connector.connect(name, stream).await?;
         let (read, writer) = tokio::io::split(tls_stream);
         Self::connect_stream(read, writer, options).await
