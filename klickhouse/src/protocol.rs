@@ -90,6 +90,7 @@ impl ServerPacketId {
 }
 
 #[derive(Debug, Clone, Default)]
+#[allow(dead_code)]
 pub struct ServerHello {
     pub server_name: String,
     pub major_version: u64,
@@ -101,12 +102,14 @@ pub struct ServerHello {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ServerData {
     pub table_name: String,
     pub block: Block,
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ServerException {
     pub code: i32,
     pub name: String,
@@ -127,6 +130,7 @@ impl ServerException {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct BlockStreamProfileInfo {
     pub rows: u64,
     pub blocks: u64,
@@ -137,12 +141,14 @@ pub struct BlockStreamProfileInfo {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct TableColumns {
     pub name: String,
     pub description: String,
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct TableStatus {
     pub is_replicated: bool,
     pub absolute_delay: u32,
@@ -153,6 +159,7 @@ pub struct TablesStatusResponse {
     pub database_tables: IndexMap<String, IndexMap<String, TableStatus>>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum ServerPacket {
     Hello(ServerHello),

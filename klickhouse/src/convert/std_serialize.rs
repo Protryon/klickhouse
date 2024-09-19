@@ -167,7 +167,6 @@ impl<T: ToSql> ToSql for Option<T> {
     }
 }
 
-#[cfg(const_generics)]
 impl<T: ToSql, const N: usize> ToSql for [T; N] {
     fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
         let type_hint = type_hint

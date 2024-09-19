@@ -1053,15 +1053,6 @@ pub trait Serializer {
         async { Ok(()) }
     }
 
-    fn write_suffix<W: ClickhouseWrite>(
-        _type_: &Type,
-        _value: &[Value],
-        _writer: &mut W,
-        _state: &mut SerializerState,
-    ) -> impl Future<Output = Result<()>> {
-        async { Ok(()) }
-    }
-
     fn write<W: ClickhouseWrite>(
         type_: &Type,
         values: Vec<Value>,

@@ -22,7 +22,10 @@ impl Serializer for PointSerializer {
         writer: &mut W,
         state: &mut SerializerState,
     ) -> Result<()> {
-        let mut columns = vec![Vec::with_capacity(values.len()); 2];
+        let mut columns = vec![
+            Vec::with_capacity(values.len()),
+            Vec::with_capacity(values.len()),
+        ];
         for value in values {
             let Value::Point(point) = value else {
                 unreachable!()

@@ -234,7 +234,7 @@ fn serialize_into(params: &Parameters, type_into: &syn::Type) -> Fragment {
 }
 
 fn serialize_struct(params: &Parameters, fields: &[Field], cattrs: &attr::Container) -> Fragment {
-    assert!(fields.len() as u64 <= u64::from(u32::max_value()));
+    assert!(fields.len() as u64 <= u64::from(u32::MAX));
 
     serialize_struct_as_struct(params, fields, cattrs)
 }

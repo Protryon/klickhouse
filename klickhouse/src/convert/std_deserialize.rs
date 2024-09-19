@@ -280,7 +280,6 @@ impl<T: FromSql> FromSql for Option<T> {
     }
 }
 
-#[cfg(const_generics)]
 impl<T: FromSql + Default + Copy, const N: usize> FromSql for [T; N] {
     fn from_sql(type_: &Type, value: Value) -> Result<Self> {
         let subtype = match type_ {
