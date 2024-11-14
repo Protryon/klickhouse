@@ -1045,9 +1045,9 @@ dependencies = [
 
 [[package]]
 name = "refinery-core"
-version = "0.8.13"
+version = "0.8.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d0f5d1af6a2e8d5972ca187b2acf7ecb8d6a1a6ece52bceeae8f57880eaf62f"
+checksum = "9bf253999e1899ae476c910b994959e341d84c4389ba9533d3dacbe06df04825"
 dependencies = [
  "async-trait",
  "cfg-if",
