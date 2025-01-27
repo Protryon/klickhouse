@@ -28,7 +28,6 @@ impl ConnectionManager {
     }
 }
 
-#[async_trait::async_trait]
 impl bb8::ManageConnection for ConnectionManager {
     type Connection = Client;
     type Error = KlickhouseError;
