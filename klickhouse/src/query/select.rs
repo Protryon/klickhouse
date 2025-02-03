@@ -16,6 +16,7 @@ pub struct SelectBuilder {
     having: Vec<Result<ParsedQuery>>,
     order_by: Option<Result<ParsedQuery>>,
     limit: Option<Result<ParsedQuery>>,
+    offset: Option<Result<ParsedQuery>>,
     settings: Option<Result<ParsedQuery>>,
     union: Option<Result<ParsedQuery>>,
 }
@@ -38,6 +39,7 @@ impl SelectBuilder {
             having: Default::default(),
             order_by: Default::default(),
             limit: Default::default(),
+            offset: Default::default(),
             settings: Default::default(),
             union: Default::default(),
         }
@@ -178,6 +180,12 @@ impl SelectBuilder {
     /// Sets the LIMIT clause. Overwrites previous LIMIT clauses.
     pub fn limit(mut self, item: impl TryInto<ParsedQuery, Error = KlickhouseError>) -> Self {
         self.limit = Some(item.try_into());
+        self
+    }
+
+    /// Sets the OFFSET clause. Overwrites previous OFFSET clauses.
+    pub fn offset(mut self, item: impl TryInto<ParsedQuery, Error = KlickhouseError>) -> Self {
+        self.offset = Some(item.try_into());
         self
     }
 
@@ -341,6 +349,12 @@ impl TryInto<ParsedQuery> for SelectBuilder {
             out.push('\n');
         }
 
+        if let Some(offset) = self.offset {
+            out.push_str("OFFSET ");
+            out.push_str(&offset?.0);
+            out.push('\n');
+        }
+
         if let Some(settings) = self.settings {
             out.push_str("SETTINGS ");
             out.push_str(&settings?.0);
@@ -371,9 +385,20 @@ mod tests {
             .array_join("ARRAY JOIN col3")
             .where_("col4 LIKE 'test'")
             .group_by("col1")
+            .offset("5")
             .where_(QueryBuilder::new("col5 = $1").arg("test"));
 
         let query = builder.build().unwrap();
-        println!("{query}");
+        let result = "SELECT
+col1,
+col2 as COL2
+FROM table_name
+ARRAY JOIN col3
+WHERE (col4 LIKE 'test') AND
+(col5 = 'test')
+GROUP BY col1
+OFFSET 5
+";
+        assert!(result == format!("{query}"));
     }
 }
