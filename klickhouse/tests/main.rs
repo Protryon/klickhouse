@@ -4,6 +4,7 @@ pub mod test_decimal;
 pub mod test_flatten;
 #[cfg(feature = "geo-types")]
 pub mod test_geo;
+pub mod test_into;
 pub mod test_lock;
 pub mod test_nested;
 pub mod test_ordering;
