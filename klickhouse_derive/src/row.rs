@@ -228,7 +228,8 @@ fn serialize_into(params: &Parameters, type_into: &syn::Type) -> Fragment {
     let self_var = &params.self_var;
     quote_block! {
         ::klickhouse::Row::serialize_row(
-            &::std::convert::Into::<#type_into>::into(#self_var)
+            ::std::convert::Into::<#type_into>::into(#self_var),
+            &type_hints
         )
     }
 }
