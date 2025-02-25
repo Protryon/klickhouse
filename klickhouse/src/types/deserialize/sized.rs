@@ -55,7 +55,7 @@ impl Deserializer for SizedDeserializer {
                 Type::Uuid => Value::Uuid({
                     let n1 = reader.read_u64_le().await?;
                     let n2 = reader.read_u64_le().await?;
-                    Uuid::from_u128((n1 as u128) << 64 | n2 as u128)
+                    Uuid::from_u128(((n1 as u128) << 64) | n2 as u128)
                 }),
                 Type::Date => Value::Date(Date(reader.read_u16_le().await?)),
                 Type::DateTime(tz) => Value::DateTime(DateTime(*tz, reader.read_u32_le().await?)),

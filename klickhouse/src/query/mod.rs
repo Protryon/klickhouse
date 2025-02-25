@@ -22,7 +22,7 @@ impl TryInto<ParsedQuery> for String {
     }
 }
 
-impl<'a> TryInto<ParsedQuery> for &'a str {
+impl TryInto<ParsedQuery> for &str {
     type Error = KlickhouseError;
 
     fn try_into(self) -> Result<ParsedQuery> {
@@ -30,7 +30,7 @@ impl<'a> TryInto<ParsedQuery> for &'a str {
     }
 }
 
-impl<'a> TryInto<ParsedQuery> for &'a String {
+impl TryInto<ParsedQuery> for &String {
     type Error = KlickhouseError;
 
     fn try_into(self) -> Result<ParsedQuery> {
@@ -68,7 +68,7 @@ impl<'a> QueryBuilder<'a> {
     }
 }
 
-impl<'a> TryInto<ParsedQuery> for QueryBuilder<'a> {
+impl TryInto<ParsedQuery> for QueryBuilder<'_> {
     type Error = KlickhouseError;
 
     fn try_into(self) -> Result<ParsedQuery> {

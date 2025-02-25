@@ -562,7 +562,7 @@ impl Type {
         &'a self,
         reader: &'a mut R,
         state: &'a mut DeserializerState,
-    ) -> impl Future<Output = Result<()>> + Send + '_ {
+    ) -> impl Future<Output = Result<()>> + Send + 'a {
         use deserialize::*;
 
         async move {
@@ -631,7 +631,7 @@ impl Type {
         reader: &'a mut R,
         rows: usize,
         state: &'a mut DeserializerState,
-    ) -> impl Future<Output = Result<Vec<Value>>> + Send + '_ {
+    ) -> impl Future<Output = Result<Vec<Value>>> + Send + 'a {
         use deserialize::*;
 
         async move {
@@ -702,7 +702,7 @@ impl Type {
         values: Vec<Value>,
         writer: &'a mut W,
         state: &'a mut SerializerState,
-    ) -> impl Future<Output = Result<()>> + Send + '_ {
+    ) -> impl Future<Output = Result<()>> + Send + 'a {
         use serialize::*;
 
         async move {
@@ -770,7 +770,7 @@ impl Type {
         &'a self,
         writer: &'a mut W,
         state: &'a mut SerializerState,
-    ) -> impl Future<Output = Result<()>> + Send + '_ {
+    ) -> impl Future<Output = Result<()>> + Send + 'a {
         use serialize::*;
 
         async move {
