@@ -1,5 +1,6 @@
 use std::net::{Ipv4Addr, Ipv6Addr};
 
+use half::bf16;
 use indexmap::IndexMap;
 use klickhouse::{
     i256, u256, Date, DateTime, DateTime64, FixedPoint128, FixedPoint256, FixedPoint32,
@@ -22,6 +23,7 @@ pub struct TestType {
     d_u256: u256,
     d_f32: f32,
     d_f64: f64,
+    d_bf16: bf16,
     d_d32: FixedPoint32<5>,
     d_d64: FixedPoint64<5>,
     d_d128: FixedPoint128<5>,
@@ -76,6 +78,7 @@ async fn test_client() {
         d_u256 UInt256 default 0,
         d_f32 Float32 default 0,
         d_f64 Float64 default 0,
+        d_bf16 BFloat16 default 0,
         d_d32 Decimal32(5) default 0,
         d_d64 Decimal64(5) default 0,
         d_d128 Decimal128(5) default 0,

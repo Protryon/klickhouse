@@ -104,6 +104,7 @@ impl PartialEq for Value {
             (Self::UInt256(l0), Self::UInt256(r0)) => l0 == r0,
             (Self::Float32(l0), Self::Float32(r0)) => l0.to_bits() == r0.to_bits(),
             (Self::Float64(l0), Self::Float64(r0)) => l0.to_bits() == r0.to_bits(),
+            (Self::BFloat16(l0), Self::BFloat16(r0)) => l0.to_bits() == r0.to_bits(),
             (Self::Decimal32(l0, l1), Self::Decimal32(r0, r1)) => l0 == r0 && l1 == r1,
             (Self::Decimal64(l0, l1), Self::Decimal64(r0, r1)) => l0 == r0 && l1 == r1,
             (Self::Decimal128(l0, l1), Self::Decimal128(r0, r1)) => l0 == r0 && l1 == r1,
@@ -147,6 +148,7 @@ impl Hash for Value {
             Value::UInt256(x) => ::core::hash::Hash::hash(x, state),
             Value::Float32(x) => ::core::hash::Hash::hash(&x.to_bits(), state),
             Value::Float64(x) => ::core::hash::Hash::hash(&x.to_bits(), state),
+            Value::BFloat16(x) => ::core::hash::Hash::hash(&x.to_bits(), state),
             Value::Decimal32(x, __self_1) => {
                 ::core::hash::Hash::hash(x, state);
                 ::core::hash::Hash::hash(__self_1, state)
