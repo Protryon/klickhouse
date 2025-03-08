@@ -1,4 +1,5 @@
 use chrono_tz::UTC;
+use half::bf16;
 use indexmap::IndexMap;
 use uuid::Uuid;
 
@@ -142,6 +143,25 @@ fn roundtrip_f64() {
 
     for float in FLOATS {
         assert_eq!(float.to_bits(), roundtrip(*float, &Type::Float64).to_bits());
+    }
+}
+
+#[test]
+fn roundtrip_bf16() {
+    let floats: &[bf16] = &[
+        bf16::from_f32(1.00),
+        bf16::from_f32(0.0),
+        bf16::from_f32(100.0),
+        bf16::from_f32(100000.0),
+        bf16::from_f32(1000000.0),
+        bf16::from_f32(-1000000.0),
+        bf16::NAN,
+        bf16::INFINITY,
+        bf16::NEG_INFINITY,
+    ];
+
+    for float in floats {
+        assert_eq!(float.to_bits(), roundtrip(*float, &Type::BFloat16).to_bits());
     }
 }
 
