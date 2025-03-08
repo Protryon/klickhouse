@@ -3,6 +3,7 @@ use std::{
     collections::{BTreeMap, HashMap},
 };
 
+use half::bf16;
 use indexmap::IndexMap;
 
 use super::*;
@@ -82,6 +83,12 @@ impl ToSql for f32 {
 impl ToSql for f64 {
     fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Float64(self))
+    }
+}
+
+impl ToSql for bf16 {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
+        Ok(Value::BFloat16(self))
     }
 }
 

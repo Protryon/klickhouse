@@ -3,6 +3,7 @@ use std::{fmt::Display, str::FromStr};
 
 pub use chrono_tz::Tz;
 use futures_util::FutureExt;
+use half::bf16;
 use uuid::Uuid;
 
 mod deserialize;
@@ -39,6 +40,7 @@ pub enum Type {
 
     Float32,
     Float64,
+    BFloat16,
 
     Decimal32(usize),
     Decimal64(usize),
@@ -159,6 +161,7 @@ impl Type {
             Type::UInt256 => Value::UInt256(u256::default()),
             Type::Float32 => Value::Float32(0.0),
             Type::Float64 => Value::Float64(0.0),
+            Type::BFloat16 => Value::BFloat16(bf16::ZERO),
             Type::Decimal32(s) => Value::Decimal32(*s, 0),
             Type::Decimal64(s) => Value::Decimal64(*s, 0),
             Type::Decimal128(s) => Value::Decimal128(*s, 0),
@@ -466,6 +469,7 @@ impl FromStr for Type {
             "UInt256" => Type::UInt256,
             "Float32" => Type::Float32,
             "Float64" => Type::Float64,
+            "BFloat16" => Type::BFloat16,
             "String" => Type::String,
             "UUID" => Type::Uuid,
             "Date" => Type::Date,
@@ -502,6 +506,7 @@ impl Display for Type {
             Type::UInt256 => write!(f, "UInt256"),
             Type::Float32 => write!(f, "Float32"),
             Type::Float64 => write!(f, "Float64"),
+            Type::BFloat16 => write!(f, "BFloat16"),
             Type::Decimal32(s) => write!(f, "Decimal32({s})"),
             Type::Decimal64(s) => write!(f, "Decimal64({s})"),
             Type::Decimal128(s) => write!(f, "Decimal128({s})"),
@@ -578,6 +583,7 @@ impl Type {
                 | Type::UInt256
                 | Type::Float32
                 | Type::Float64
+                | Type::BFloat16
                 | Type::Decimal32(_)
                 | Type::Decimal64(_)
                 | Type::Decimal128(_)
@@ -653,6 +659,7 @@ impl Type {
                 | Type::UInt256
                 | Type::Float32
                 | Type::Float64
+                | Type::BFloat16
                 | Type::Decimal32(_)
                 | Type::Decimal64(_)
                 | Type::Decimal128(_)
@@ -717,6 +724,7 @@ impl Type {
                 | Type::UInt256
                 | Type::Float32
                 | Type::Float64
+                | Type::BFloat16
                 | Type::Decimal32(_)
                 | Type::Decimal64(_)
                 | Type::Decimal128(_)
@@ -785,6 +793,7 @@ impl Type {
                 | Type::UInt256
                 | Type::Float32
                 | Type::Float64
+                | Type::BFloat16
                 | Type::Decimal32(_)
                 | Type::Decimal64(_)
                 | Type::Decimal128(_)
@@ -968,7 +977,8 @@ impl Type {
             | (Type::UInt128, Value::UInt128(_))
             | (Type::UInt256, Value::UInt256(_))
             | (Type::Float32, Value::Float32(_))
-            | (Type::Float64, Value::Float64(_)) => true,
+            | (Type::Float64, Value::Float64(_))
+            | (Type::BFloat16, Value::BFloat16(_)) => true,
             (Type::Decimal32(precision1), Value::Decimal32(precision2, _)) => {
                 precision1 == precision2
             }

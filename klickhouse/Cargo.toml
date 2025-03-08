@@ -49,6 +49,7 @@ tokio-rustls = { version = "0.26", optional = true }
 rustls-pki-types = { version = "1.12", optional = true }
 paste = "1.0"
 geo-types = { version = "0.7", optional = true}
+half = "2.4"
 
 [dev-dependencies]
 tokio = { version = "1.45", features = ["rt-multi-thread"] }
@@ -60,7 +61,7 @@ derive = ["klickhouse_derive"]
 compression = ["lz4"]
 geo-types = ["dep:geo-types"]
 refinery = ["refinery-core", "time", "dep:async-trait"]
-serde = ["dep:serde", "serde_json", "uuid/serde", "chrono/serde"]
+serde = ["dep:serde", "serde_json", "uuid/serde", "chrono/serde", "half/serde"]
 tls = ["tokio-rustls", "rustls-pki-types"]
 bb8 = ["dep:bb8"]
 
