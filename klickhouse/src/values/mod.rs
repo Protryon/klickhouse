@@ -2,6 +2,7 @@ use std::{borrow::Cow, fmt, hash::Hash};
 
 use chrono::{NaiveDate, SecondsFormat};
 use chrono_tz::Tz;
+use half::bf16;
 
 use crate::{
     convert::{unexpected_type, FromSql, ToSql},
@@ -51,6 +52,7 @@ pub enum Value {
 
     Float32(f32),
     Float64(f64),
+    BFloat16(bf16),
 
     Decimal32(usize, i32),
     Decimal64(usize, i64),
@@ -269,6 +271,7 @@ impl Value {
             Value::UInt256(_) => Type::UInt256,
             Value::Float32(_) => Type::Float32,
             Value::Float64(_) => Type::Float64,
+            Value::BFloat16(_) => Type::BFloat16,
             Value::Decimal32(p, _) => Type::Decimal32(*p),
             Value::Decimal64(p, _) => Type::Decimal64(*p),
             Value::Decimal128(p, _) => Type::Decimal128(*p),
@@ -347,6 +350,7 @@ impl fmt::Display for Value {
             Value::UInt256(x) => write!(f, "{x}::UInt256"),
             Value::Float32(x) => write!(f, "{x}"),
             Value::Float64(x) => write!(f, "{x}"),
+            Value::BFloat16(x) => write!(f, "{x}"),
             Value::Decimal32(precision, value) => {
                 let raw_value = value.to_string();
                 if raw_value.len() < *precision {
