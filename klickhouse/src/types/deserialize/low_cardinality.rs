@@ -17,8 +17,7 @@ impl Deserializer for LowCardinalityDeserializer {
         let version = reader.read_u64_le().await?;
         if version != LOW_CARDINALITY_VERSION {
             return Err(KlickhouseError::DeserializeError(format!(
-                "LowCardinality: invalid low cardinality version: {}",
-                version
+                "LowCardinality: invalid low cardinality version: {version}"
             )));
         }
         Ok(())
@@ -62,8 +61,7 @@ impl Deserializer for LowCardinalityDeserializer {
                             TUINT64 => Type::UInt64,
                             x => {
                                 return Err(KlickhouseError::DeserializeError(format!(
-                                    "LowCardinality: bad index type: {}",
-                                    x
+                                    "LowCardinality: bad index type: {x}"
                                 )))
                             }
                         };
@@ -117,8 +115,7 @@ impl Deserializer for LowCardinalityDeserializer {
                             } else {
                                 additional_keys.get(entry).cloned().ok_or_else(|| {
                                     KlickhouseError::DeserializeError(format!(
-                                        "LowCardinality: illegal index {} in additional_keys",
-                                        entry
+                                        "LowCardinality: illegal index {entry} in additional_keys"
                                     ))
                                 })?
                             };
@@ -161,8 +158,7 @@ impl Deserializer for LowCardinalityDeserializer {
                             } else if entry < additional_keys.len() {
                                 additional_keys.get(entry).cloned().ok_or_else(|| {
                                     KlickhouseError::DeserializeError(format!(
-                                        "LowCardinality: illegal index {} in additional_keys",
-                                        entry
+                                        "LowCardinality: illegal index {entry} in additional_keys"
                                     ))
                                 })?
                             } else {
@@ -171,8 +167,7 @@ impl Deserializer for LowCardinalityDeserializer {
                                     .cloned()
                                     .ok_or_else(|| {
                                         KlickhouseError::DeserializeError(format!(
-                                            "LowCardinality: illegal index {} in global_dictionary",
-                                            entry
+                                            "LowCardinality: illegal index {entry} in global_dictionary"
                                         ))
                                     })?
                             };

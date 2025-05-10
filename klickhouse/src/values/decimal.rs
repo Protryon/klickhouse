@@ -81,8 +81,7 @@ impl ToSql for Decimal {
                 ))
             }
             Some(x) => Err(KlickhouseError::SerializeError(format!(
-                "unexpected type: {}",
-                x
+                "unexpected type: {x}"
             ))),
         }
     }

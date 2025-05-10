@@ -282,7 +282,7 @@ impl Container {
                         .replace(' ', "");
                     cx.error_spanned_by(
                         meta_item.path(),
-                        format!("unknown klickhouse container attribute `{}`", path),
+                        format!("unknown klickhouse container attribute `{path}`"),
                     );
                 }
             }
@@ -520,7 +520,7 @@ impl Field {
                         .replace(' ', "");
                     cx.error_spanned_by(
                         meta_item.path(),
-                        format!("unknown klickhouse field attribute `{}`", path),
+                        format!("unknown klickhouse field attribute `{path}`"),
                     );
                 }
             }
@@ -624,8 +624,7 @@ fn get_lit_str2<'a>(
         cx.error_spanned_by(
             lit,
             format!(
-                "expected klickhouse {} attribute to be a string: `{} = \"...\"`",
-                attr_name, meta_item_name
+                "expected klickhouse {attr_name} attribute to be a string: `{meta_item_name} = \"...\"`"
             ),
         );
         Err(())

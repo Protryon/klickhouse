@@ -42,8 +42,7 @@ impl BlockInfo {
                 }
                 field_num => {
                     return Err(KlickhouseError::ProtocolError(format!(
-                        "unknown block info field number: {}",
-                        field_num
+                        "unknown block info field number: {field_num}"
                     )));
                 }
             }

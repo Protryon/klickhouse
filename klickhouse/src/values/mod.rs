@@ -386,7 +386,7 @@ impl fmt::Display for Value {
                 write!(f, "'")
             }
             Value::Uuid(uuid) => {
-                write!(f, "toUUID('{}')", uuid)
+                write!(f, "toUUID('{uuid}')")
             }
             Value::Date(date) => {
                 let chrono_date: NaiveDate = (*date).into();
@@ -414,20 +414,20 @@ impl fmt::Display for Value {
             Value::Array(array) => {
                 write!(f, "[")?;
                 if let Some(item) = array.first() {
-                    write!(f, "{}", item)?;
+                    write!(f, "{item}")?;
                 }
                 for item in array.iter().skip(1) {
-                    write!(f, ",{}", item)?;
+                    write!(f, ",{item}")?;
                 }
                 write!(f, "]")
             }
             Value::Tuple(tuple) => {
                 write!(f, "(")?;
                 if let Some(item) = tuple.first() {
-                    write!(f, "{}", item)?;
+                    write!(f, "{item}")?;
                 }
                 for item in tuple.iter().skip(1) {
-                    write!(f, ",{}", item)?;
+                    write!(f, ",{item}")?;
                 }
                 write!(f, ")")
             }
@@ -446,10 +446,10 @@ impl fmt::Display for Value {
             }
             Value::Ipv4(ipv4) => write!(f, "'{ipv4}'"),
             Value::Ipv6(ipv6) => write!(f, "'{ipv6}'"),
-            Value::Point(x) => write!(f, "{:?}", x),
-            Value::Ring(x) => write!(f, "{:?}", x),
-            Value::Polygon(x) => write!(f, "{:?}", x),
-            Value::MultiPolygon(x) => write!(f, "{:?}", x),
+            Value::Point(x) => write!(f, "{x:?}"),
+            Value::Ring(x) => write!(f, "{x:?}"),
+            Value::Polygon(x) => write!(f, "{x:?}"),
+            Value::MultiPolygon(x) => write!(f, "{x:?}"),
         }
     }
 }

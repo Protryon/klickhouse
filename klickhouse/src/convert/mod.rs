@@ -27,7 +27,7 @@ impl ToSql for Value {
 }
 
 pub fn unexpected_type(type_: &Type) -> KlickhouseError {
-    KlickhouseError::DeserializeError(format!("unexpected type: {}", type_))
+    KlickhouseError::DeserializeError(format!("unexpected type: {type_}"))
 }
 
 /// A type that can be converted from a raw Clickhouse SQL value.

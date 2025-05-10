@@ -73,5 +73,5 @@ async fn test_client() {
         .query_collect::<RawRow>("SELECT * FROM test_bytes")
         .await
         .unwrap();
-    println!("{:?}", items2);
+    println!("{items2:?}");
 }

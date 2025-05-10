@@ -34,8 +34,7 @@ impl<T: AsyncRead + Unpin + Send + Sync> ClickhouseRead for T {
         let len = self.read_var_uint().await?;
         if len as usize > MAX_STRING_SIZE {
             return Err(KlickhouseError::ProtocolError(format!(
-                "string too large: {} > {}",
-                len, MAX_STRING_SIZE
+                "string too large: {len} > {MAX_STRING_SIZE}"
             )));
         }
         if len == 0 {

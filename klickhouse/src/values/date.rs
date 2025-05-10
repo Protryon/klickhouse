@@ -306,7 +306,7 @@ impl ToSql for chrono::DateTime<Utc> {
         Ok(Value::DateTime64(DynDateTime64(
             chrono_tz::UTC,
             self.timestamp_micros().try_into().map_err(|e| {
-                KlickhouseError::DeserializeError(format!("failed to convert DateTime64: {:?}", e))
+                KlickhouseError::DeserializeError(format!("failed to convert DateTime64: {e:?}"))
             })?,
             6,
         )))
@@ -328,8 +328,7 @@ impl FromSql for chrono::DateTime<Utc> {
                     .and_then(|k| Ok((k, units_ns.try_into()?)))
                     .map_err(|e| {
                         KlickhouseError::DeserializeError(format!(
-                            "failed to convert DateTime: {:?}",
-                            e
+                            "failed to convert DateTime: {e:?}"
                         ))
                     })?;
                 Ok(datetime
@@ -339,7 +338,7 @@ impl FromSql for chrono::DateTime<Utc> {
                     .with_timezone(&Utc))
             }
             Value::DateTime(date) => Ok(date.try_into().map_err(|e| {
-                KlickhouseError::DeserializeError(format!("failed to convert DateTime: {:?}", e))
+                KlickhouseError::DeserializeError(format!("failed to convert DateTime: {e:?}"))
             })?),
             _ => unimplemented!(),
         }
@@ -381,7 +380,7 @@ impl ToSql for chrono::DateTime<Tz> {
         Ok(Value::DateTime64(DynDateTime64(
             self.timezone(),
             self.timestamp_micros().try_into().map_err(|e| {
-                KlickhouseError::DeserializeError(format!("failed to convert DateTime64: {:?}", e))
+                KlickhouseError::DeserializeError(format!("failed to convert DateTime64: {e:?}"))
             })?,
             6,
         )))
@@ -403,14 +402,13 @@ impl FromSql for chrono::DateTime<Tz> {
                     .and_then(|k| Ok((k, units_ns.try_into()?)))
                     .map_err(|e| {
                         KlickhouseError::DeserializeError(format!(
-                            "failed to convert DateTime: {:?}",
-                            e
+                            "failed to convert DateTime: {e:?}"
                         ))
                     })?;
                 Ok(datetime.0.timestamp_opt(seconds, units_ns).unwrap())
             }
             Value::DateTime(date) => Ok(date.try_into().map_err(|e| {
-                KlickhouseError::DeserializeError(format!("failed to convert DateTime: {:?}", e))
+                KlickhouseError::DeserializeError(format!("failed to convert DateTime: {e:?}"))
             })?),
             _ => unimplemented!(),
         }

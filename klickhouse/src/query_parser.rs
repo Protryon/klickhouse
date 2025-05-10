@@ -113,7 +113,7 @@ pub fn split_query_statements(query: &str) -> Vec<String> {
                 out.push(String::new());
             }
             token => {
-                write!(out.last_mut().unwrap(), "{}", token).unwrap();
+                write!(out.last_mut().unwrap(), "{token}").unwrap();
             }
         }
     }
@@ -201,7 +201,7 @@ mod tests {
         for test in tests {
             let mut tokenizer = Tokenizer::new(test);
             while let Some(token) = tokenizer.next() {
-                println!("{}", token);
+                println!("{token}");
                 assert!(!matches!(token.token, Token::Illegal(_)));
             }
             println!();
