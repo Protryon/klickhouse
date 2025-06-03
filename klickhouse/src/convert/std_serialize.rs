@@ -91,7 +91,7 @@ impl ToSql for String {
     }
 }
 
-impl<'a> ToSql for &'a str {
+impl ToSql for &str {
     fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::String(self.as_bytes().to_vec()))
     }
@@ -180,13 +180,13 @@ impl<T: ToSql, const N: usize> ToSql for [T; N] {
     }
 }
 
-impl<'a, T: ToSql + Clone> ToSql for &'a T {
+impl<T: ToSql + Clone> ToSql for &T {
     fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
         self.clone().to_sql(type_hint)
     }
 }
 
-impl<'a, T: ToSql + Clone> ToSql for &'a mut T {
+impl<T: ToSql + Clone> ToSql for &mut T {
     fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
         self.clone().to_sql(type_hint)
     }

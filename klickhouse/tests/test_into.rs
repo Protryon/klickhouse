@@ -4,10 +4,10 @@ pub struct TestType1 {
     d_i8: i8,
 }
 
-impl Into<TestType2> for TestType1 {
-    fn into(self) -> TestType2 {
+impl From<TestType1> for TestType2 {
+    fn from(val: TestType1) -> Self {
         TestType2 {
-            d_i16: self.d_i8 as i16,
+            d_i16: val.d_i8 as i16,
         }
     }
 }

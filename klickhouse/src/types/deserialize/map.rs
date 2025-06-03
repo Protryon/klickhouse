@@ -35,8 +35,7 @@ impl Deserializer for MapDeserializer {
     ) -> Result<Vec<Value>> {
         if rows > MAX_STRING_SIZE {
             return Err(KlickhouseError::ProtocolError(format!(
-                "read_n response size too large for map. {} > {}",
-                rows, MAX_STRING_SIZE
+                "read_n response size too large for map. {rows} > {MAX_STRING_SIZE}"
             )));
         }
         if rows == 0 {

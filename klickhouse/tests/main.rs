@@ -37,13 +37,12 @@ pub async fn get_client() -> Client {
 /// simultaneously.
 pub async fn prepare_table(table_name: &str, table_struct: &str, client: &Client) {
     client
-        .execute(format!("DROP TABLE IF EXISTS {}", table_name))
+        .execute(format!("DROP TABLE IF EXISTS {table_name}"))
         .await
         .unwrap();
     client
         .execute(format!(
-            "CREATE TABLE {} ({}) ENGINE = Memory;",
-            table_name, table_struct
+            "CREATE TABLE {table_name} ({table_struct}) ENGINE = Memory;"
         ))
         .await
         .unwrap();

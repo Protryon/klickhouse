@@ -150,7 +150,7 @@ impl Row for Migration {
         }
         let applied_on =
             OffsetDateTime::parse(applied_on.as_ref().unwrap(), &Rfc3339).map_err(|e| {
-                KlickhouseError::DeserializeError(format!("failed to parse time: {:?}", e))
+                KlickhouseError::DeserializeError(format!("failed to parse time: {e:?}"))
             })?;
 
         Ok(MigrationInner::applied(
@@ -158,7 +158,7 @@ impl Row for Migration {
             name_out.unwrap(),
             applied_on,
             checksum.unwrap().parse::<u64>().map_err(|e| {
-                KlickhouseError::DeserializeError(format!("failed to parse checksum: {:?}", e))
+                KlickhouseError::DeserializeError(format!("failed to parse checksum: {e:?}"))
             })?,
         )
         .into())

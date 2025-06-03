@@ -81,8 +81,7 @@ impl ServerPacketId {
             13 => ServerPacketId::ReadTaskRequest,
             x => {
                 return Err(KlickhouseError::ProtocolError(format!(
-                    "invalid packet id from server: {}",
-                    x
+                    "invalid packet id from server: {x}"
                 )))
             }
         })

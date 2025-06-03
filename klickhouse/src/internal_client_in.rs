@@ -177,8 +177,7 @@ impl<R: ClickhouseRead + 'static> InternalClientIn<R> {
                 let size = self.reader.read_var_uint().await?;
                 if size as usize > MAX_STRING_SIZE {
                     return Err(KlickhouseError::ProtocolError(format!(
-                        "table status response size too large. {} > {}",
-                        size, MAX_STRING_SIZE
+                        "table status response size too large. {size} > {MAX_STRING_SIZE}"
                     )));
                 }
                 for _ in 0..size {
@@ -217,8 +216,7 @@ impl<R: ClickhouseRead + 'static> InternalClientIn<R> {
                 let len = self.reader.read_var_uint().await?;
                 if len as usize > MAX_STRING_SIZE {
                     return Err(KlickhouseError::ProtocolError(format!(
-                        "PartUUIDs response size too large. {} > {}",
-                        len, MAX_STRING_SIZE
+                        "PartUUIDs response size too large. {len} > {MAX_STRING_SIZE}"
                     )));
                 }
                 let mut out = Vec::with_capacity(len as usize);
@@ -243,8 +241,7 @@ impl<R: ClickhouseRead + 'static> InternalClientIn<R> {
             ServerPacket::Hello(hello) => Ok(hello),
             ServerPacket::Exception(e) => Err(e.emit()),
             packet => Err(KlickhouseError::ProtocolError(format!(
-                "unexpected packet {:?}, expected server hello",
-                packet
+                "unexpected packet {packet:?}, expected server hello"
             ))),
         }
     }

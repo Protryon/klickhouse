@@ -55,7 +55,7 @@ pub struct ClientInfo<'a> {
     pub open_telemetry: Option<OpenTelemetry<'a>>,
 }
 
-impl<'a> ClientInfo<'a> {
+impl ClientInfo<'_> {
     pub async fn write<W: ClickhouseWrite>(&self, to: &mut W, revision: u64) -> Result<()> {
         to.write_u8(self.kind as u8).await?;
         if self.kind == QueryKind::NoQuery {

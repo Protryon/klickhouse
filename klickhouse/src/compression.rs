@@ -68,7 +68,7 @@ async fn read_compressed_blob(
     compression: CompressionMethod,
 ) -> Result<Vec<u8>> {
     let checksum =
-        (reader.read_u64_le().await? as u128) << 64u128 | (reader.read_u64_le().await? as u128);
+        ((reader.read_u64_le().await? as u128) << 64u128) | (reader.read_u64_le().await? as u128);
     let type_byte = reader.read_u8().await?;
     if type_byte != compression.byte() {
         return Err(KlickhouseError::ProtocolError(format!(
@@ -82,13 +82,11 @@ async fn read_compressed_blob(
     if compressed_size > MAX_COMPRESSION_SIZE {
         // 1 GB
         return Err(KlickhouseError::ProtocolError(format!(
-            "compressed payload too large! {} > {}",
-            compressed_size, MAX_COMPRESSION_SIZE
+            "compressed payload too large! {compressed_size} > {MAX_COMPRESSION_SIZE}"
         )));
     } else if compressed_size < 9 {
         return Err(KlickhouseError::ProtocolError(format!(
-            "compressed payload too small! {} < 9",
-            compressed_size
+            "compressed payload too small! {compressed_size} < 9"
         )));
     }
     let decompressed_size = reader.read_u32_le().await?;
@@ -100,8 +98,7 @@ async fn read_compressed_blob(
     let calc_checksum = cityhash_rs::cityhash_102_128(&compressed[..]);
     if calc_checksum != checksum {
         return Err(KlickhouseError::ProtocolError(format!(
-            "corrupt checksum from clickhouse '{:032X}' vs '{:032X}'",
-            calc_checksum, checksum
+            "corrupt checksum from clickhouse '{calc_checksum:032X}' vs '{checksum:032X}'"
         )));
     }
     let raw_block = crate::compression::decompress_block(&compressed[9..], decompressed_size)?;
@@ -156,7 +153,7 @@ impl<'a, R: ClickhouseRead + 'static> DecompressionReader<'a, R> {
     }
 }
 
-impl<'a, R: ClickhouseRead + 'static> AsyncRead for DecompressionReader<'a, R> {
+impl<R: ClickhouseRead + 'static> AsyncRead for DecompressionReader<'_, R> {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,

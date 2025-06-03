@@ -377,7 +377,7 @@ fn deserialize_struct(params: &Parameters, fields: &[Field], cattrs: &attr::Cont
 }
 
 fn field_i(i: usize) -> Ident {
-    Ident::new(&format!("__field{}", i), Span::call_site())
+    Ident::new(&format!("__field{i}"), Span::call_site())
 }
 
 fn deserialize_map(
@@ -550,10 +550,10 @@ fn deserialize_map(
         let ty = f.ty;
         let name = f.original.ident.as_ref().unwrap();
         let missing_names_error =
-            format!("Flattened field {} should provide Row::column_names", name);
+            format!("Flattened field {name} should provide Row::column_names");
         // TODO: To give the actual field, we would need to change the type of
         //       KlickhouseError::MissingField from &'static str to Cow.
-        let missing_col_error = format!("Flattened field {} has missing column", name);
+        let missing_col_error = format!("Flattened field {name} has missing column");
         pull_flatten.push(quote! {
             for c in #ty::column_names()
                     .ok_or_else(|| ::klickhouse::KlickhouseError::DeserializeError(#missing_names_error.into()))? {

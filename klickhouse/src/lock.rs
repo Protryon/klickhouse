@@ -89,14 +89,14 @@ impl ClickhouseLock {
     }
 }
 
-impl<'a> ClickhouseLockHandle<'a> {
+impl ClickhouseLockHandle<'_> {
     /// Unlocks this handle (without spawning a tokio task)
     pub async fn unlock(mut self) -> Result<(), KlickhouseError> {
         self.lock.take().unwrap().reset().await
     }
 }
 
-impl<'a> Drop for ClickhouseLockHandle<'a> {
+impl Drop for ClickhouseLockHandle<'_> {
     fn drop(&mut self) {
         if let Some(lock) = self.lock.take().cloned() {
             tokio::spawn(async move {

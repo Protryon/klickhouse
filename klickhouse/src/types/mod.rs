@@ -262,8 +262,7 @@ impl FromStr for Type {
         let (ident, following) = eat_identifier(s);
         if ident.is_empty() {
             return Err(KlickhouseError::TypeParseError(format!(
-                "invalid empty identifier for type: '{}'",
-                s
+                "invalid empty identifier for type: '{s}'"
             )));
         }
         let following = following.trim();
@@ -447,8 +446,7 @@ impl FromStr for Type {
                 }
                 _ => {
                     return Err(KlickhouseError::TypeParseError(format!(
-                        "invalid type with arguments: '{}'",
-                        ident
+                        "invalid type with arguments: '{ident}'"
                     )))
                 }
             });
@@ -480,8 +478,7 @@ impl FromStr for Type {
             "MultiPolygon" => Type::MultiPolygon,
             _ => {
                 return Err(KlickhouseError::TypeParseError(format!(
-                    "invalid type name: '{}'",
-                    ident
+                    "invalid type name: '{ident}'"
                 )))
             }
         })
@@ -505,16 +502,16 @@ impl Display for Type {
             Type::UInt256 => write!(f, "UInt256"),
             Type::Float32 => write!(f, "Float32"),
             Type::Float64 => write!(f, "Float64"),
-            Type::Decimal32(s) => write!(f, "Decimal32({})", s),
-            Type::Decimal64(s) => write!(f, "Decimal64({})", s),
-            Type::Decimal128(s) => write!(f, "Decimal128({})", s),
-            Type::Decimal256(s) => write!(f, "Decimal256({})", s),
+            Type::Decimal32(s) => write!(f, "Decimal32({s})"),
+            Type::Decimal64(s) => write!(f, "Decimal64({s})"),
+            Type::Decimal128(s) => write!(f, "Decimal128({s})"),
+            Type::Decimal256(s) => write!(f, "Decimal256({s})"),
             Type::String => write!(f, "String"),
-            Type::FixedString(s) => write!(f, "FixedString({})", s),
+            Type::FixedString(s) => write!(f, "FixedString({s})"),
             Type::Uuid => write!(f, "UUID"),
             Type::Date => write!(f, "Date"),
-            Type::DateTime(tz) => write!(f, "DateTime('{}')", tz),
-            Type::DateTime64(precision, tz) => write!(f, "DateTime64({},'{}')", precision, tz),
+            Type::DateTime(tz) => write!(f, "DateTime('{tz}')"),
+            Type::DateTime64(precision, tz) => write!(f, "DateTime64({precision},'{tz}')"),
             Type::Ipv4 => write!(f, "IPv4"),
             Type::Ipv6 => write!(f, "IPv6"),
             Type::Point => write!(f, "Point"),
@@ -526,7 +523,7 @@ impl Display for Type {
                 "Enum8({})",
                 items
                     .iter()
-                    .map(|(name, value)| format!("{}={}", name, value))
+                    .map(|(name, value)| format!("{name}={value}"))
                     .collect::<Vec<_>>()
                     .join(",")
             ),
@@ -535,12 +532,12 @@ impl Display for Type {
                 "Enum16({})",
                 items
                     .iter()
-                    .map(|(name, value)| format!("{}={}", name, value))
+                    .map(|(name, value)| format!("{name}={value}"))
                     .collect::<Vec<_>>()
                     .join(",")
             ),
-            Type::LowCardinality(inner) => write!(f, "LowCardinality({})", inner),
-            Type::Array(inner) => write!(f, "Array({})", inner),
+            Type::LowCardinality(inner) => write!(f, "LowCardinality({inner})"),
+            Type::Array(inner) => write!(f, "Array({inner})"),
             // Type::Nested(items) => format!("Nested({})", items.iter().map(|(key, value)| format!("{} {}", key, value.to_string())).collect::<Vec<_>>().join(",")),
             Type::Tuple(items) => write!(
                 f,
@@ -551,8 +548,8 @@ impl Display for Type {
                     .collect::<Vec<_>>()
                     .join(",")
             ),
-            Type::Nullable(inner) => write!(f, "Nullable({})", inner),
-            Type::Map(key, value) => write!(f, "Map({},{})", key, value),
+            Type::Nullable(inner) => write!(f, "Nullable({inner})"),
+            Type::Map(key, value) => write!(f, "Map({key},{value})"),
         }
     }
 }
@@ -562,7 +559,7 @@ impl Type {
         &'a self,
         reader: &'a mut R,
         state: &'a mut DeserializerState,
-    ) -> impl Future<Output = Result<()>> + Send + '_ {
+    ) -> impl Future<Output = Result<()>> + Send + 'a {
         use deserialize::*;
 
         async move {
@@ -631,14 +628,13 @@ impl Type {
         reader: &'a mut R,
         rows: usize,
         state: &'a mut DeserializerState,
-    ) -> impl Future<Output = Result<Vec<Value>>> + Send + '_ {
+    ) -> impl Future<Output = Result<Vec<Value>>> + Send + 'a {
         use deserialize::*;
 
         async move {
             if rows > MAX_STRING_SIZE {
                 return Err(KlickhouseError::ProtocolError(format!(
-                    "deserialize response size too large. {} > {}",
-                    rows, MAX_STRING_SIZE
+                    "deserialize response size too large. {rows} > {MAX_STRING_SIZE}"
                 )));
             }
 
@@ -702,7 +698,7 @@ impl Type {
         values: Vec<Value>,
         writer: &'a mut W,
         state: &'a mut SerializerState,
-    ) -> impl Future<Output = Result<()>> + Send + '_ {
+    ) -> impl Future<Output = Result<()>> + Send + 'a {
         use serialize::*;
 
         async move {
@@ -770,7 +766,7 @@ impl Type {
         &'a self,
         writer: &'a mut W,
         state: &'a mut SerializerState,
-    ) -> impl Future<Output = Result<()>> + Send + '_ {
+    ) -> impl Future<Output = Result<()>> + Send + 'a {
         use serialize::*;
 
         async move {
@@ -882,8 +878,7 @@ impl Type {
                 | Type::UInt256 => inner.validate()?,
                 _ => {
                     return Err(KlickhouseError::TypeParseError(format!(
-                        "illegal type '{:?}' in LowCardinality, not allowed",
-                        inner
+                        "illegal type '{inner:?}' in LowCardinality, not allowed"
                     )))
                 }
             },
@@ -905,8 +900,7 @@ impl Type {
                     | Type::Nullable(_) => {
                         /*  | Type::Nested(_) */
                         return Err(KlickhouseError::TypeParseError(format!(
-                            "nullable cannot contain composite type '{:?}'",
-                            inner
+                            "nullable cannot contain composite type '{inner:?}'"
                         )));
                     }
                     _ => inner.validate()?,
@@ -951,8 +945,7 @@ impl Type {
         self.validate()?;
         if !self.inner_validate_value(value) {
             return Err(KlickhouseError::TypeParseError(format!(
-                "could not assign value '{:?}' to type '{:?}'",
-                value, self
+                "could not assign value '{value:?}' to type '{self:?}'"
             )));
         }
         Ok(())
