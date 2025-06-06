@@ -1,3 +1,4 @@
+use crate::block::BlockInfo;
 use crate::Result;
 use crate::{
     block::Block,
@@ -79,7 +80,16 @@ impl<R: ClickhouseRead + 'static> InternalClientIn<R> {
     }
 
     async fn receive_log_data(&mut self) -> Result<ServerData> {
-        unimplemented!()
+        // Just return junk data so this doesn't cause a crash.
+        Ok(ServerData {
+            table_name: String::from("default"),
+            block: Block {
+                info: BlockInfo::default(),
+                rows: 0,
+                column_types: IndexMap::default(),
+                column_data: IndexMap::default(),
+            },
+        })
     }
 
     pub async fn receive_packet(&mut self) -> Result<ServerPacket> {
