@@ -3,7 +3,6 @@ use std::{fmt::Display, str::FromStr};
 
 pub use chrono_tz::Tz;
 use futures_util::FutureExt;
-
 use uuid::Uuid;
 
 mod deserialize;
