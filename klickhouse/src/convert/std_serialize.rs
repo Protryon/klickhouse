@@ -8,7 +8,7 @@ use indexmap::IndexMap;
 use super::*;
 
 #[cfg(feature = "bfloat16")]
-use crate::bf16;
+use crate::values::bf16;
 
 impl ToSql for u8 {
     fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {

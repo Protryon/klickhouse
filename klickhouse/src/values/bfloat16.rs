@@ -116,7 +116,7 @@ pub const fn is_bfloat16_enabled() -> bool {
 mod tests {
     #[cfg(feature = "bfloat16")]
     use crate::{FromSql, ToSql, Type};
-    
+
     use super::*;
 
     #[test]

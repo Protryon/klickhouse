@@ -5,7 +5,7 @@ use std::{
 };
 
 #[cfg(feature = "bfloat16")]
-use crate::bf16;
+use crate::values::bf16;
 use indexmap::IndexMap;
 
 use super::*;
