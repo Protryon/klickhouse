@@ -7,6 +7,9 @@ use indexmap::IndexMap;
 
 use super::*;
 
+#[cfg(feature = "bfloat16")]
+use crate::values::bf16;
+
 impl ToSql for u8 {
     fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::UInt8(self))
@@ -82,6 +85,13 @@ impl ToSql for f32 {
 impl ToSql for f64 {
     fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::Float64(self))
+    }
+}
+
+#[cfg(feature = "bfloat16")]
+impl ToSql for bf16 {
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
+        Ok(Value::BFloat16(self))
     }
 }
 

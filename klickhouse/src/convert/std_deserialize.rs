@@ -4,6 +4,8 @@ use std::{
     hash::Hash,
 };
 
+#[cfg(feature = "bfloat16")]
+use crate::values::bf16;
 use indexmap::IndexMap;
 
 use super::*;
@@ -159,6 +161,19 @@ impl FromSql for f64 {
         }
         match value {
             Value::Float64(x) => Ok(x),
+            _ => unimplemented!(),
+        }
+    }
+}
+
+#[cfg(feature = "bfloat16")]
+impl FromSql for bf16 {
+    fn from_sql(type_: &Type, value: Value) -> Result<Self> {
+        if !matches!(type_, Type::BFloat16) {
+            return Err(unexpected_type(type_));
+        }
+        match value {
+            Value::BFloat16(x) => Ok(x),
             _ => unimplemented!(),
         }
     }

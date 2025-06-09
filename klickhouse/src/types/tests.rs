@@ -8,6 +8,8 @@ use crate::{
     values::{self, Value},
     Date, DateTime, DynDateTime64,
 };
+#[cfg(feature = "bfloat16")]
+use half::bf16;
 use uuid::Uuid;
 
 use super::Type;
@@ -218,6 +220,28 @@ async fn roundtrip_f64() {
     assert_eq!(
         &values[..],
         roundtrip_values(&Type::Float64, &values[..]).await.unwrap()
+    );
+}
+
+#[tokio::test]
+#[cfg(feature = "bfloat16")]
+async fn roundtrip_bf16() {
+    let values = &[
+        Value::BFloat16(bf16::from_f32(1.00)),
+        Value::BFloat16(bf16::from_f32(0.0)),
+        Value::BFloat16(bf16::from_f32(100.0)),
+        Value::BFloat16(bf16::from_f32(100000.0)),
+        Value::BFloat16(bf16::from_f32(1000000.0)),
+        Value::BFloat16(bf16::from_f32(-1000000.0)),
+        Value::BFloat16(bf16::NAN),
+        Value::BFloat16(bf16::INFINITY),
+        Value::BFloat16(bf16::NEG_INFINITY),
+    ];
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::BFloat16, &values[..])
+            .await
+            .unwrap()
     );
 }
 

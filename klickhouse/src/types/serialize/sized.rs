@@ -1,6 +1,6 @@
 use tokio::io::AsyncWriteExt;
 
-use crate::{io::ClickhouseWrite, values::Value, Result};
+use crate::{io::ClickhouseWrite, serialize_bf16_to_bits, values::Value, Result};
 
 use super::{Serializer, SerializerState, Type};
 
@@ -34,6 +34,7 @@ impl Serializer for SizedSerializer {
                 Value::UInt256(x) => writer.write_all(&swap_endian_256(x.0)[..]).await?,
                 Value::Float32(x) => writer.write_u32_le(x.to_bits()).await?,
                 Value::Float64(x) => writer.write_u64_le(x.to_bits()).await?,
+                Value::BFloat16(x) => writer.write_u16_le(serialize_bf16_to_bits(x)).await?,
                 Value::Decimal32(_, x) => writer.write_i32_le(*x).await?,
                 Value::Decimal64(_, x) => writer.write_i64_le(*x).await?,
                 Value::Decimal128(_, x) => writer.write_i128_le(*x).await?,

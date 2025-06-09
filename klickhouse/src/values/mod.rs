@@ -9,6 +9,7 @@ use crate::{
     Result,
 };
 
+mod bfloat16;
 mod bytes;
 mod clickhouse_uuid;
 mod date;
@@ -19,6 +20,7 @@ mod geo;
 mod int256;
 mod ip;
 
+pub use bfloat16::*;
 pub use bytes::*;
 pub use date::*;
 pub use fixed_point::*;
@@ -51,6 +53,7 @@ pub enum Value {
 
     Float32(f32),
     Float64(f64),
+    BFloat16(bf16),
 
     Decimal32(usize, i32),
     Decimal64(usize, i64),
@@ -102,6 +105,7 @@ impl PartialEq for Value {
             (Self::UInt256(l0), Self::UInt256(r0)) => l0 == r0,
             (Self::Float32(l0), Self::Float32(r0)) => l0.to_bits() == r0.to_bits(),
             (Self::Float64(l0), Self::Float64(r0)) => l0.to_bits() == r0.to_bits(),
+            (Self::BFloat16(l0), Self::BFloat16(r0)) => l0.to_bits() == r0.to_bits(),
             (Self::Decimal32(l0, l1), Self::Decimal32(r0, r1)) => l0 == r0 && l1 == r1,
             (Self::Decimal64(l0, l1), Self::Decimal64(r0, r1)) => l0 == r0 && l1 == r1,
             (Self::Decimal128(l0, l1), Self::Decimal128(r0, r1)) => l0 == r0 && l1 == r1,
@@ -145,6 +149,7 @@ impl Hash for Value {
             Value::UInt256(x) => ::core::hash::Hash::hash(x, state),
             Value::Float32(x) => ::core::hash::Hash::hash(&x.to_bits(), state),
             Value::Float64(x) => ::core::hash::Hash::hash(&x.to_bits(), state),
+            Value::BFloat16(x) => hash_bf16(x, state),
             Value::Decimal32(x, __self_1) => {
                 ::core::hash::Hash::hash(x, state);
                 ::core::hash::Hash::hash(__self_1, state)
@@ -269,6 +274,7 @@ impl Value {
             Value::UInt256(_) => Type::UInt256,
             Value::Float32(_) => Type::Float32,
             Value::Float64(_) => Type::Float64,
+            Value::BFloat16(_) => Type::BFloat16,
             Value::Decimal32(p, _) => Type::Decimal32(*p),
             Value::Decimal64(p, _) => Type::Decimal64(*p),
             Value::Decimal128(p, _) => Type::Decimal128(*p),
@@ -347,6 +353,7 @@ impl fmt::Display for Value {
             Value::UInt256(x) => write!(f, "{x}::UInt256"),
             Value::Float32(x) => write!(f, "{x}"),
             Value::Float64(x) => write!(f, "{x}"),
+            Value::BFloat16(x) => write!(f, "{x}"),
             Value::Decimal32(precision, value) => {
                 let raw_value = value.to_string();
                 if raw_value.len() < *precision {

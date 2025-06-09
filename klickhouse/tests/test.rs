@@ -1,5 +1,7 @@
 use std::net::{Ipv4Addr, Ipv6Addr};
 
+#[cfg(feature = "bfloat16")]
+use half::bf16;
 use indexmap::IndexMap;
 use klickhouse::{
     i256, u256, Date, DateTime, DateTime64, FixedPoint128, FixedPoint256, FixedPoint32,
@@ -22,6 +24,8 @@ pub struct TestType {
     d_u256: u256,
     d_f32: f32,
     d_f64: f64,
+    #[cfg(feature = "bfloat16")]
+    d_bf16: bf16,
     d_d32: FixedPoint32<5>,
     d_d64: FixedPoint64<5>,
     d_d128: FixedPoint128<5>,
@@ -61,7 +65,13 @@ async fn test_client() {
         .try_init();
     let client = super::get_client().await;
 
-    super::prepare_table("test_types", r"
+    let bfloat16_field = if cfg!(feature = "bfloat16") {
+        "\n        d_bf16 BFloat16 default 0,"
+    } else {
+        ""
+    };
+
+    let table_sql = format!("
         d_i8 Int8 default 0,
         d_i16 Int16 default 0,
         d_i32 Int32 default 0,
@@ -75,7 +85,7 @@ async fn test_client() {
         -- d_u128 UInt128 default 0,
         d_u256 UInt256 default 0,
         d_f32 Float32 default 0,
-        d_f64 Float64 default 0,
+        d_f64 Float64 default 0,{bfloat16_field}
         d_d32 Decimal32(5) default 0,
         d_d64 Decimal64(5) default 0,
         d_d128 Decimal128(5) default 0,
@@ -99,7 +109,9 @@ async fn test_client() {
         d_low_card_array_nulls Array(LowCardinality(Nullable(String))),
         d_ip4 IPv4,
         d_ip6 IPv6
-    ", &client).await;
+    ", bfloat16_field = bfloat16_field);
+
+    super::prepare_table("test_types", &table_sql, &client).await;
 
     println!("begin insert");
 
