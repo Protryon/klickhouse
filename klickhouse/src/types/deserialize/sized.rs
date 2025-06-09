@@ -1,6 +1,5 @@
 use std::net::{Ipv4Addr, Ipv6Addr};
 
-use half::bf16;
 use tokio::io::AsyncReadExt;
 use uuid::Uuid;
 
@@ -44,7 +43,7 @@ impl Deserializer for SizedDeserializer {
                 }
                 Type::Float32 => Value::Float32(f32::from_bits(reader.read_u32_le().await?)),
                 Type::Float64 => Value::Float64(f64::from_bits(reader.read_u64_le().await?)),
-                Type::BFloat16 => Value::BFloat16(bf16::from_bits(reader.read_u16_le().await?)),
+                Type::BFloat16 => crate::deserialize_bf16_from_bits(reader.read_u16_le().await?),
                 Type::Decimal32(s) => Value::Decimal32(*s, reader.read_i32_le().await?),
                 Type::Decimal64(s) => Value::Decimal64(*s, reader.read_i64_le().await?),
                 Type::Decimal128(s) => Value::Decimal128(*s, reader.read_i128_le().await?),

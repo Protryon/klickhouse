@@ -3,7 +3,7 @@ use std::{fmt::Display, str::FromStr};
 
 pub use chrono_tz::Tz;
 use futures_util::FutureExt;
-use half::bf16;
+
 use uuid::Uuid;
 
 mod deserialize;
@@ -161,7 +161,7 @@ impl Type {
             Type::UInt256 => Value::UInt256(u256::default()),
             Type::Float32 => Value::Float32(0.0),
             Type::Float64 => Value::Float64(0.0),
-            Type::BFloat16 => Value::BFloat16(bf16::ZERO),
+            Type::BFloat16 => crate::default_bf16_value(),
             Type::Decimal32(s) => Value::Decimal32(*s, 0),
             Type::Decimal64(s) => Value::Decimal64(*s, 0),
             Type::Decimal128(s) => Value::Decimal128(*s, 0),
@@ -469,7 +469,13 @@ impl FromStr for Type {
             "UInt256" => Type::UInt256,
             "Float32" => Type::Float32,
             "Float64" => Type::Float64,
-            "BFloat16" => Type::BFloat16,
+            "BFloat16" => {
+                if crate::is_bfloat16_enabled() {
+                    Type::BFloat16
+                } else {
+                    return Err(KlickhouseError::TypeParseError("BFloat16 type is not supported. Enable the 'bfloat16' feature to use this type.".to_string()));
+                }
+            }
             "String" => Type::String,
             "UUID" => Type::Uuid,
             "Date" => Type::Date,
@@ -977,8 +983,8 @@ impl Type {
             | (Type::UInt128, Value::UInt128(_))
             | (Type::UInt256, Value::UInt256(_))
             | (Type::Float32, Value::Float32(_))
-            | (Type::Float64, Value::Float64(_))
-            | (Type::BFloat16, Value::BFloat16(_)) => true,
+            | (Type::Float64, Value::Float64(_)) => true,
+            (Type::BFloat16, Value::BFloat16(_)) => crate::is_bfloat16_enabled(),
             (Type::Decimal32(precision1), Value::Decimal32(precision2, _)) => {
                 precision1 == precision2
             }

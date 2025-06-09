@@ -1,6 +1,5 @@
 use std::io::Cursor;
 
-use half::bf16;
 use crate::Result;
 use crate::{
     i256,
@@ -9,6 +8,8 @@ use crate::{
     values::{self, Value},
     Date, DateTime, DynDateTime64,
 };
+#[cfg(feature = "bfloat16")]
+use half::bf16;
 use uuid::Uuid;
 
 use super::Type;
@@ -223,6 +224,7 @@ async fn roundtrip_f64() {
 }
 
 #[tokio::test]
+#[cfg(feature = "bfloat16")]
 async fn roundtrip_bf16() {
     let values = &[
         Value::BFloat16(bf16::from_f32(1.00)),
@@ -237,7 +239,9 @@ async fn roundtrip_bf16() {
     ];
     assert_eq!(
         &values[..],
-        roundtrip_values(&Type::BFloat16, &values[..]).await.unwrap()
+        roundtrip_values(&Type::BFloat16, &values[..])
+            .await
+            .unwrap()
     );
 }
 

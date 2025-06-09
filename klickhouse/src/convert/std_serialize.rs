@@ -3,10 +3,12 @@ use std::{
     collections::{BTreeMap, HashMap},
 };
 
-use half::bf16;
 use indexmap::IndexMap;
 
 use super::*;
+
+#[cfg(feature = "bfloat16")]
+use crate::bf16;
 
 impl ToSql for u8 {
     fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
@@ -86,6 +88,7 @@ impl ToSql for f64 {
     }
 }
 
+#[cfg(feature = "bfloat16")]
 impl ToSql for bf16 {
     fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
         Ok(Value::BFloat16(self))

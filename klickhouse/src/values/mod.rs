@@ -2,7 +2,6 @@ use std::{borrow::Cow, fmt, hash::Hash};
 
 use chrono::{NaiveDate, SecondsFormat};
 use chrono_tz::Tz;
-use half::bf16;
 
 use crate::{
     convert::{unexpected_type, FromSql, ToSql},
@@ -10,6 +9,7 @@ use crate::{
     Result,
 };
 
+mod bfloat16;
 mod bytes;
 mod clickhouse_uuid;
 mod date;
@@ -20,6 +20,7 @@ mod geo;
 mod int256;
 mod ip;
 
+pub use bfloat16::*;
 pub use bytes::*;
 pub use date::*;
 pub use fixed_point::*;
@@ -148,7 +149,7 @@ impl Hash for Value {
             Value::UInt256(x) => ::core::hash::Hash::hash(x, state),
             Value::Float32(x) => ::core::hash::Hash::hash(&x.to_bits(), state),
             Value::Float64(x) => ::core::hash::Hash::hash(&x.to_bits(), state),
-            Value::BFloat16(x) => ::core::hash::Hash::hash(&x.to_bits(), state),
+            Value::BFloat16(x) => hash_bf16(x, state),
             Value::Decimal32(x, __self_1) => {
                 ::core::hash::Hash::hash(x, state);
                 ::core::hash::Hash::hash(__self_1, state)
