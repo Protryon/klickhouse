@@ -411,7 +411,7 @@ impl FromStr for Type {
                     }
                 }
                 "Enum8" => {
-                    let mut enum_variants = Vec::new();
+                    let mut enum_variants = Vec::with_capacity(args.len());
                     for arg in args {
                         let (variant, value) = parse_enum_variant(arg.trim())?;
                         enum_variants.push((variant, value));
@@ -419,7 +419,7 @@ impl FromStr for Type {
                     Type::Enum8(enum_variants)
                 }
                 "Enum16" => {
-                    let mut enum_variants = Vec::new();
+                    let mut enum_variants = Vec::with_capacity(args.len());
                     for arg in args {
                         let (variant, value) = parse_enum_variant(arg.trim())?;
                         enum_variants.push((variant, value));
