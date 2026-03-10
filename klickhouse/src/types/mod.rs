@@ -1,8 +1,8 @@
-use std::future::Future;
-use std::{fmt::Display, str::FromStr};
-
 pub use chrono_tz::Tz;
 use futures_util::FutureExt;
+use std::fmt::Debug;
+use std::future::Future;
+use std::{fmt::Display, str::FromStr};
 use uuid::Uuid;
 
 mod deserialize;
@@ -66,9 +66,8 @@ pub enum Type {
     Ring,
     Polygon,
     MultiPolygon,
-    /// Not supported
+
     Enum8(Vec<(String, i8)>),
-    /// Not supported
     Enum16(Vec<(String, i16)>),
 
     LowCardinality(Box<Type>),
@@ -258,6 +257,38 @@ fn parse_precision(from: &str) -> Result<usize> {
         .map_err(|_| KlickhouseError::TypeParseError("couldn't parse precision".to_string()))
 }
 
+fn parse_enum_variant<V: FromStr>(from: &str) -> Result<(String, V)> {
+    let mut split = from.split("=");
+    let variant = split
+        .next()
+        .ok_or_else(|| {
+            KlickhouseError::TypeParseError(format!("enum variant missing '=': {from}").to_string())
+        })?
+        .trim();
+    let value = split
+        .next()
+        .ok_or_else(|| {
+            KlickhouseError::TypeParseError(format!("enum variant missing '=': {from}").to_string())
+        })?
+        .trim();
+    if !variant.starts_with("\'") || !variant.ends_with("\'") {
+        return Err(KlickhouseError::TypeParseError(
+            format!(
+                "enum variant name not contained in single quotes (\'name\'): {variant} {from}"
+            )
+            .to_string(),
+        ));
+    }
+    let variant = variant[1..variant.len() - 1].trim().to_string();
+    let value = value.trim().parse().map_err(|_| {
+        KlickhouseError::TypeParseError(format!(
+            "failed to parse enum variant value: {value} {from}"
+        ))
+    })?;
+
+    Ok((variant, value))
+}
+
 impl FromStr for Type {
     type Err = KlickhouseError;
 
@@ -387,14 +418,20 @@ impl FromStr for Type {
                     }
                 }
                 "Enum8" => {
-                    return Err(KlickhouseError::TypeParseError(
-                        "unsupported Enum8 type".to_string(),
-                    ));
+                    let mut enum_variants = Vec::new();
+                    for arg in args {
+                        let (variant, value) = parse_enum_variant(arg.trim())?;
+                        enum_variants.push((variant, value));
+                    }
+                    Type::Enum8(enum_variants)
                 }
                 "Enum16" => {
-                    return Err(KlickhouseError::TypeParseError(
-                        "unsupported Enum16 type".to_string(),
-                    ));
+                    let mut enum_variants = Vec::new();
+                    for arg in args {
+                        let (variant, value) = parse_enum_variant(arg.trim())?;
+                        enum_variants.push((variant, value));
+                    }
+                    Type::Enum16(enum_variants)
                 }
                 "LowCardinality" => {
                     if args.len() != 1 {
@@ -534,7 +571,7 @@ impl Display for Type {
                 "Enum8({})",
                 items
                     .iter()
-                    .map(|(name, value)| format!("{name}={value}"))
+                    .map(|(name, value)| format!("\'{name}\' = {value}"))
                     .collect::<Vec<_>>()
                     .join(",")
             ),
@@ -543,7 +580,7 @@ impl Display for Type {
                 "Enum16({})",
                 items
                     .iter()
-                    .map(|(name, value)| format!("{name}={value}"))
+                    .map(|(name, value)| format!("\'{name}\' = {value}"))
                     .collect::<Vec<_>>()
                     .join(",")
             ),
