@@ -147,7 +147,7 @@ impl Block {
     }
 
     /// Iterate over all rows with owned values.
-    pub fn take_iter_rows(&mut self) -> BlockRowValueIter {
+    pub fn take_iter_rows(&mut self) -> BlockRowValueIter<'_> {
         let mut column_data = IndexMap::new();
         std::mem::swap(&mut self.column_data, &mut column_data);
         let mut out = Vec::with_capacity(self.rows as usize);

@@ -9,62 +9,6 @@ use time::OffsetDateTime;
 
 use crate::{Client, KlickhouseError, Result, Row, Type, Value};
 
-/// copied from refinery_core
-#[allow(dead_code)]
-enum State {
-    Applied,
-    Unapplied,
-}
-
-/// copied from refinery_core
-#[allow(dead_code)]
-enum TypeInner {
-    Versioned,
-    Unversioned,
-}
-
-/// copied from refinery_core
-#[allow(dead_code)]
-struct MigrationInner {
-    state: State,
-    name: String,
-    checksum: u64,
-    version: i32,
-    prefix: TypeInner,
-    sql: Option<String>,
-    applied_on: Option<OffsetDateTime>,
-}
-
-impl MigrationInner {
-    fn applied(
-        version: i32,
-        name: String,
-        applied_on: OffsetDateTime,
-        checksum: u64,
-    ) -> MigrationInner {
-        MigrationInner {
-            state: State::Applied,
-            name,
-            checksum,
-            version,
-            // applied migrations are always versioned
-            prefix: TypeInner::Versioned,
-            sql: None,
-            applied_on: Some(applied_on),
-        }
-    }
-}
-
-impl From<MigrationInner> for Migration {
-    fn from(inner: MigrationInner) -> Self {
-        assert_eq!(
-            std::mem::size_of::<Migration>(),
-            std::mem::size_of::<MigrationInner>()
-        );
-        unsafe { std::mem::transmute(inner) }
-    }
-}
-
 impl Row for Migration {
     const COLUMN_COUNT: Option<usize> = Some(4);
 
@@ -153,15 +97,14 @@ impl Row for Migration {
                 KlickhouseError::DeserializeError(format!("failed to parse time: {e:?}"))
             })?;
 
-        Ok(MigrationInner::applied(
+        Ok(Migration::applied(
             version.unwrap(),
             name_out.unwrap(),
             applied_on,
             checksum.unwrap().parse::<u64>().map_err(|e| {
                 KlickhouseError::DeserializeError(format!("failed to parse checksum: {e:?}"))
             })?,
-        )
-        .into())
+        ))
     }
 
     fn serialize_row(
@@ -176,7 +119,10 @@ impl Row for Migration {
 impl AsyncTransaction for Client {
     type Error = KlickhouseError;
 
-    async fn execute(&mut self, queries: &[&str]) -> Result<usize, Self::Error> {
+    async fn execute<'a, T: Iterator<Item = &'a str> + Send>(
+        &mut self,
+        queries: T,
+    ) -> Result<usize, Self::Error> {
         let lock = ClickhouseLock::new(self.clone(), "refinery_exec");
         let start = Instant::now();
         let handle = loop {
@@ -189,7 +135,9 @@ impl AsyncTransaction for Client {
                 }
             }
         };
+        let mut n = 0;
         for query in queries {
+            n += 1;
             if query.is_empty() {
                 continue;
             }
@@ -201,7 +149,7 @@ impl AsyncTransaction for Client {
             }
         }
         handle.unlock().await?;
-        Ok(queries.len())
+        Ok(n)
     }
 }
 
@@ -248,12 +196,14 @@ impl<T: ClusterName> ClusterMigration<T> {
 }
 
 #[async_trait::async_trait]
-impl<T: ClusterName> AsyncTransaction for ClusterMigration<T> {
+impl<TT: ClusterName> AsyncTransaction for ClusterMigration<TT> {
     type Error = KlickhouseError;
-
-    async fn execute(&mut self, queries: &[&str]) -> Result<usize, Self::Error> {
+    async fn execute<'a, T: Iterator<Item = &'a str> + Send>(
+        &mut self,
+        queries: T,
+    ) -> Result<usize, Self::Error> {
         let lock = ClickhouseLock::new(self.client.clone(), "refinery_exec")
-            .with_cluster(T::cluster_name());
+            .with_cluster(TT::cluster_name());
         let start = Instant::now();
         let handle = loop {
             if let Some(handle) = lock.try_lock().await? {
@@ -265,13 +215,15 @@ impl<T: ClusterName> AsyncTransaction for ClusterMigration<T> {
                 }
             }
         };
+        let mut n = 0;
         for query in queries {
+            n += 1;
             for query in query_parser::split_query_statements(query) {
                 Client::execute(&self.client, query).await?;
             }
         }
         handle.unlock().await?;
-        Ok(queries.len())
+        Ok(n)
     }
 }
 
