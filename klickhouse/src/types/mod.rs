@@ -564,7 +564,7 @@ impl Display for Type {
                 "Enum8({})",
                 items
                     .iter()
-                    .map(|(name, value)| format!("\'{name}\' = {value}"))
+                    .map(|(name, value)| format!("'{name}' = {value}"))
                     .collect::<Vec<_>>()
                     .join(",")
             ),
@@ -573,7 +573,7 @@ impl Display for Type {
                 "Enum16({})",
                 items
                     .iter()
-                    .map(|(name, value)| format!("\'{name}\' = {value}"))
+                    .map(|(name, value)| format!("'{name}' = {value}"))
                     .collect::<Vec<_>>()
                     .join(",")
             ),
