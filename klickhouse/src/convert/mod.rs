@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::{types::Type, KlickhouseError, Result, Value};
+use crate::{KlickhouseError, Result, Value, types::Type};
 
 mod raw_row;
 mod std_deserialize;
