@@ -28,7 +28,7 @@ jobs:
           --ulimit nofile=262144:262144
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ matrix.rust }}
@@ -61,7 +61,7 @@ jobs:
           --ulimit nofile=262144:262144
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
       - uses: dtolnay/rust-toolchain@stable
@@ -87,7 +87,7 @@ jobs:
           - { rust: nightly-2026-03-10, os: ubuntu-24.04 }
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
       - uses: dtolnay/rust-toolchain@stable
@@ -111,7 +111,7 @@ jobs:
           - { rust: stable, os: ubuntu-24.04 }
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
       - uses: dtolnay/rust-toolchain@stable
@@ -132,7 +132,7 @@ jobs:
   #         - { rust: stable, os: ubuntu-24.04 }
   #   steps:
   #     - name: Checkout
-  #       uses: actions/checkout@v4
+  #       uses: actions/checkout@v6
   #       with:
   #         submodules: true
   #     - uses: dtolnay/rust-toolchain@stable
