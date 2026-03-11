@@ -1,11 +1,11 @@
-use crate::{query_parser, ClickhouseLock, FromSql};
-use refinery_core::traits::r#async::{AsyncMigrate, AsyncQuery, AsyncTransaction};
+use crate::{ClickhouseLock, FromSql, query_parser};
 use refinery_core::Migration;
+use refinery_core::traits::r#async::{AsyncMigrate, AsyncQuery, AsyncTransaction};
 use std::borrow::Cow;
 use std::marker::PhantomData;
 use std::time::{Duration, Instant};
-use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 
 use crate::{Client, KlickhouseError, Result, Row, Type, Value};
 

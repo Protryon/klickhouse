@@ -4,8 +4,8 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use half::bf16;
 use indexmap::IndexMap;
 use klickhouse::{
-    i256, u256, Date, DateTime, DateTime64, FixedPoint128, FixedPoint256, FixedPoint32,
-    FixedPoint64, Ipv4, Ipv6, Uuid,
+    Date, DateTime, DateTime64, FixedPoint32, FixedPoint64, FixedPoint128, FixedPoint256, Ipv4,
+    Ipv6, Uuid, i256, u256,
 };
 
 #[derive(klickhouse::Row, Debug, Default, PartialEq, Clone)]

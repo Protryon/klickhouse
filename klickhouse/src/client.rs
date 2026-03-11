@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use futures_util::{stream, Stream, StreamExt};
+use futures_util::{Stream, StreamExt, stream};
 use indexmap::IndexMap;
 use protocol::CompressionMethod;
 use tokio::{
@@ -17,6 +17,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use uuid::Uuid;
 
 use crate::{
+    KlickhouseError, ParsedQuery, RawRow, Result,
     block::{Block, BlockInfo},
     convert::Row,
     internal_client_in::InternalClientIn,
@@ -26,7 +27,6 @@ use crate::{
     io::{ClickhouseRead, ClickhouseWrite},
     progress::Progress,
     protocol::{self, ServerPacket},
-    KlickhouseError, ParsedQuery, RawRow, Result,
 };
 use log::*;
 
@@ -130,7 +130,7 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
             ServerPacket::Hello(_) => {
                 return Err(KlickhouseError::ProtocolError(
                     "unexpected retransmission of server hello".to_string(),
-                ))
+                ));
             }
             ServerPacket::Data(block) => {
                 if let Some((_, current)) = self.executing_query.as_ref() {

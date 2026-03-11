@@ -4,9 +4,9 @@ use chrono::{NaiveDate, SecondsFormat};
 use chrono_tz::Tz;
 
 use crate::{
-    convert::{unexpected_type, FromSql, ToSql},
-    types::Type,
     Result,
+    convert::{FromSql, ToSql, unexpected_type},
+    types::Type,
 };
 
 mod bfloat16;

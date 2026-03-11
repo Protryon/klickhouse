@@ -12,13 +12,12 @@ mod serialize;
 mod tests;
 
 use crate::{
-    default_bf16_value, i256,
+    Date, DateTime, DynDateTime64, Ipv4, Ipv6, KlickhouseError, Result, default_bf16_value, i256,
     io::{ClickhouseRead, ClickhouseWrite},
     is_bfloat16_enabled,
     protocol::MAX_STRING_SIZE,
     u256,
     values::Value,
-    Date, DateTime, DynDateTime64, Ipv4, Ipv6, KlickhouseError, Result,
 };
 
 /// A raw Clickhouse type.
@@ -487,7 +486,7 @@ impl FromStr for Type {
                 _ => {
                     return Err(KlickhouseError::TypeParseError(format!(
                         "invalid type with arguments: '{ident}'"
-                    )))
+                    )));
                 }
             });
         }
@@ -526,7 +525,7 @@ impl FromStr for Type {
             _ => {
                 return Err(KlickhouseError::TypeParseError(format!(
                     "invalid type name: '{ident}'"
-                )))
+                )));
             }
         })
     }
@@ -890,7 +889,10 @@ impl Type {
             }
             Type::DateTime64(precision, _) | Type::Decimal64(precision) => {
                 if *precision == 0 || *precision > 18 {
-                    return Err(KlickhouseError::TypeParseError(format!("precision out of bounds for Decimal64/DateTime64({}) must be in range (1..=18)", *precision)));
+                    return Err(KlickhouseError::TypeParseError(format!(
+                        "precision out of bounds for Decimal64/DateTime64({}) must be in range (1..=18)",
+                        *precision
+                    )));
                 }
             }
             Type::Decimal128(precision) => {
@@ -931,7 +933,7 @@ impl Type {
                 _ => {
                     return Err(KlickhouseError::TypeParseError(format!(
                         "illegal type '{inner:?}' in LowCardinality, not allowed"
-                    )))
+                    )));
                 }
             },
             Type::Array(inner) => {
