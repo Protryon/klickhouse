@@ -1,6 +1,7 @@
 use chrono::Utc;
 use futures_util::StreamExt;
 use klickhouse::*;
+use tokio::sync::oneshot;
 
 #[derive(Row, Debug, Default)]
 pub struct MyUserData {
@@ -26,25 +27,38 @@ async fn main() {
 
     let client = pool.get().await.unwrap();
 
+    let (tx, mut rx) = oneshot::channel::<()>();
+
     // Retrieve and display query progress events
     let mut progress = client.subscribe_progress();
     let progress_task = tokio::task::spawn(async move {
         let mut current_query = Uuid::nil();
         let mut progress_total = Progress::default();
-        while let Ok((query, progress)) = progress.recv().await {
-            if query != current_query {
-                progress_total = Progress::default();
-                current_query = query;
+
+        loop {
+            tokio::select! {
+                // Stop task
+                _ = &mut rx => {
+                    break
+                }
+
+                // Progress loop
+                Ok((query, progress)) = progress.recv() => {
+                    if query != current_query {
+                        progress_total = Progress::default();
+                        current_query = query;
+                    }
+                    progress_total += progress;
+                    println!(
+                        "Progress on query {}: {}/{} {:.2}%",
+                        query,
+                        progress_total.read_rows,
+                        progress_total.new_total_rows_to_read,
+                        100.0 * progress_total.read_rows as f64
+                            / progress_total.new_total_rows_to_read as f64
+                    );
+                }
             }
-            progress_total += progress;
-            println!(
-                "Progress on query {}: {}/{} {:.2}%",
-                query,
-                progress_total.read_rows,
-                progress_total.new_total_rows_to_read,
-                100.0 * progress_total.read_rows as f64
-                    / progress_total.new_total_rows_to_read as f64
-            );
         }
     });
 
@@ -89,7 +103,7 @@ async fn main() {
         println!("row received '{}': {:?}", row.id, row);
     }
 
-    // Drop the client so that the progress task finishes.
-    drop(client);
+    // Send signal so that the progress task finishes.
+    tx.send(()).unwrap();
     progress_task.await.unwrap();
 }
