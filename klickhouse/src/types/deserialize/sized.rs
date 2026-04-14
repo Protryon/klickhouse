@@ -34,6 +34,7 @@ impl Deserializer for SizedDeserializer {
                     Value::Int256(i256(buf))
                 }
                 Type::UInt8 => Value::UInt8(reader.read_u8().await?),
+                Type::Bool => Value::Bool(reader.read_u8().await? != 0),
                 Type::UInt16 => Value::UInt16(reader.read_u16_le().await?),
                 Type::UInt32 => Value::UInt32(reader.read_u32_le().await?),
                 Type::UInt64 => Value::UInt64(reader.read_u64_le().await?),

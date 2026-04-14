@@ -38,6 +38,8 @@ pub enum Type {
     UInt128,
     UInt256,
 
+    Bool,
+
     Float32,
     Float64,
     BFloat16,
@@ -154,6 +156,7 @@ impl Type {
             Type::Int128 => Value::Int128(0),
             Type::Int256 => Value::Int256(i256::default()),
             Type::UInt8 => Value::UInt8(0),
+            Type::Bool => Value::Bool(false),
             Type::UInt16 => Value::UInt16(0),
             Type::UInt32 => Value::UInt32(0),
             Type::UInt64 => Value::UInt64(0),
@@ -461,7 +464,8 @@ impl FromStr for Type {
             "Int64" => Type::Int64,
             "Int128" => Type::Int128,
             "Int256" => Type::Int256,
-            "Bool" | "UInt8" => Type::UInt8,
+            "Bool" => Type::Bool,
+            "UInt8" => Type::UInt8,
             "UInt16" => Type::UInt16,
             "UInt32" => Type::UInt32,
             "UInt64" => Type::UInt64,
@@ -505,6 +509,7 @@ impl Display for Type {
             Type::Int128 => write!(f, "Int128"),
             Type::Int256 => write!(f, "Int256"),
             Type::UInt8 => write!(f, "UInt8"),
+            Type::Bool => write!(f, "Bool"),
             Type::UInt16 => write!(f, "UInt16"),
             Type::UInt32 => write!(f, "UInt32"),
             Type::UInt64 => write!(f, "UInt64"),
@@ -582,6 +587,7 @@ impl Type {
                 | Type::Int128
                 | Type::Int256
                 | Type::UInt8
+                | Type::Bool
                 | Type::UInt16
                 | Type::UInt32
                 | Type::UInt64
@@ -658,6 +664,7 @@ impl Type {
                 | Type::Int128
                 | Type::Int256
                 | Type::UInt8
+                | Type::Bool
                 | Type::UInt16
                 | Type::UInt32
                 | Type::UInt64
@@ -723,6 +730,7 @@ impl Type {
                 | Type::Int128
                 | Type::Int256
                 | Type::UInt8
+                | Type::Bool
                 | Type::UInt16
                 | Type::UInt32
                 | Type::UInt64
@@ -792,6 +800,7 @@ impl Type {
                 | Type::Int128
                 | Type::Int256
                 | Type::UInt8
+                | Type::Bool
                 | Type::UInt16
                 | Type::UInt32
                 | Type::UInt64

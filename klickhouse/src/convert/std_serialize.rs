@@ -18,7 +18,7 @@ impl ToSql for u8 {
 
 impl ToSql for bool {
     fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
-        Ok(Value::UInt8(self as u8))
+        Ok(Value::Bool(self))
     }
 }
 

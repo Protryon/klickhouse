@@ -12,12 +12,10 @@ use super::*;
 
 impl FromSql for bool {
     fn from_sql(type_: &Type, value: Value) -> Result<Self> {
-        if !matches!(type_, Type::UInt8) {
-            return Err(unexpected_type(type_));
-        }
-        match value {
-            Value::UInt8(x) => Ok(x != 0),
-            _ => unimplemented!(),
+        match (type_, value) {
+            (Type::Bool, Value::Bool(x)) => Ok(x),
+            (Type::UInt8, Value::UInt8(x)) => Ok(x != 0),
+            _ => Err(unexpected_type(type_)),
         }
     }
 }
