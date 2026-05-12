@@ -258,35 +258,28 @@ fn parse_precision(from: &str) -> Result<usize> {
 }
 
 fn parse_enum_variant<V: FromStr>(from: &str) -> Result<(String, V)> {
-    let mut split = from.split("=");
-    let variant = split
-        .next()
+    let (variant, value) = from
+        .split_once('=')
+        .map(|splitted| (splitted.0.trim(), splitted.1.trim()))
         .ok_or_else(|| {
-            KlickhouseError::TypeParseError(format!("enum variant missing '=': {from}").to_string())
-        })?
-        .trim();
-    let value = split
-        .next()
-        .ok_or_else(|| {
-            KlickhouseError::TypeParseError(format!("enum variant missing '=': {from}").to_string())
-        })?
-        .trim();
-    if !variant.starts_with("\'") || !variant.ends_with("\'") {
-        return Err(KlickhouseError::TypeParseError(
-            format!(
-                "enum variant name not contained in single quotes (\'name\'): {variant} {from}"
-            )
-            .to_string(),
-        ));
+            KlickhouseError::TypeParseError(format!("enum variant missing '=': {from}"))
+        })?;
+
+    if !variant.starts_with("'") || !variant.ends_with("'") {
+        return Err(KlickhouseError::TypeParseError(format!(
+            "enum variant name not contained in single quotes ('name'): {variant} {from}"
+        )));
     }
-    let variant = variant[1..variant.len() - 1].trim().to_string();
-    let value = value.trim().parse().map_err(|_| {
+
+    let variant = variant[1..variant.len() - 1].trim();
+
+    let value = value.parse().map_err(|_| {
         KlickhouseError::TypeParseError(format!(
             "failed to parse enum variant value: {value} {from}"
         ))
     })?;
 
-    Ok((variant, value))
+    Ok((variant.to_string(), value))
 }
 
 impl FromStr for Type {
@@ -418,7 +411,7 @@ impl FromStr for Type {
                     }
                 }
                 "Enum8" => {
-                    let mut enum_variants = Vec::new();
+                    let mut enum_variants = Vec::with_capacity(args.len());
                     for arg in args {
                         let (variant, value) = parse_enum_variant(arg.trim())?;
                         enum_variants.push((variant, value));
@@ -426,7 +419,7 @@ impl FromStr for Type {
                     Type::Enum8(enum_variants)
                 }
                 "Enum16" => {
-                    let mut enum_variants = Vec::new();
+                    let mut enum_variants = Vec::with_capacity(args.len());
                     for arg in args {
                         let (variant, value) = parse_enum_variant(arg.trim())?;
                         enum_variants.push((variant, value));
@@ -571,7 +564,7 @@ impl Display for Type {
                 "Enum8({})",
                 items
                     .iter()
-                    .map(|(name, value)| format!("\'{name}\' = {value}"))
+                    .map(|(name, value)| format!("'{name}' = {value}"))
                     .collect::<Vec<_>>()
                     .join(",")
             ),
@@ -580,7 +573,7 @@ impl Display for Type {
                 "Enum16({})",
                 items
                     .iter()
-                    .map(|(name, value)| format!("\'{name}\' = {value}"))
+                    .map(|(name, value)| format!("'{name}' = {value}"))
                     .collect::<Vec<_>>()
                     .join(",")
             ),
