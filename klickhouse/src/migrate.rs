@@ -226,6 +226,12 @@ impl AsyncTransaction for ClusterMigration {
         for query in queries {
             n += 1;
             for query in query_parser::split_query_statements(query) {
+                if query.is_empty() {
+                    continue;
+                }
+                let query = query
+                    .replace("%DATABASE%", &self.database)
+                    .replace("%CLUSTER%", &self.cluster_name);
                 Client::execute(&self.client, query).await?;
             }
         }
