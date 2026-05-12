@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 use tokio::net::ToSocketAddrs;
 
-use crate::{convert::UnitValue, Client, ClientOptions, KlickhouseError};
+use crate::{Client, ClientOptions, KlickhouseError, convert::UnitValue};
 
 #[derive(Clone)]
 pub struct ConnectionManager {

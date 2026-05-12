@@ -1,7 +1,7 @@
 use tokio::io::AsyncReadExt;
 
 use crate::{
-    io::ClickhouseRead, protocol::MAX_STRING_SIZE, values::Value, KlickhouseError, Result,
+    KlickhouseError, Result, io::ClickhouseRead, protocol::MAX_STRING_SIZE, values::Value,
 };
 
 use super::{Deserializer, DeserializerState, Type};

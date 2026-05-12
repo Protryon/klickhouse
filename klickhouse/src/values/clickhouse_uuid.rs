@@ -1,10 +1,10 @@
 use crate::{
-    convert::{unexpected_type, FromSql},
-    types::Type,
     Result, Uuid,
+    convert::{FromSql, unexpected_type},
+    types::Type,
 };
 
-use crate::{convert::ToSql, Value};
+use crate::{Value, convert::ToSql};
 
 impl ToSql for Uuid {
     fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {

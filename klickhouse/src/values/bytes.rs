@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use crate::{unexpected_type, FromSql, Result, ToSql, Type, Value};
+use crate::{FromSql, Result, ToSql, Type, Value, unexpected_type};
 
 /// Wrapper over Vec<u8> to allow more efficient serialization/deserialization of raw bytes
 /// The corresponding Clickhouse type here is String or FixedString, not Array(UInt8).

@@ -78,7 +78,9 @@ pub fn deserialize_bf16_from_bits(bits: u16) -> Value {
 /// Error stub for deserialization when feature is disabled
 #[cfg(not(feature = "bfloat16"))]
 pub fn deserialize_bf16_from_bits(_bits: u16) -> Value {
-    panic!("BFloat16 support is disabled. Enable the 'bfloat16' feature to deserialize BFloat16 values.")
+    panic!(
+        "BFloat16 support is disabled. Enable the 'bfloat16' feature to deserialize BFloat16 values."
+    )
 }
 
 /// Serializes BFloat16 to bits when feature is enabled

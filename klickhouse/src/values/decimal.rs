@@ -1,6 +1,6 @@
 use rust_decimal::Decimal;
 
-use crate::{unexpected_type, FromSql, KlickhouseError, Result, ToSql, Type, Value};
+use crate::{FromSql, KlickhouseError, Result, ToSql, Type, Value, unexpected_type};
 
 impl FromSql for Decimal {
     fn from_sql(type_: &Type, value: Value) -> Result<Self> {

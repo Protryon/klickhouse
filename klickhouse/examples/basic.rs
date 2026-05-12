@@ -72,7 +72,7 @@ async fn main() {
 
     // Read back rows
     let mut all_rows = client
-        .query::<MyUserData>("SELECT * FROM klickhouse_example;")
+        .query::<MyUserData, _>("SELECT * FROM klickhouse_example;")
         .await
         .unwrap();
 

@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use futures_util::{stream, Stream, StreamExt};
+use futures_util::{Stream, StreamExt, stream};
 use indexmap::IndexMap;
 use protocol::CompressionMethod;
 use tokio::{
@@ -17,6 +17,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use uuid::Uuid;
 
 use crate::{
+    KlickhouseError, ParsedQuery, RawRow, Result,
     block::{Block, BlockInfo},
     convert::Row,
     internal_client_in::InternalClientIn,
@@ -26,7 +27,6 @@ use crate::{
     io::{ClickhouseRead, ClickhouseWrite},
     progress::Progress,
     protocol::{self, ServerPacket},
-    KlickhouseError, ParsedQuery, RawRow, Result,
 };
 use log::*;
 
@@ -130,7 +130,7 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
             ServerPacket::Hello(_) => {
                 return Err(KlickhouseError::ProtocolError(
                     "unexpected retransmission of server hello".to_string(),
-                ))
+                ));
             }
             ServerPacket::Data(block) => {
                 if let Some((_, current)) = self.executing_query.as_ref() {
@@ -313,7 +313,7 @@ impl Client {
     pub async fn query_raw(
         &self,
         query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
-    ) -> Result<impl Stream<Item = Result<Block>>> {
+    ) -> Result<ReceiverStream<Result<Block>>> {
         let (sender, receiver) = oneshot::channel();
         self.sender
             .send(ClientRequest {
@@ -470,10 +470,10 @@ impl Client {
 
     /// Runs a query against Clickhouse, returning a stream of deserialized rows.
     /// Note that no rows are returned until Clickhouse sends a full block (but it usually sends more than one block).
-    pub async fn query<T: Row>(
+    pub async fn query<T: Row, I: TryInto<ParsedQuery, Error = KlickhouseError>>(
         &self,
-        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
-    ) -> Result<impl Stream<Item = Result<T>>> {
+        query: I,
+    ) -> Result<impl Stream<Item = Result<T>> + use<T, I>> {
         let raw = self.query_raw(query).await?;
         Ok(raw.flat_map(|block| match block {
             Ok(mut block) => stream::iter(
@@ -493,7 +493,7 @@ impl Client {
         query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
     ) -> Result<Vec<T>> {
         let mut out = vec![];
-        let mut stream = self.query::<T>(query).await?;
+        let mut stream = self.query::<T, _>(query).await?;
         while let Some(next) = stream.next().await {
             out.push(next?);
         }
@@ -505,7 +505,7 @@ impl Client {
         &self,
         query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
     ) -> Result<T> {
-        self.query::<T>(query)
+        self.query(query)
             .await?
             .next()
             .await
@@ -517,7 +517,7 @@ impl Client {
         &self,
         query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
     ) -> Result<Option<T>> {
-        self.query::<T>(query).await?.next().await.transpose()
+        self.query(query).await?.next().await.transpose()
     }
 
     /// Same as `query`, but discards all returns blocks. Waits until the first block returns from the server to check for errors.
@@ -526,7 +526,7 @@ impl Client {
         &self,
         query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
     ) -> Result<()> {
-        let mut stream = self.query::<RawRow>(query).await?;
+        let mut stream = self.query::<RawRow, _>(query).await?;
         while let Some(next) = stream.next().await {
             next?;
         }
@@ -538,7 +538,7 @@ impl Client {
         &self,
         query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
     ) -> Result<()> {
-        let _ = self.query::<RawRow>(query).await?;
+        let _ = self.query::<RawRow, _>(query).await?;
         Ok(())
     }
 

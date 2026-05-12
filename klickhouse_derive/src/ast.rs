@@ -1,8 +1,8 @@
 use crate::{attr, check};
 // use crate::check;
 use crate::ctxt::Ctxt;
-use syn::punctuated::Punctuated;
 use syn::Token;
+use syn::punctuated::Punctuated;
 
 /// A source data structure annotated with `#[derive(Serialize)]` and/or `#[derive(Deserialize)]`,
 /// parsed into an internal representation.
