@@ -2,7 +2,6 @@ use crate::{ClickhouseLock, FromSql, query_parser};
 use refinery_core::Migration;
 use refinery_core::traits::r#async::{AsyncMigrate, AsyncQuery, AsyncTransaction};
 use std::borrow::Cow;
-use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
@@ -175,35 +174,43 @@ impl AsyncMigrate for Client {
     }
 }
 
-pub trait ClusterName: Send + Sync {
-    fn cluster_name() -> String;
-    fn database() -> String;
-}
-
 /// Wrapper for Client to use migrations on clusters
-pub struct ClusterMigration<T: ClusterName> {
+/// Requires migration_table_name to be set to <cluster_name>.<database_name>.refinery_schema_history
+pub struct ClusterMigration {
     client: Client,
-    _t: PhantomData<T>,
+    cluster_name: String,
+    #[allow(dead_code)]
+    database: String,
 }
 
-impl<T: ClusterName> ClusterMigration<T> {
-    pub fn new(client: Client) -> Self {
+impl ClusterMigration {
+    pub fn new(client: Client, cluster_name: String, database: String) -> Self {
         Self {
             client,
-            _t: Default::default(),
+            cluster_name,
+            database,
         }
+    }
+
+    fn parse_mtn(mtn: &str) -> (&str, &str, &str) {
+        let mut iter = mtn.split('.');
+        (
+            iter.next().expect("missing migration_table_name component"),
+            iter.next().expect("missing migration_table_name component"),
+            iter.next().expect("missing migration_table_name component"),
+        )
     }
 }
 
 #[async_trait::async_trait]
-impl<TT: ClusterName> AsyncTransaction for ClusterMigration<TT> {
+impl AsyncTransaction for ClusterMigration {
     type Error = KlickhouseError;
     async fn execute<'a, T: Iterator<Item = &'a str> + Send>(
         &mut self,
         queries: T,
     ) -> Result<usize, Self::Error> {
         let lock = ClickhouseLock::new(self.client.clone(), "refinery_exec")
-            .with_cluster(TT::cluster_name());
+            .with_cluster(&self.cluster_name);
         let start = Instant::now();
         let handle = loop {
             if let Some(handle) = lock.try_lock().await? {
@@ -228,7 +235,7 @@ impl<TT: ClusterName> AsyncTransaction for ClusterMigration<TT> {
 }
 
 #[async_trait::async_trait]
-impl<T: ClusterName> AsyncQuery<Vec<Migration>> for ClusterMigration<T> {
+impl AsyncQuery<Vec<Migration>> for ClusterMigration {
     async fn query(
         &mut self,
         query: &str,
@@ -237,8 +244,15 @@ impl<T: ClusterName> AsyncQuery<Vec<Migration>> for ClusterMigration<T> {
     }
 }
 
-impl<T: ClusterName> AsyncMigrate for ClusterMigration<T> {
+const GET_APPLIED_MIGRATIONS_QUERY: &str = "SELECT version, name, applied_on, checksum \
+    FROM %MIGRATION_TABLE_NAME% ORDER BY version ASC;";
+
+const GET_LAST_APPLIED_MIGRATION_QUERY: &str = "SELECT version, name, applied_on, checksum
+    FROM %MIGRATION_TABLE_NAME% WHERE version=(SELECT MAX(version) from %MIGRATION_TABLE_NAME%)";
+
+impl AsyncMigrate for ClusterMigration {
     fn assert_migrations_table_query(migration_table_name: &str) -> String {
+        let (cluster_name, database, migration_table_name) = Self::parse_mtn(migration_table_name);
         format!(
             r"CREATE TABLE IF NOT EXISTS {migration_table_name}_local ON CLUSTER {0}(
                 version INT,
@@ -251,8 +265,17 @@ impl<T: ClusterName> AsyncMigrate for ClusterMigration<T> {
             ON CLUSTER {0}
             AS {migration_table_name}_local ENGINE = Distributed({0}, {1}, {migration_table_name}_local, rand());
             ",
-            T::cluster_name(),
-            T::database()
+            cluster_name, database
         )
+    }
+
+    fn get_last_applied_migration_query(migration_table_name: &str) -> String {
+        let (_, _, migration_table_name) = Self::parse_mtn(migration_table_name);
+        GET_LAST_APPLIED_MIGRATION_QUERY.replace("%MIGRATION_TABLE_NAME%", migration_table_name)
+    }
+
+    fn get_applied_migrations_query(migration_table_name: &str) -> String {
+        let (_, _, migration_table_name) = Self::parse_mtn(migration_table_name);
+        GET_APPLIED_MIGRATIONS_QUERY.replace("%MIGRATION_TABLE_NAME%", migration_table_name)
     }
 }
