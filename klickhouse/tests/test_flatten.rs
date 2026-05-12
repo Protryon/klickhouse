@@ -20,11 +20,13 @@ async fn test_client() {
         .filter_level(log::LevelFilter::Info)
         .try_init();
 
-    assert!(TestRow::column_names()
-        .unwrap()
-        .into_iter()
-        .zip(["field", "a", "b"])
-        .all(|(x, y)| x == y));
+    assert!(
+        TestRow::column_names()
+            .unwrap()
+            .into_iter()
+            .zip(["field", "a", "b"])
+            .all(|(x, y)| x == y)
+    );
 
     let client = super::get_client().await;
 

@@ -4,9 +4,9 @@ use chrono::{Duration, FixedOffset, NaiveDate, ParseError, TimeZone, Utc};
 use chrono_tz::{Tz, UTC};
 
 use crate::{
-    convert::{unexpected_type, FromSql, ToSql},
-    types::Type,
     KlickhouseError, Result, Value,
+    convert::{FromSql, ToSql, unexpected_type},
+    types::Type,
 };
 
 /// Wrapper type for Clickhouse `Date` type.

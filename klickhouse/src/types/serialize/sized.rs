@@ -1,6 +1,6 @@
 use tokio::io::AsyncWriteExt;
 
-use crate::{io::ClickhouseWrite, serialize_bf16_to_bits, values::Value, Result};
+use crate::{Result, io::ClickhouseWrite, serialize_bf16_to_bits, values::Value};
 
 use super::{Serializer, SerializerState, Type};
 

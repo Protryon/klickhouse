@@ -1,16 +1,15 @@
 use crate::Result;
 use crate::{
+    KlickhouseError,
     block::Block,
     io::ClickhouseRead,
     progress::Progress,
     protocol::{
-        self, BlockStreamProfileInfo, CompressionMethod, ServerData, ServerException, ServerHello,
-        ServerPacket, TableColumns, TableStatus, TablesStatusResponse,
-        DBMS_MIN_REVISION_WITH_CLIENT_WRITE_INFO, DBMS_MIN_REVISION_WITH_SERVER_DISPLAY_NAME,
-        DBMS_MIN_REVISION_WITH_SERVER_TIMEZONE, DBMS_MIN_REVISION_WITH_VERSION_PATCH,
-        MAX_STRING_SIZE,
+        self, BlockStreamProfileInfo, CompressionMethod, DBMS_MIN_REVISION_WITH_CLIENT_WRITE_INFO,
+        DBMS_MIN_REVISION_WITH_SERVER_DISPLAY_NAME, DBMS_MIN_REVISION_WITH_SERVER_TIMEZONE,
+        DBMS_MIN_REVISION_WITH_VERSION_PATCH, MAX_STRING_SIZE, ServerData, ServerException,
+        ServerHello, ServerPacket, TableColumns, TableStatus, TablesStatusResponse,
     },
-    KlickhouseError,
 };
 use indexmap::IndexMap;
 use log::trace;
@@ -62,7 +61,9 @@ impl<R: ClickhouseRead + 'static> InternalClientIn<R> {
 
     #[cfg(not(feature = "compression"))]
     async fn decompress_data(&mut self, _compression: CompressionMethod) -> Result<Block> {
-        panic!("attempted to use compression when not compiled with `compression` feature in klickhouse");
+        panic!(
+            "attempted to use compression when not compiled with `compression` feature in klickhouse"
+        );
     }
 
     async fn receive_data(&mut self, compression: CompressionMethod) -> Result<ServerData> {

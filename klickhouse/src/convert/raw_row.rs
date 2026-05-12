@@ -42,11 +42,7 @@ pub trait RowIndex {
 impl RowIndex for usize {
     fn get<'a, I: IntoIterator<Item = &'a str>>(&self, columns: I) -> Option<usize> {
         let count = columns.into_iter().count();
-        if count >= *self {
-            Some(*self)
-        } else {
-            None
-        }
+        if count >= *self { Some(*self) } else { None }
     }
 }
 

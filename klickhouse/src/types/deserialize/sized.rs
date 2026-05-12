@@ -4,8 +4,8 @@ use tokio::io::AsyncReadExt;
 use uuid::Uuid;
 
 use crate::{
-    deserialize_bf16_from_bits, i256, io::ClickhouseRead, u256, values::Value, Date, DateTime,
-    DynDateTime64, Result,
+    Date, DateTime, DynDateTime64, Result, deserialize_bf16_from_bits, i256, io::ClickhouseRead,
+    u256, values::Value,
 };
 
 use super::{Deserializer, DeserializerState, Type};

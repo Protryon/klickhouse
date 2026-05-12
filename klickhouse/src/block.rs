@@ -5,10 +5,10 @@ use indexmap::IndexMap;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use crate::{
+    KlickhouseError,
     io::{ClickhouseRead, ClickhouseWrite},
     types::{DeserializerState, SerializerState, Type},
     values::Value,
-    KlickhouseError,
 };
 
 /// Metadata about a block

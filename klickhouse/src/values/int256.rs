@@ -1,9 +1,9 @@
 use std::fmt;
 
 use crate::{
-    convert::{unexpected_type, FromSql, ToSql},
-    types::Type,
     Result, Value,
+    convert::{FromSql, ToSql, unexpected_type},
+    types::Type,
 };
 
 /// Wrapper type for Clickhouse `Int256` type.

@@ -5,11 +5,12 @@ use indexmap::IndexMap;
 use uuid::Uuid;
 
 use crate::{
+    Date, DateTime, DateTime64, FixedPoint32, FixedPoint64, FixedPoint128, FixedPoint256,
+    MultiPolygon, Point, Polygon, Ring,
     convert::{FromSql, ToSql},
     i256,
     types::Type,
-    u256, Date, DateTime, DateTime64, FixedPoint128, FixedPoint256, FixedPoint32, FixedPoint64,
-    MultiPolygon, Point, Polygon, Ring,
+    u256,
 };
 
 use super::Value;

@@ -2,11 +2,10 @@ use std::io::Cursor;
 
 use crate::Result;
 use crate::{
-    i256,
+    Date, DateTime, DynDateTime64, i256,
     types::{DeserializerState, SerializerState},
     u256,
     values::{self, Value},
-    Date, DateTime, DynDateTime64,
 };
 #[cfg(feature = "bfloat16")]
 use half::bf16;

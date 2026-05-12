@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
 use uuid::Uuid;
 
-use crate::{block::Block, progress::Progress, KlickhouseError, Result};
+use crate::{KlickhouseError, Result, block::Block, progress::Progress};
 
 pub const DBMS_MIN_REVISION_WITH_CLIENT_INFO: u64 = 54032;
 pub const DBMS_MIN_REVISION_WITH_SERVER_TIMEZONE: u64 = 54058;
@@ -82,7 +82,7 @@ impl ServerPacketId {
             x => {
                 return Err(KlickhouseError::ProtocolError(format!(
                     "invalid packet id from server: {x}"
-                )))
+                )));
             }
         })
     }

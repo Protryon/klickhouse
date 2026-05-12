@@ -1,6 +1,6 @@
 use tokio::io::AsyncReadExt;
 
-use crate::{io::ClickhouseRead, values::Value, KlickhouseError, Result};
+use crate::{KlickhouseError, Result, io::ClickhouseRead, values::Value};
 
 use super::{Deserializer, DeserializerState, Type};
 
@@ -62,7 +62,7 @@ impl Deserializer for LowCardinalityDeserializer {
                             x => {
                                 return Err(KlickhouseError::DeserializeError(format!(
                                     "LowCardinality: bad index type: {x}"
-                                )))
+                                )));
                             }
                         };
 

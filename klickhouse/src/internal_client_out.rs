@@ -1,13 +1,13 @@
 use crate::{
+    Result,
     block::Block,
     io::ClickhouseWrite,
     protocol::{
-        self, CompressionMethod, ServerHello, DBMS_MIN_PROTOCOL_VERSION_WITH_DISTRIBUTED_DEPTH,
+        self, CompressionMethod, DBMS_MIN_PROTOCOL_VERSION_WITH_DISTRIBUTED_DEPTH,
         DBMS_MIN_REVISION_WITH_CLIENT_INFO, DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET,
         DBMS_MIN_REVISION_WITH_OPENTELEMETRY, DBMS_MIN_REVISION_WITH_QUOTA_KEY_IN_CLIENT_INFO,
-        DBMS_MIN_REVISION_WITH_VERSION_PATCH,
+        DBMS_MIN_REVISION_WITH_VERSION_PATCH, ServerHello,
     },
-    Result,
 };
 use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
@@ -185,7 +185,9 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
 
     #[cfg(not(feature = "compression"))]
     async fn compress_data(&mut self, _byte: u8, _block: &Block) -> Result<()> {
-        panic!("attempted to use compression when not compiled with `compression` feature in klickhouse");
+        panic!(
+            "attempted to use compression when not compiled with `compression` feature in klickhouse"
+        );
     }
 
     pub async fn send_data(
