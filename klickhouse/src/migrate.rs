@@ -175,11 +175,9 @@ impl AsyncMigrate for Client {
 }
 
 /// Wrapper for Client to use migrations on clusters
-/// Requires migration_table_name to be set to <cluster_name>.<database_name>.refinery_schema_history
 pub struct ClusterMigration {
     client: Client,
     cluster_name: String,
-    #[allow(dead_code)]
     database: String,
 }
 
@@ -190,15 +188,6 @@ impl ClusterMigration {
             cluster_name,
             database,
         }
-    }
-
-    fn parse_mtn(mtn: &str) -> (&str, &str, &str) {
-        let mut iter = mtn.split('.');
-        (
-            iter.next().expect("missing migration_table_name component"),
-            iter.next().expect("missing migration_table_name component"),
-            iter.next().expect("missing migration_table_name component"),
-        )
     }
 }
 
@@ -246,21 +235,17 @@ impl AsyncQuery<Vec<Migration>> for ClusterMigration {
         &mut self,
         query: &str,
     ) -> Result<Vec<Migration>, <Self as AsyncTransaction>::Error> {
-        <Client as AsyncQuery<Vec<Migration>>>::query(&mut self.client, query).await
+        let query = query
+            .replace("%DATABASE%", &self.database)
+            .replace("%CLUSTER%", &self.cluster_name);
+        <Client as AsyncQuery<Vec<Migration>>>::query(&mut self.client, &query).await
     }
 }
 
-const GET_APPLIED_MIGRATIONS_QUERY: &str = "SELECT version, name, applied_on, checksum \
-    FROM %MIGRATION_TABLE_NAME% ORDER BY version ASC;";
-
-const GET_LAST_APPLIED_MIGRATION_QUERY: &str = "SELECT version, name, applied_on, checksum
-    FROM %MIGRATION_TABLE_NAME% WHERE version=(SELECT MAX(version) from %MIGRATION_TABLE_NAME%)";
-
 impl AsyncMigrate for ClusterMigration {
     fn assert_migrations_table_query(migration_table_name: &str) -> String {
-        let (cluster_name, database, migration_table_name) = Self::parse_mtn(migration_table_name);
         format!(
-            r"CREATE TABLE IF NOT EXISTS {migration_table_name}_local ON CLUSTER {0}(
+            r"CREATE TABLE IF NOT EXISTS {migration_table_name}_local ON CLUSTER %CLUSTER%(
                 version INT,
                 name VARCHAR(255),
                 applied_on VARCHAR(255),
@@ -268,20 +253,9 @@ impl AsyncMigrate for ClusterMigration {
             ) Engine=MergeTree() ORDER BY version;
             CREATE TABLE IF NOT EXISTS
                 {migration_table_name}
-            ON CLUSTER {0}
-            AS {migration_table_name}_local ENGINE = Distributed({0}, {1}, {migration_table_name}_local, rand());
+            ON CLUSTER %CLUSTER%
+            AS {migration_table_name}_local ENGINE = Distributed(%CLUSTER%, %DATABASE%, {migration_table_name}_local, rand());
             ",
-            cluster_name, database
         )
-    }
-
-    fn get_last_applied_migration_query(migration_table_name: &str) -> String {
-        let (_, _, migration_table_name) = Self::parse_mtn(migration_table_name);
-        GET_LAST_APPLIED_MIGRATION_QUERY.replace("%MIGRATION_TABLE_NAME%", migration_table_name)
-    }
-
-    fn get_applied_migrations_query(migration_table_name: &str) -> String {
-        let (_, _, migration_table_name) = Self::parse_mtn(migration_table_name);
-        GET_APPLIED_MIGRATIONS_QUERY.replace("%MIGRATION_TABLE_NAME%", migration_table_name)
     }
 }
