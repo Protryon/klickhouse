@@ -93,4 +93,10 @@ impl Clone for KlickhouseError {
     }
 }
 
+impl From<core::convert::Infallible> for KlickhouseError {
+    fn from(_: core::convert::Infallible) -> Self {
+        unreachable!()
+    }
+}
+
 pub type Result<T, E = KlickhouseError> = std::result::Result<T, E>;

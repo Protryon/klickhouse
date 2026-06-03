@@ -6,7 +6,7 @@ use crate::{FromSql, KlickhouseError, Result, Row, ToSql, Type, Value};
 #[derive(Clone, Debug, Default)]
 pub struct UnitValue<T: FromSql + ToSql>(pub T);
 
-impl<T: FromSql + ToSql> Row for UnitValue<T> {
+impl<T: FromSql + ToSql + 'static> Row for UnitValue<T> {
     const COLUMN_COUNT: Option<usize> = Some(1);
 
     fn column_names() -> Option<Vec<Cow<'static, str>>> {

@@ -80,7 +80,12 @@ async fn main() {
 
     // Read back rows
     let mut all_rows = client
-        .query::<MyUserData>("SELECT * FROM klickhouse_example;")
+        .query::<MyUserData>(
+            QueryBuilder::new("SELECT * FROM klickhouse_example WHERE 1=?;")
+                .arg(1)
+                .finalize()
+                .unwrap(),
+        )
         .await
         .unwrap();
 

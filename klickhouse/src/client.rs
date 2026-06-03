@@ -17,7 +17,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use uuid::Uuid;
 
 use crate::{
-    KlickhouseError, ParsedQuery, RawRow, Result,
+    KlickhouseError, RawRow, Result, TryIntoQuery,
     block::{Block, BlockInfo},
     convert::Row,
     internal_client_in::InternalClientIn,
@@ -312,13 +312,13 @@ impl Client {
     /// You probably want [`Client::query()`]
     pub async fn query_raw(
         &self,
-        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
+        query: impl TryIntoQuery,
     ) -> Result<ReceiverStream<Result<Block>>> {
         let (sender, receiver) = oneshot::channel();
         self.sender
             .send(ClientRequest {
                 data: ClientRequestData::Query {
-                    query: query.try_into()?.0,
+                    query: query.try_into_query()?.0,
                     response: sender,
                 },
             })
@@ -354,14 +354,14 @@ impl Client {
     /// You probably want [`Client::insert_native`].
     pub async fn insert_native_raw(
         &self,
-        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
+        query: impl TryIntoQuery,
         mut blocks: impl Stream<Item = Block> + Send + Sync + Unpin + 'static,
     ) -> Result<impl Stream<Item = Result<Block>>> {
         let (sender, receiver) = oneshot::channel();
         self.sender
             .send(ClientRequest {
                 data: ClientRequestData::Query {
-                    query: query.try_into()?.0,
+                    query: query.try_into_query()?.0,
                     response: sender,
                 },
             })
@@ -390,14 +390,14 @@ impl Client {
     /// Make sure any query you send native data with has a `format native` suffix.
     pub async fn insert_native<T: Row + Send + Sync + 'static>(
         &self,
-        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
+        query: impl TryIntoQuery,
         mut blocks: impl Stream<Item = Vec<T>> + Send + Sync + Unpin + 'static,
     ) -> Result<()> {
         let (sender, receiver) = oneshot::channel();
         self.sender
             .send(ClientRequest {
                 data: ClientRequestData::Query {
-                    query: query.try_into()?.0.trim().to_string(),
+                    query: query.try_into_query()?.0.trim().to_string(),
                     response: sender,
                 },
             })
@@ -460,7 +460,7 @@ impl Client {
     /// Make sure any query you send native data with has a `format native` suffix.
     pub async fn insert_native_block<T: Row + Send + Sync + 'static>(
         &self,
-        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
+        query: impl TryIntoQuery,
         blocks: Vec<T>,
     ) -> Result<()> {
         let blocks = Box::pin(async move { blocks });
@@ -470,10 +470,10 @@ impl Client {
 
     /// Runs a query against Clickhouse, returning a stream of deserialized rows.
     /// Note that no rows are returned until Clickhouse sends a full block (but it usually sends more than one block).
-    pub async fn query<T: Row, I: TryInto<ParsedQuery, Error = KlickhouseError>>(
+    pub async fn query<T: Row>(
         &self,
-        query: I,
-    ) -> Result<impl Stream<Item = Result<T>> + use<T, I>> {
+        query: impl TryIntoQuery,
+    ) -> Result<impl Stream<Item = Result<T>> + 'static> {
         let raw = self.query_raw(query).await?;
         Ok(raw.flat_map(|block| match block {
             Ok(mut block) => stream::iter(
@@ -488,12 +488,9 @@ impl Client {
     }
 
     /// Same as `query`, but collects all rows into a `Vec`
-    pub async fn query_collect<T: Row>(
-        &self,
-        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
-    ) -> Result<Vec<T>> {
+    pub async fn query_collect<T: Row>(&self, query: impl TryIntoQuery) -> Result<Vec<T>> {
         let mut out = vec![];
-        let mut stream = self.query::<T, _>(query).await?;
+        let mut stream = self.query::<T>(query).await?;
         while let Some(next) = stream.next().await {
             out.push(next?);
         }
@@ -501,10 +498,7 @@ impl Client {
     }
 
     /// Same as `query`, but returns the first row and discards the rest.
-    pub async fn query_one<T: Row>(
-        &self,
-        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
-    ) -> Result<T> {
+    pub async fn query_one<T: Row>(&self, query: impl TryIntoQuery) -> Result<T> {
         self.query(query)
             .await?
             .next()
@@ -513,20 +507,14 @@ impl Client {
     }
 
     /// Same as `query`, but returns the first row, if any, and discards the rest.
-    pub async fn query_opt<T: Row>(
-        &self,
-        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
-    ) -> Result<Option<T>> {
+    pub async fn query_opt<T: Row>(&self, query: impl TryIntoQuery) -> Result<Option<T>> {
         self.query(query).await?.next().await.transpose()
     }
 
     /// Same as `query`, but discards all returns blocks. Waits until the first block returns from the server to check for errors.
     /// Waiting for the first response block or EOS also prevents the server from aborting the query potentially due to client disconnection.
-    pub async fn execute(
-        &self,
-        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
-    ) -> Result<()> {
-        let mut stream = self.query::<RawRow, _>(query).await?;
+    pub async fn execute(&self, query: impl TryIntoQuery) -> Result<()> {
+        let mut stream = self.query::<RawRow>(query).await?;
         while let Some(next) = stream.next().await {
             next?;
         }
@@ -534,11 +522,8 @@ impl Client {
     }
 
     /// Same as `execute`, but doesn't wait for a server response. The query could get aborted if the connection is closed quickly.
-    pub async fn execute_now(
-        &self,
-        query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
-    ) -> Result<()> {
-        let _ = self.query::<RawRow, _>(query).await?;
+    pub async fn execute_now(&self, query: impl TryIntoQuery) -> Result<()> {
+        let _ = self.query::<RawRow>(query).await?;
         Ok(())
     }
 

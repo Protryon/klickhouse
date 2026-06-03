@@ -79,3 +79,18 @@ impl TryInto<ParsedQuery> for QueryBuilder<'_> {
         )))
     }
 }
+
+pub trait TryIntoQuery {
+    fn try_into_query(self) -> Result<ParsedQuery>;
+}
+
+impl<T> TryIntoQuery for T
+where
+    T: TryInto<ParsedQuery>,
+    T::Error: Into<KlickhouseError>,
+{
+    #[inline]
+    fn try_into_query(self) -> Result<ParsedQuery> {
+        self.try_into().map_err(Into::into)
+    }
+}
