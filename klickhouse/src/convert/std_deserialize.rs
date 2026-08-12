@@ -328,7 +328,7 @@ impl<T: FromSql> FromSql for Box<T> {
 }
 
 macro_rules! tuple_impls {
-    ($($len:expr => ($($n:tt $name:ident)+))+) => {
+    ($($len:literal => ($($n:tt $name:ident)+))+) => {
         $(
             impl<$($name: FromSql),+> FromSql for ($($name,)+) {
                 fn from_sql(type_: &Type, value: Value) -> Result<Self> {
