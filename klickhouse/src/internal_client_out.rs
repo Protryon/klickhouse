@@ -134,10 +134,8 @@ impl OpenTelemetry {
         let trace_id_64_high = (trace_id_128 >> 64) as u64;
         let trace_id_64_low = trace_id_128 as u64;
 
-        let trace_id = Uuid::from_u64_pair(
-            trace_id_64_high.swap_bytes(),
-            trace_id_64_low.swap_bytes()
-        );
+        let trace_id =
+            Uuid::from_u64_pair(trace_id_64_high.swap_bytes(), trace_id_64_low.swap_bytes());
 
         let span_id = u64::from_str_radix(parts[2], 16).map_err(|e| {
             KlickhouseError::ProtocolError(format!("invalid traceparent span_id: {e}"))

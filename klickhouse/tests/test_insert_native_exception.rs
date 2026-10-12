@@ -136,6 +136,7 @@ async fn insert_native_raw_observes_server_exception_when_drained() {
         .insert_native_raw(
             format!("INSERT INTO {table_name} FORMAT Native"),
             futures_util::stream::iter([violating_row_block()]),
+            None,
         )
         .await
         .unwrap();

@@ -56,7 +56,10 @@ async fn test_client() {
         block.unwrap();
     }
 
-    let mut result = client.query_raw("SELECT * FROM test_enum", None).await.unwrap();
+    let mut result = client
+        .query_raw("SELECT * FROM test_enum", None)
+        .await
+        .unwrap();
 
     let first_block = result.next().await.unwrap().unwrap();
     let second_block = result.next().await.unwrap().unwrap();

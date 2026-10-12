@@ -47,8 +47,9 @@ async fn test_settings_default() {
     assert_eq!(rows.len(), 1);
 
     // Per-query settings override (merged with defaults)
-    let per_query: IndexMap<String, String> =
-        [("log_comment".into(), "per_query_override".into())].into_iter().collect();
+    let per_query: IndexMap<String, String> = [("log_comment".into(), "per_query_override".into())]
+        .into_iter()
+        .collect();
     let mut stream = client.query_raw("SELECT 2", Some(per_query)).await.unwrap();
     while stream.next().await.is_some() {}
 
