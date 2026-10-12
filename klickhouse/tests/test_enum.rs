@@ -43,6 +43,7 @@ async fn test_client() {
         .insert_native_raw(
             "INSERT INTO test_enum FORMAT Native",
             futures_util::stream::iter([inserted_block.clone()]),
+            None,
         )
         .await
         .unwrap();
@@ -55,7 +56,7 @@ async fn test_client() {
         block.unwrap();
     }
 
-    let mut result = client.query_raw("SELECT * FROM test_enum").await.unwrap();
+    let mut result = client.query_raw("SELECT * FROM test_enum", None).await.unwrap();
 
     let first_block = result.next().await.unwrap().unwrap();
     let second_block = result.next().await.unwrap().unwrap();

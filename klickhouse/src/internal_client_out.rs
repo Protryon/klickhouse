@@ -1,11 +1,12 @@
 use crate::{
-    Result,
+    KlickhouseError, Result,
     block::Block,
     io::ClickhouseWrite,
     protocol::{
         self, CompressionMethod, DBMS_MIN_PROTOCOL_VERSION_WITH_DISTRIBUTED_DEPTH,
         DBMS_MIN_REVISION_WITH_CLIENT_INFO, DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET,
         DBMS_MIN_REVISION_WITH_OPENTELEMETRY, DBMS_MIN_REVISION_WITH_QUOTA_KEY_IN_CLIENT_INFO,
+        DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS,
         DBMS_MIN_REVISION_WITH_VERSION_PATCH, ServerHello,
     },
 };
@@ -52,7 +53,7 @@ pub struct ClientInfo<'a> {
     // if DBMS_MIN_REVISION_WITH_VERSION_PATCH
     pub client_version_patch: u64,
     // if DBMS_MIN_REVISION_WITH_OPENTELEMETRY
-    pub open_telemetry: Option<OpenTelemetry<'a>>,
+    pub open_telemetry: Option<OpenTelemetry>,
 }
 
 impl ClientInfo<'_> {
@@ -85,7 +86,7 @@ impl ClientInfo<'_> {
                 to.write_u8(1u8).await?;
                 to.write_all(&telemetry.trace_id.as_bytes()[..]).await?;
                 to.write_u64(telemetry.span_id).await?;
-                to.write_string(telemetry.tracestate).await?;
+                to.write_string(&telemetry.tracestate).await?;
                 to.write_u8(telemetry.trace_flags).await?;
             } else {
                 to.write_u8(0u8).await?;
@@ -96,11 +97,63 @@ impl ClientInfo<'_> {
     }
 }
 
-pub struct OpenTelemetry<'a> {
-    trace_id: Uuid,
-    span_id: u64,
-    tracestate: &'a str,
-    trace_flags: u8,
+pub struct OpenTelemetry {
+    pub(crate) trace_id: Uuid,
+    pub(crate) span_id: u64,
+    pub(crate) tracestate: String,
+    pub(crate) trace_flags: u8,
+}
+
+impl OpenTelemetry {
+    /// Parse a W3C `traceparent` header (format: `00-{trace_id}-{span_id}-{trace_flags}`)
+    /// and construct an `OpenTelemetry` context for the ClickHouse native protocol.
+    pub fn from_traceparent(traceparent: &str, tracestate: &str) -> Result<Self> {
+        let parts: Vec<&str> = traceparent.split('-').collect();
+        if parts.len() != 4 {
+            return Err(KlickhouseError::ProtocolError(format!(
+                "invalid traceparent: expected 4 parts, got {}",
+                parts.len()
+            )));
+        }
+        if parts[0] != "00" {
+            return Err(KlickhouseError::ProtocolError(format!(
+                "unsupported traceparent version: {}",
+                parts[0]
+            )));
+        }
+        if parts[1].len() != 32 || parts[2].len() != 16 || parts[3].len() != 2 {
+            return Err(KlickhouseError::ProtocolError(
+                "invalid traceparent field lengths".into(),
+            ));
+        }
+
+        let trace_id_128 = u128::from_str_radix(parts[1], 16).map_err(|e| {
+            KlickhouseError::ProtocolError(format!("invalid traceparent trace_id: {e}"))
+        })?;
+
+        let trace_id_64_high = (trace_id_128 >> 64) as u64;
+        let trace_id_64_low = trace_id_128 as u64;
+
+        let trace_id = Uuid::from_u64_pair(
+            trace_id_64_high.swap_bytes(),
+            trace_id_64_low.swap_bytes()
+        );
+
+        let span_id = u64::from_str_radix(parts[2], 16).map_err(|e| {
+            KlickhouseError::ProtocolError(format!("invalid traceparent span_id: {e}"))
+        })?;
+
+        let trace_flags = u8::from_str_radix(parts[3], 16).map_err(|e| {
+            KlickhouseError::ProtocolError(format!("invalid traceparent trace_flags: {e}"))
+        })?;
+
+        Ok(OpenTelemetry {
+            trace_id,
+            span_id,
+            tracestate: tracestate.to_string(),
+            trace_flags,
+        })
+    }
 }
 
 #[repr(u64)]
@@ -116,7 +169,7 @@ pub enum QueryProcessingStage {
 pub struct Query<'a> {
     pub id: &'a str,
     pub info: ClientInfo<'a>,
-    // pub settings: (), //TODO
+    pub settings: &'a [(String, String)],
     //todo: interserver secret
     pub stage: QueryProcessingStage,
     pub compression: CompressionMethod,
@@ -144,7 +197,15 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
                 .write(&mut self.writer, self.server_hello.revision_version)
                 .await?;
         }
-        //todo: settings
+        if self.server_hello.revision_version
+            >= DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS
+        {
+            for (key, value) in params.settings {
+                self.writer.write_string(key.as_bytes()).await?;
+                self.writer.write_u8(0u8).await?;
+                self.writer.write_string(value.as_bytes()).await?;
+            }
+        }
         self.writer.write_string("").await?;
         if self.server_hello.revision_version >= DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET {
             //todo interserver secret

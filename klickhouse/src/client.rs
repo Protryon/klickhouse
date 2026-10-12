@@ -22,7 +22,8 @@ use crate::{
     convert::Row,
     internal_client_in::InternalClientIn,
     internal_client_out::{
-        ClientHello, ClientInfo, InternalClientOut, Query, QueryKind, QueryProcessingStage,
+        ClientHello, ClientInfo, InternalClientOut, OpenTelemetry, Query, QueryKind,
+        QueryProcessingStage,
     },
     io::{ClickhouseRead, ClickhouseWrite},
     progress::Progress,
@@ -44,6 +45,7 @@ struct InnerClient<R: ClickhouseRead, W: ClickhouseWrite> {
 
 struct PendingQuery {
     query: String,
+    settings: IndexMap<String, String>,
     response: oneshot::Sender<mpsc::Receiver<Result<Block>>>,
 }
 
@@ -61,6 +63,22 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
 
     async fn dispatch_query(&mut self, query: PendingQuery) -> Result<()> {
         let id = Uuid::new_v4();
+
+        // Extract OpenTelemetry trace context from settings before passing the
+        // rest to the ClickHouse server as query-level settings.
+        let otel_traceparent = query.settings.get("opentelemetry_traceparent");
+        let otel_tracestate = query
+            .settings
+            .get("opentelemetry_tracestate")
+            .map(|s| s.as_str())
+            .unwrap_or("");
+        let open_telemetry = otel_traceparent
+            .and_then(|tp| OpenTelemetry::from_traceparent(tp, otel_tracestate).ok());
+        let settings_vec: Vec<(String, String)> = query
+            .settings
+            .into_iter()
+            .filter(|(k, _)| k != "opentelemetry_traceparent" && k != "opentelemetry_tracestate")
+            .collect();
         self.output
             .send_query(Query {
                 id: &id.to_string(),
@@ -78,8 +96,9 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
                     quota_key: "",
                     distributed_depth: 1,
                     client_version_patch: 1,
-                    open_telemetry: None,
+                    open_telemetry,
                 },
+                settings: &settings_vec,
                 stage: QueryProcessingStage::Complete,
                 compression: CompressionMethod::default(),
                 query: &query.query,
@@ -107,8 +126,16 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
 
     async fn handle_request(&mut self, request: ClientRequest) -> Result<()> {
         match request.data {
-            ClientRequestData::Query { query, response } => {
-                let query = PendingQuery { query, response };
+            ClientRequestData::Query {
+                query,
+                settings,
+                response,
+            } => {
+                let query = PendingQuery {
+                    query,
+                    settings,
+                    response,
+                };
                 if self.pending_queries.is_empty() && self.executing_query.is_none() {
                     self.dispatch_query(query).await?;
                 } else {
@@ -217,6 +244,7 @@ impl<R: ClickhouseRead + 'static, W: ClickhouseWrite> InnerClient<R, W> {
 enum ClientRequestData {
     Query {
         query: String,
+        settings: IndexMap<String, String>,
         response: oneshot::Sender<mpsc::Receiver<Result<Block>>>,
     },
     SendData {
@@ -234,6 +262,7 @@ struct ClientRequest {
 pub struct Client {
     sender: mpsc::Sender<ClientRequest>,
     progress: broadcast::Sender<(Uuid, Progress)>,
+    default_settings: IndexMap<String, String>,
 }
 
 /// Options set for a Clickhouse connection.
@@ -243,6 +272,10 @@ pub struct ClientOptions {
     pub password: String,
     pub default_database: String,
     pub tcp_nodelay: bool,
+    /// Default query-level settings applied to every query.
+    /// OpenTelemetry trace context can be set via `opentelemetry_traceparent`
+    /// and `opentelemetry_tracestate` keys.
+    pub settings: IndexMap<String, String>,
 }
 
 impl Default for ClientOptions {
@@ -252,6 +285,7 @@ impl Default for ClientOptions {
             password: String::new(),
             default_database: String::new(),
             tcp_nodelay: true,
+            settings: IndexMap::new(),
         }
     }
 }
@@ -298,10 +332,15 @@ impl Client {
         inner: InnerClient<R, W>,
     ) -> Result<Self> {
         let progress = inner.progress.clone();
+        let default_settings = inner.options.settings.clone();
         let (sender, receiver) = mpsc::channel(1024);
 
         tokio::spawn(inner.run(receiver));
-        let client = Client { sender, progress };
+        let client = Client {
+            sender,
+            progress,
+            default_settings,
+        };
         client
             .execute("SET date_time_input_format='best_effort'")
             .await?;
@@ -313,12 +352,18 @@ impl Client {
     pub async fn query_raw(
         &self,
         query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
+        query_settings: Option<IndexMap<String, String>>,
     ) -> Result<ReceiverStream<Result<Block>>> {
+        let mut settings = self.default_settings.clone();
+        if let Some(qs) = query_settings {
+            settings.extend(qs);
+        }
         let (sender, receiver) = oneshot::channel();
         self.sender
             .send(ClientRequest {
                 data: ClientRequestData::Query {
                     query: query.try_into()?.0,
+                    settings,
                     response: sender,
                 },
             })
@@ -356,12 +401,18 @@ impl Client {
         &self,
         query: impl TryInto<ParsedQuery, Error = KlickhouseError>,
         mut blocks: impl Stream<Item = Block> + Send + Sync + Unpin + 'static,
+        query_settings: Option<IndexMap<String, String>>,
     ) -> Result<impl Stream<Item = Result<Block>>> {
+        let mut settings = self.default_settings.clone();
+        if let Some(qs) = query_settings {
+            settings.extend(qs);
+        }
         let (sender, receiver) = oneshot::channel();
         self.sender
             .send(ClientRequest {
                 data: ClientRequestData::Query {
                     query: query.try_into()?.0,
+                    settings,
                     response: sender,
                 },
             })
@@ -399,6 +450,7 @@ impl Client {
             .send(ClientRequest {
                 data: ClientRequestData::Query {
                     query: query.try_into()?.0.trim().to_string(),
+                    settings: self.default_settings.clone(),
                     response: sender,
                 },
             })
@@ -480,7 +532,7 @@ impl Client {
         &self,
         query: I,
     ) -> Result<impl Stream<Item = Result<T>> + use<T, I>> {
-        let raw = self.query_raw(query).await?;
+        let raw = self.query_raw(query, None).await?;
         Ok(raw.flat_map(|block| match block {
             Ok(mut block) => stream::iter(
                 block
