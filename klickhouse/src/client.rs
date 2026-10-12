@@ -386,7 +386,8 @@ impl Client {
     }
 
     /// Sends a query string with streaming associated data (i.e. insert) over native protocol.
-    /// Once all outgoing blocks are written (EOF of `blocks` stream), then any response blocks from Clickhouse are read and DISCARDED.
+    /// Once all outgoing blocks are written (EOF of `blocks` stream), then any response blocks
+    /// from Clickhouse are read and DISCARDED, but server-side exceptions are returned.
     /// Make sure any query you send native data with has a `format native` suffix.
     pub async fn insert_native<T: Row + Send + Sync + 'static>(
         &self,
@@ -453,6 +454,11 @@ impl Client {
             column_data: IndexMap::new(),
         })
         .await?;
+
+        while let Some(item) = receiver.recv().await {
+            item?;
+        }
+
         Ok(())
     }
 
