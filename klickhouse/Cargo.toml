@@ -1,6 +1,6 @@
 [package]
 name = "klickhouse"
-version = "0.15.3"
+version = "0.16.0"
 authors = ["Protryon <max.bruce12@gmail.com>"]
 edition = "2024"
 license = "MIT OR Apache-2.0"
