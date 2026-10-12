@@ -217,12 +217,21 @@ fn parse_args(input: &str) -> Result<Vec<&str>> {
     let mut out = vec![];
     let mut in_parens = 0usize;
     let mut last_start = 0;
+    let mut spec_symbols_found = false;
     // todo: handle parens in enum strings?
     for (i, c) in input.char_indices() {
         match c {
+            '\'' | '=' => spec_symbols_found = true, // exclude enum elements
+            ' ' => {
+                if in_parens == 0 && !spec_symbols_found {
+                    // this is subcolumn name. skip it
+                    last_start = i + 1;
+                }
+            }
             ',' => {
                 if in_parens == 0 {
                     out.push(input[last_start..i].trim());
+                    spec_symbols_found = false;
                     last_start = i + 1;
                 }
             }
