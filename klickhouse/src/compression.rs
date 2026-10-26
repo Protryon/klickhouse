@@ -96,23 +96,17 @@ pub fn zstd_decompress_block(data: &[u8], decompressed_size: u32) -> Result<Vec<
     }
 }
 
-async fn read_compressed_blob(
-    reader: &mut impl ClickhouseRead,
-    compression: CompressionMethod,
-) -> Result<Vec<u8>> {
+async fn read_compressed_blob(reader: &mut impl ClickhouseRead) -> Result<Vec<u8>> {
     let checksum_high = reader.read_u64_le().await? as u128;
     let checksum_low = reader.read_u64_le().await? as u128;
     let checksum = (checksum_high << 64) | checksum_low;
 
     let type_byte = reader.read_u8().await?;
-    if type_byte != compression.byte() {
+    let Ok(compression) = CompressionMethod::try_from(type_byte) else {
         return Err(KlickhouseError::ProtocolError(format!(
-            "unexpected compression algorithm identifier: '{:02X}', expected {:02X} ({:?})",
-            type_byte,
-            compression.byte(),
-            compression
+            "unexpected compression algorithm identifier: '{type_byte:02X}'",
         )));
-    }
+    };
 
     let compressed_size = reader.read_u32_le().await?;
     if compressed_size > MAX_COMPRESSION_SIZE {
@@ -166,7 +160,6 @@ type BlockReadingFuture<R> =
     Pin<Box<dyn Future<Output = Result<(Vec<u8>, &'static mut R)>> + Send + Sync>>;
 
 pub struct DecompressionReader<'a, R: ClickhouseRead + 'static> {
-    mode: CompressionMethod,
     inner: Option<&'a mut R>,
     decompressed: Vec<u8>,
     position: usize,
@@ -174,9 +167,8 @@ pub struct DecompressionReader<'a, R: ClickhouseRead + 'static> {
 }
 
 impl<'a, R: ClickhouseRead + 'static> DecompressionReader<'a, R> {
-    pub fn new(mode: CompressionMethod, inner: &'a mut R) -> Self {
+    pub fn new(inner: &'a mut R) -> Self {
         Self {
-            mode,
             inner: Some(inner),
             decompressed: vec![],
             position: 0,
@@ -234,9 +226,8 @@ impl<R: ClickhouseRead + 'static> AsyncRead for DecompressionReader<'_, R> {
         while self.position >= self.decompressed.len() {
             let static_inner: &'static mut R =
                 unsafe { std::mem::transmute(self.inner.take().unwrap()) };
-            let mode = self.mode;
             self.block_reading_future = Some(Box::pin(async move {
-                let value = read_compressed_blob(static_inner, mode).await?;
+                let value = read_compressed_blob(static_inner).await?;
                 Ok((value, static_inner))
             }));
             match self.run_decompression(cx) {
