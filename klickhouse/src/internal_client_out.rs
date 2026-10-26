@@ -224,26 +224,50 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
     }
 
     #[cfg(feature = "compression")]
-    async fn compress_data(&mut self, byte: u8, block: Block) -> Result<()> {
-        let (out, decompressed_size) =
-            crate::compression::compress_block(block, self.server_hello.revision_version).await?;
-        let mut new_out = Vec::with_capacity(out.len() + 5);
-        new_out.push(byte);
-        new_out.extend_from_slice(&(out.len() as u32 + 9).to_le_bytes()[..]);
-        new_out.extend_from_slice(&(decompressed_size as u32).to_le_bytes()[..]);
+    async fn compress_data(&mut self, compression: CompressionMethod, block: Block) -> Result<()> {
+        let (out, decompressed_size) = match compression {
+            CompressionMethod::LZ4 => {
+                crate::compression::lz4_compress_block(block, self.server_hello.revision_version)
+                    .await?
+            }
+            CompressionMethod::ZSTD => {
+                crate::compression::zstd_compress_block(block, self.server_hello.revision_version)
+                    .await?
+            }
+            _ => {
+                unimplemented!(
+                    "Compression method {compression:?} is not implemented yet for revision version {}",
+                    self.server_hello.revision_version
+                )
+            }
+        };
+
+        let compressed_packet_len = out.len() + 9;
+
+        let mut new_out = Vec::with_capacity(compressed_packet_len);
+        new_out.push(compression.byte());
+
+        new_out.extend_from_slice(&(compressed_packet_len as u32).to_le_bytes());
+        new_out.extend_from_slice(&(decompressed_size as u32).to_le_bytes());
         new_out.extend(out);
 
         let hash = cityhash_rs::cityhash_102_128(&new_out[..]);
-        self.writer.write_u64_le((hash >> 64) as u64).await?;
-        self.writer.write_u64_le(hash as u64).await?;
-        // self.writer.write_u8(byte).await?;
-        // self.writer.write_u32_le(out.len() as u32).await?;
+        let hash_high = (hash >> 64) as u64;
+        let hash_low = hash as u64;
+
+        self.writer.write_u64_le(hash_high).await?;
+        self.writer.write_u64_le(hash_low).await?;
         self.writer.write_all(&new_out[..]).await?;
+
         Ok(())
     }
 
     #[cfg(not(feature = "compression"))]
-    async fn compress_data(&mut self, _byte: u8, _block: &Block) -> Result<()> {
+    async fn compress_data(
+        &mut self,
+        _compression: CompressionMethod,
+        _block: &Block,
+    ) -> Result<()> {
         panic!(
             "attempted to use compression when not compiled with `compression` feature in klickhouse"
         );
@@ -273,8 +297,10 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
                     .await?;
             }
             CompressionMethod::LZ4 => {
-                self.compress_data(CompressionMethod::LZ4.byte(), block)
-                    .await?;
+                self.compress_data(CompressionMethod::LZ4, block).await?;
+            }
+            CompressionMethod::ZSTD => {
+                self.compress_data(CompressionMethod::ZSTD, block).await?;
             }
         }
 

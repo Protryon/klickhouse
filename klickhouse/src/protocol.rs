@@ -182,8 +182,9 @@ pub enum ServerPacket {
 pub enum CompressionMethod {
     #[cfg_attr(not(feature = "compression"), default)]
     None,
-    #[cfg_attr(feature = "compression", default)]
     LZ4,
+    #[cfg_attr(feature = "compression", default)]
+    ZSTD,
 }
 
 impl CompressionMethod {
@@ -191,6 +192,7 @@ impl CompressionMethod {
         match self {
             CompressionMethod::None => 0x02,
             CompressionMethod::LZ4 => 0x82,
+            CompressionMethod::ZSTD => 0x90,
         }
     }
 }
