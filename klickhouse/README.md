@@ -28,7 +28,7 @@ $ cargo nextest run
 ## Feature flags
 
 - `derive`: Enable [klickhouse_derive], providing a derive macro for the [Row] trait. Default.
-- `compression`: `lz4` compression for client/server communication. Default.
+- `compression`: `lz4`/`zstd` compression for client/server communication. Default.
 - `serde`: Derivation of [serde::Serialize] and [serde::Deserialize] on various objects, and JSON support. Default.
 - `tls`: TLS support via [tokio-rustls](https://crates.io/crates/tokio-rustls).
 - `refinery`: Migrations via [refinery](https://crates.io/crates/refinery).
