@@ -178,19 +178,31 @@ pub enum ServerPacket {
 }
 
 #[derive(Clone, Copy, Debug, Default)]
-#[allow(unused)]
+#[repr(u8)]
 pub enum CompressionMethod {
     #[cfg_attr(not(feature = "compression"), default)]
-    None,
+    None = 0x02,
     #[cfg_attr(feature = "compression", default)]
-    LZ4,
+    LZ4 = 0x82,
+    ZSTD = 0x90,
 }
 
 impl CompressionMethod {
-    pub fn byte(&self) -> u8 {
-        match self {
-            CompressionMethod::None => 0x02,
-            CompressionMethod::LZ4 => 0x82,
-        }
+    #[inline]
+    pub const fn byte(self) -> u8 {
+        self as u8
+    }
+}
+
+impl TryFrom<u8> for CompressionMethod {
+    type Error = &'static str;
+
+    fn try_from(byte: u8) -> Result<Self, Self::Error> {
+        Ok(match byte {
+            0x02 => CompressionMethod::None,
+            0x82 => CompressionMethod::LZ4,
+            0x90 => CompressionMethod::ZSTD,
+            _ => return Err("Unknown compression method byte"),
+        })
     }
 }

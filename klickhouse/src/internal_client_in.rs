@@ -50,9 +50,8 @@ impl<R: ClickhouseRead + 'static> InternalClientIn<R> {
     }
 
     #[cfg(feature = "compression")]
-    async fn decompress_data(&mut self, compression: CompressionMethod) -> Result<Block> {
-        let mut reader =
-            crate::compression::DecompressionReader::new(compression, &mut self.reader);
+    async fn decompress_data(&mut self, _compression: CompressionMethod) -> Result<Block> {
+        let mut reader = crate::compression::DecompressionReader::new(&mut self.reader);
 
         let block = Block::read(&mut reader, self.server_hello.revision_version).await?;
 

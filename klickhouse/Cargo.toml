@@ -37,6 +37,7 @@ chrono-tz = "0.10"
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 tokio-stream = "0.1"
 lz4 = { version = "1.28", optional = true }
+zstd = { version = "0.14", optional = true }
 klickhouse_derive = { version = "=0.15.0", optional = true, path = "../klickhouse_derive" }
 cityhash-rs = "1.0"
 bb8 = { version = "0.9", optional = true }
@@ -63,7 +64,7 @@ env_logger = "0.11"
 [features]
 default = ["derive", "compression", "serde", "bfloat16"]
 derive = ["klickhouse_derive"]
-compression = ["lz4"]
+compression = ["dep:lz4", "dep:zstd"]
 geo-types = ["dep:geo-types"]
 refinery = ["refinery-core", "time", "dep:async-trait"]
 serde = ["dep:serde", "serde_json", "uuid/serde", "chrono/serde", "half?/serde"]
