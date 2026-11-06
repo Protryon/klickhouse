@@ -209,7 +209,7 @@ impl<T: ToSql> ToSql for Box<T> {
 }
 
 macro_rules! tuple_impls {
-    ($($len:expr => ($($n:tt $name:ident)+))+) => {
+    ($($len:literal => ($($n:tt $name:ident)+))+) => {
         $(
             impl<$($name: ToSql),+> ToSql for ($($name,)+) {
                 fn to_sql(self, type_hint: Option<&Type>) -> Result<Value> {
