@@ -922,7 +922,8 @@ impl Type {
                 | Type::UInt32
                 | Type::UInt64
                 | Type::UInt128
-                | Type::UInt256 => inner.validate()?,
+                | Type::UInt256 
+                | Type::Uuid => inner.validate()?,
                 _ => {
                     return Err(KlickhouseError::TypeParseError(format!(
                         "illegal type '{inner:?}' in LowCardinality, not allowed"
