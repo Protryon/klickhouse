@@ -7,16 +7,16 @@ use std::task::{Context, Poll};
 use futures_util::FutureExt;
 use tokio::io::{AsyncRead, AsyncReadExt, ReadBuf};
 
-use crate::block::Block;
 use crate::internal_client_in::MAX_COMPRESSION_SIZE;
 use crate::io::ClickhouseRead;
 use crate::protocol::CompressionMethod;
 use crate::{KlickhouseError, Result};
 
-pub async fn lz4_compress_block(block: Block, revision: u64) -> Result<(Vec<u8>, usize)> {
-    let mut raw = Vec::new();
-    block.write(&mut raw, revision).await?;
-    let raw_len = raw.len();
+/// The maximum uncompressed size of one compressed block, the default `max_compress_block_size`
+/// that `clickhouse-client` also uses. The server rejects a block above 256 MiB uncompressed.
+pub const MAX_COMPRESS_BLOCK_SIZE: usize = 1024 * 1024;
+
+pub fn lz4_compress(raw: &[u8]) -> Result<Vec<u8>> {
     let mut compressed = Vec::<u8>::with_capacity(raw.len() + (raw.len() / 255) + 16 + 1);
     let out_len = unsafe {
         lz4::liblz4::LZ4_compress_default(
@@ -36,7 +36,7 @@ pub async fn lz4_compress_block(block: Block, revision: u64) -> Result<(Vec<u8>,
     }
     unsafe { compressed.set_len(out_len as usize) };
 
-    Ok((compressed, raw_len))
+    Ok(compressed)
 }
 
 pub fn lz4_decompress_block(data: &[u8], decompressed_size: u32) -> Result<Vec<u8>> {
@@ -63,15 +63,11 @@ pub fn lz4_decompress_block(data: &[u8], decompressed_size: u32) -> Result<Vec<u
     Ok(output)
 }
 
-pub async fn zstd_compress_block(block: Block, revision: u64) -> Result<(Vec<u8>, usize)> {
-    let mut raw = Vec::new();
-    block.write(&mut raw, revision).await?;
-    let raw_len = raw.len();
-
+pub fn zstd_compress(raw: &[u8]) -> Result<Vec<u8>> {
     let compression_level = 1;
 
-    match zstd::bulk::compress(&raw, compression_level) {
-        Ok(compressed) => Ok((compressed, raw_len)),
+    match zstd::bulk::compress(raw, compression_level) {
+        Ok(compressed) => Ok(compressed),
         Err(e) => Err(KlickhouseError::ProtocolError(format!(
             "ZSTD compression failed: {e}"
         ))),

@@ -7,6 +7,7 @@ pub mod test_flatten;
 pub mod test_geo;
 pub mod test_insert_native_exception;
 pub mod test_into;
+pub mod test_large_block;
 pub mod test_lock;
 #[cfg(feature = "refinery")]
 pub mod test_migrate;

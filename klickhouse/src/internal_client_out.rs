@@ -225,39 +225,40 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
 
     #[cfg(feature = "compression")]
     async fn compress_data(&mut self, compression: CompressionMethod, block: Block) -> Result<()> {
-        let (out, decompressed_size) = match compression {
-            CompressionMethod::LZ4 => {
-                crate::compression::lz4_compress_block(block, self.server_hello.revision_version)
-                    .await?
-            }
-            CompressionMethod::ZSTD => {
-                crate::compression::zstd_compress_block(block, self.server_hello.revision_version)
-                    .await?
-            }
-            _ => {
-                unimplemented!(
-                    "Compression method {compression:?} is not implemented yet for revision version {}",
-                    self.server_hello.revision_version
-                )
-            }
-        };
+        let mut raw = Vec::new();
+        block
+            .write(&mut raw, self.server_hello.revision_version)
+            .await?;
 
-        let compressed_packet_len = out.len() + 9;
+        for chunk in raw.chunks(crate::compression::MAX_COMPRESS_BLOCK_SIZE) {
+            let out = match compression {
+                CompressionMethod::LZ4 => crate::compression::lz4_compress(chunk)?,
+                CompressionMethod::ZSTD => crate::compression::zstd_compress(chunk)?,
+                _ => {
+                    unimplemented!(
+                        "Compression method {compression:?} is not implemented yet for revision version {}",
+                        self.server_hello.revision_version
+                    )
+                }
+            };
 
-        let mut new_out = Vec::with_capacity(compressed_packet_len);
-        new_out.push(compression.byte());
+            let compressed_packet_len = out.len() + 9;
 
-        new_out.extend_from_slice(&(compressed_packet_len as u32).to_le_bytes());
-        new_out.extend_from_slice(&(decompressed_size as u32).to_le_bytes());
-        new_out.extend(out);
+            let mut new_out = Vec::with_capacity(compressed_packet_len);
+            new_out.push(compression.byte());
 
-        let hash = cityhash_rs::cityhash_102_128(&new_out[..]);
-        let hash_high = (hash >> 64) as u64;
-        let hash_low = hash as u64;
+            new_out.extend_from_slice(&(compressed_packet_len as u32).to_le_bytes());
+            new_out.extend_from_slice(&(chunk.len() as u32).to_le_bytes());
+            new_out.extend(out);
 
-        self.writer.write_u64_le(hash_high).await?;
-        self.writer.write_u64_le(hash_low).await?;
-        self.writer.write_all(&new_out[..]).await?;
+            let hash = cityhash_rs::cityhash_102_128(&new_out[..]);
+            let hash_high = (hash >> 64) as u64;
+            let hash_low = hash as u64;
+
+            self.writer.write_u64_le(hash_high).await?;
+            self.writer.write_u64_le(hash_low).await?;
+            self.writer.write_all(&new_out[..]).await?;
+        }
 
         Ok(())
     }
@@ -336,4 +337,75 @@ impl<W: ClickhouseWrite> InternalClientOut<W> {
     //     self.writer.write_var_uint(protocol::ClientPacketId::Ping as u64).await?;
     //     Ok(())
     // }
+}
+
+#[cfg(all(test, feature = "compression"))]
+mod tests {
+    use super::*;
+    use crate::compression::{
+        MAX_COMPRESS_BLOCK_SIZE, lz4_decompress_block, zstd_decompress_block,
+    };
+    use crate::{Type, Value, block::BlockInfo};
+    use indexmap::IndexMap;
+
+    fn test_block() -> Block {
+        let mut block = Block {
+            info: BlockInfo::default(),
+            rows: 3,
+            column_types: IndexMap::new(),
+            column_data: IndexMap::new(),
+        };
+        block.column_types.insert("s".to_string(), Type::String);
+        block.column_data.insert(
+            "s".to_string(),
+            (0..3u8)
+                .map(|i| Value::String(vec![b'a' + i; MAX_COMPRESS_BLOCK_SIZE]))
+                .collect(),
+        );
+        block
+    }
+
+    async fn check_compressed_blocks(compression: CompressionMethod) {
+        let mut raw = Vec::new();
+        test_block().write(&mut raw, 0).await.unwrap();
+
+        let mut client = InternalClientOut::new(Vec::new());
+        client
+            .send_data(test_block(), compression, "", false)
+            .await
+            .unwrap();
+
+        // The packet id and the empty table name, then the compressed blocks.
+        assert_eq!(
+            client.writer[..2],
+            [protocol::ClientPacketId::Data as u8, 0]
+        );
+        let mut rest = &client.writer[2..];
+        let mut blocks = 0;
+        let mut decompressed = Vec::new();
+        while !rest.is_empty() {
+            let compressed_size = u32::from_le_bytes(rest[17..21].try_into().unwrap()) as usize;
+            let size = u32::from_le_bytes(rest[21..25].try_into().unwrap());
+            assert!(size as usize <= MAX_COMPRESS_BLOCK_SIZE);
+            let payload = &rest[25..16 + compressed_size];
+            decompressed.extend(match compression {
+                CompressionMethod::LZ4 => lz4_decompress_block(payload, size).unwrap(),
+                _ => zstd_decompress_block(payload, size).unwrap(),
+            });
+            rest = &rest[16 + compressed_size..];
+            blocks += 1;
+        }
+        assert_eq!(blocks, raw.len().div_ceil(MAX_COMPRESS_BLOCK_SIZE));
+        assert_eq!(decompressed, raw);
+    }
+
+    #[tokio::test]
+    async fn lz4_compressed_blocks() {
+        check_compressed_blocks(CompressionMethod::LZ4).await;
+    }
+
+    #[tokio::test]
+    async fn zstd_compressed_blocks() {
+        check_compressed_blocks(CompressionMethod::ZSTD).await;
+    }
 }
